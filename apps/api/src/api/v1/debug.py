@@ -14,7 +14,8 @@ from infrastructure.models import (
     ConsorcioAtributoDinamicoModel,
     TicketConsultaModel,
 )
-from domain.schemas import PrioridadTicket, EstadoTicket
+from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket
+from services.ticket_service import process_and_consolidate_ticket
 from engine.graph import decision_graph
 from engine.state import ChatState
 from core.logging import logger
@@ -72,6 +73,17 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
     # 1. Buscar o registrar contacto en la base de datos
     result = await db.execute(select(ContactoModel).where(ContactoModel.telefono_wa == req.phone))
     contacto = result.scalar_one_or_none()
+
+    if not contacto:
+        contacto = ContactoModel(
+            id=f"cont-{str(uuid.uuid4())[:8]}",
+            telefono_wa=req.phone,
+            nombre_completo=req.user_name or "Vecino",
+            rol=RolContacto.OTRO,
+        )
+        db.add(contacto)
+        await db.commit()
+        await db.refresh(contacto)
 
     consorcio_info = None
     consorcio_nombre = None
@@ -142,7 +154,7 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
     # 3. Ejecutar el grafo de decisión
     graph_result = decision_graph.invoke(initial_state)
 
-    # 4. Gestión inteligente de tickets (Filtro de ruido, saludos y consolidación de ráfagas)
+    # 4. Gestión inteligente de tickets (Filtro de ruido, saludos y consolidación 24hs)
     ticket_info = None
     intent = graph_result.get("intent")
     is_noise = graph_result.get("is_noise", False)
@@ -159,71 +171,28 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
     )
 
     if should_create_ticket:
-        contact_id = contacto.id if contacto else "cont-anonimo"
-        # Buscar si ya existe un ticket reciente (últimos 120 segundos) para este contacto en estado NUEVO
-        cutoff = datetime.utcnow() - timedelta(seconds=120)
-        recent_q = (
-            select(TicketConsultaModel)
-            .where(
-                TicketConsultaModel.contacto_id == contact_id,
-                TicketConsultaModel.estado == EstadoTicket.NUEVO,
-                TicketConsultaModel.creado_el >= cutoff,
-            )
-            .order_by(TicketConsultaModel.creado_el.desc())
-        )
-        recent_res = await db.execute(recent_q)
-        existing_ticket = recent_res.scalars().first()
-
-        if existing_ticket:
-            # Consolidar en el ticket existente en vez de duplicar
-            existing_ticket.descripcion = f"{existing_ticket.descripcion}\n- {req.message}"
-            if graph_result.get("is_emergency"):
-                existing_ticket.prioridad = PrioridadTicket.CRITICA
-                existing_ticket.intencion = "EMERGENCIA"
-            try:
-                await db.commit()
-                ticket_info = {
-                    "id": existing_ticket.id,
-                    "intencion": existing_ticket.intencion,
-                    "prioridad": existing_ticket.prioridad.value,
-                    "estado": existing_ticket.estado.value,
-                    "accion": "CONSOLIDADO_EN_TICKET_EXISTENTE",
-                }
-                logger.info(f"[DEBUG_CHAT] Mensaje anexado al ticket reciente {existing_ticket.id}")
-            except Exception as e:
-                logger.warning(f"[DEBUG_CHAT] Error al consolidar ticket: {e}")
-        else:
-            ticket_id = f"tick-{str(uuid.uuid4())[:8]}"
-            if graph_result.get("is_emergency"):
-                prioridad = PrioridadTicket.CRITICA
-            elif intent == "CONSULTA_ATRIBUTO_RESTRINGIDO":
-                prioridad = PrioridadTicket.ALTA
-            else:
-                prioridad = PrioridadTicket.NORMAL
-
-            ticket = TicketConsultaModel(
-                id=ticket_id,
-                contacto_id=contact_id,
+        try:
+            res_ticket = await process_and_consolidate_ticket(
+                db=db,
+                contacto=contacto,
+                message=req.message,
+                intent=intent,
+                is_emergency=graph_result.get("is_emergency", False),
+                created_off_hours=True,
                 consorcio_id=consorcio_id,
-                intencion=intent or "CONSULTA_GENERAL",
-                descripcion=req.message,
-                prioridad=prioridad,
-                estado=EstadoTicket.NUEVO,
-                creado_fuera_de_horario=True,
+                consorcio_nombre=consorcio_nombre,
             )
-            db.add(ticket)
-            try:
-                await db.commit()
-                ticket_info = {
-                    "id": ticket.id,
-                    "intencion": ticket.intencion,
-                    "prioridad": ticket.prioridad.value,
-                    "estado": ticket.estado.value,
-                    "accion": "NUEVO_TICKET_CREADO",
-                }
-                logger.info(f"[DEBUG_CHAT] Nuevo ticket creado: {ticket.id}")
-            except Exception as e:
-                logger.warning(f"[DEBUG_CHAT] No se pudo guardar ticket en DB: {e}")
+            ticket_info = {
+                "id": res_ticket["id"],
+                "intencion": res_ticket["intencion"],
+                "prioridad": res_ticket["prioridad"],
+                "estado": res_ticket["estado"],
+                "accion": res_ticket["accion"],
+                "expediente_id": res_ticket.get("expediente_id"),
+                "expediente_codigo": res_ticket.get("expediente_codigo"),
+            }
+        except Exception as e:
+            logger.warning(f"[DEBUG_CHAT] No se pudo guardar ticket en DB: {e}")
 
     total_pipeline_ms = round((time.time() - t_start) * 1000, 2)
 

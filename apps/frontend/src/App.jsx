@@ -7,11 +7,22 @@ import {
   Minus,
   Plus,
   RotateCcw,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Pin,
+  PinOff,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  Layers,
 } from 'lucide-react';
+import { LoginForm } from './components/auth/LoginForm.jsx';
 import { ChatInbox } from './components/chat/ChatInbox.jsx';
 import { MessageThread } from './components/chat/MessageThread.jsx';
 import { AiDraftBox } from './components/chat/AiDraftBox.jsx';
 import { TicketsTable } from './components/tables/TicketsTable.jsx';
+import { ExpedientesTable } from './components/tables/ExpedientesTable.jsx';
 import { DebugSimulator } from './components/debug/DebugSimulator.jsx';
 import { Card, CardHeader, CardContent } from './components/ui/Card.jsx';
 import { Badge } from './components/ui/Badge.jsx';
@@ -178,16 +189,54 @@ const INITIAL_DRAFTS = {
 };
 
 export default function App() {
+  // Estado de Autenticación y Sesión
+  const [currentUser, setCurrentUser] = useState(() => ApiService.getStoredUser());
+  const [isAuthenticated, setIsAuthenticated] = useState(() => ApiService.isAuthenticated());
+
+  useEffect(() => {
+    const handleLogout = () => {
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    };
+    window.addEventListener('seliz_auth_logout', handleLogout);
+    return () => window.removeEventListener('seliz_auth_logout', handleLogout);
+  }, []);
+
   const [activeTab, setActiveTab] = useState('inbox');
   const [selectedConvId, setSelectedConvId] = useState('conv-1');
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [apiConnected, setApiConnected] = useState(false);
 
+  // Ergonomía de Layout: Sidebar con Apertura por Proximidad y Minimizado
+  const [sidebarPinned, setSidebarPinned] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crm_sidebar_pinned');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const [inboxListCollapsed, setInboxListCollapsed] = useState(false);
+  const [draftCollapsed, setDraftCollapsed] = useState(false);
+
+  const toggleSidebarPin = () => {
+    setSidebarPinned((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('crm_sidebar_pinned', String(next)); } catch {}
+      return next;
+    });
+  };
+
+  const isSidebarExpanded = sidebarPinned || sidebarHovered;
+
   // Estados dinámicos de backend
   const [consorcios, setConsorcios] = useState(INITIAL_CONSORCIOS);
   const [tickets, setTickets] = useState(INITIAL_TICKETS);
+  const [expedientes, setExpedientes] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
   const [loadingConsorcios, setLoadingConsorcios] = useState(false);
+  const [loadingExpedientes, setLoadingExpedientes] = useState(false);
 
   // Estados dinámicos del Inbox Omnicanal
   const [conversations, setConversations] = useState(INITIAL_CONVERSATIONS);
@@ -224,6 +273,43 @@ export default function App() {
   const handleZoomReset = () => {
     setZoomLevel(1);
     try { localStorage.setItem('crm_zoom_level', '1'); } catch {}
+  };
+
+  // Carga de expedientes edilicios desde la API
+  const loadExpedientes = useCallback(async () => {
+    setLoadingExpedientes(true);
+    try {
+      const data = await ApiService.getExpedientes();
+      if (Array.isArray(data)) {
+        setExpedientes(data);
+      }
+    } catch (err) {
+      console.warn('[CRM] No se pudo cargar expedientes del backend:', err.message);
+    } finally {
+      setLoadingExpedientes(false);
+    }
+  }, []);
+
+  // Actualización de estado de un expediente
+  const handleUpdateExpedienteStatus = async (expedienteId, newStatus) => {
+    const original = [...expedientes];
+    setExpedientes((prev) =>
+      prev.map((e) => (e.id === expedienteId ? { ...e, estado: newStatus } : e))
+    );
+    try {
+      const updated = await ApiService.updateExpediente(expedienteId, { estado: newStatus });
+      setExpedientes((prev) =>
+        prev.map((e) => (e.id === expedienteId ? updated : e))
+      );
+    } catch (err) {
+      console.error('[CRM] Error al actualizar estado del expediente:', err);
+      setExpedientes(original);
+    }
+  };
+
+  // Notificar por WhatsApp a todos los vecinos del expediente
+  const handleNotifyNeighbors = async (expedienteId, mensaje) => {
+    return await ApiService.notificarVecinosExpediente(expedienteId, mensaje);
   };
 
   // Carga de tickets desde la API
@@ -323,13 +409,14 @@ export default function App() {
       if (health && health.status === 'ok') {
         setApiConnected(true);
       }
-      await Promise.allSettled([loadTickets(), loadConsorcios(), loadContactos()]);
+      await Promise.allSettled([loadExpedientes(), loadTickets(), loadConsorcios(), loadContactos()]);
     }
     init();
-  }, [loadTickets, loadConsorcios, loadContactos]);
+  }, [loadExpedientes, loadTickets, loadConsorcios, loadContactos]);
 
   const navigationItems = [
-    { id: 'inbox', label: 'Inbox Omnicanal', icon: MessageSquare },
+    { id: 'inbox', label: 'Inbox', icon: MessageSquare },
+    { id: 'expedientes', label: 'Expedientes & Incidentes', icon: Layers },
     { id: 'tickets', label: 'Tickets & Reclamos', icon: CheckSquare },
     { id: 'consorcios', label: 'Consorcios & CBU', icon: Building2 },
     { id: 'debug', label: 'Simulador Debug', icon: Terminal },
@@ -518,26 +605,86 @@ export default function App() {
     }
   };
 
+  if (!isAuthenticated) {
+    return (
+      <LoginForm
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        }}
+      />
+    );
+  }
+
+  const userInitials = currentUser?.nombre_completo
+    ? currentUser.nombre_completo.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
+    : 'IS';
+
   return (
     <div className="h-[100dvh] min-h-[100dvh] bg-surface-soft text-brand-ink flex flex-col lg:flex-row overflow-hidden">
-      {/* Sidebar Fijo para Desktop y Laptops Grandes */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 xl:w-72 flex-col border-r border-border bg-white shadow-card lg:flex">
-        {/* Marca y Encabezado */}
-        <div className="flex min-h-16 xl:min-h-20 items-center justify-between border-b border-border px-5 xl:px-6">
-          <span className="text-sm font-bold tracking-tight text-brand-ink">
-            Dra. Ivana Seliz
-          </span>
-          <div className="flex items-center gap-1.5" title={apiConnected ? 'Backend FastAPI Conectado' : 'Modo Datos Locales'}>
-            <span className={`size-2 rounded-full ${apiConnected ? 'bg-success animate-pulse' : 'bg-text-muted'}`} />
-            <span className="text-[10px] font-semibold text-text-muted">{apiConnected ? 'ONLINE' : 'LOCAL'}</span>
-          </div>
+      {/* Zona Sensora de Proximidad en Margen Izquierdo (Desktop) */}
+      {!sidebarPinned && (
+        <div
+          onMouseEnter={() => setSidebarHovered(true)}
+          className="fixed left-0 top-0 bottom-0 w-3 z-30 hidden lg:block cursor-pointer"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Desktop con Soporte de Pin y Apertura por Proximidad */}
+      <aside
+        onMouseEnter={() => !sidebarPinned && setSidebarHovered(true)}
+        onMouseLeave={() => !sidebarPinned && setSidebarHovered(false)}
+        className={`fixed inset-y-0 left-0 hidden flex-col border-r border-border bg-white lg:flex transition-all duration-200 ease-in-out ${
+          sidebarPinned
+            ? 'w-64 xl:w-72 z-30 shadow-card'
+            : isSidebarExpanded
+            ? 'w-64 xl:w-72 z-40 shadow-2xl border-r-brand-ink/20'
+            : 'w-[68px] z-30 shadow-sm'
+        }`}
+      >
+        {/* Marca, Encabezado y Control Pin/Unpin */}
+        <div className="flex min-h-14 sm:min-h-16 items-center justify-between border-b border-border px-3.5 xl:px-4">
+          {isSidebarExpanded ? (
+            <>
+              <div className="min-w-0 flex items-center gap-2">
+                <span className="text-sm font-bold tracking-tight text-brand-ink truncate">
+                  Dra. Ivana Seliz
+                </span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-brand-ink text-white shrink-0">
+                  {currentUser?.rol || 'ADMIN'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleSidebarPin}
+                title={sidebarPinned ? 'Desanclar (Apertura por proximidad)' : 'Fijar menú expandido'}
+                className="size-7 rounded-base flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shrink-0"
+              >
+                {sidebarPinned ? <Pin size={14} className="rotate-45" /> : <PinOff size={14} />}
+              </button>
+            </>
+          ) : (
+            <div className="w-full flex items-center justify-center">
+              <button
+                type="button"
+                onClick={toggleSidebarPin}
+                title="Fijar menú expandido"
+                className="size-9 rounded-base flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer"
+              >
+                <PinOff size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Navegación Principal */}
-        <nav className="min-h-0 flex-1 overflow-y-auto px-3 xl:px-4 py-5" aria-label="Secciones del CRM">
-          <p className="mb-2 px-3 text-xs font-medium text-text-muted">
-            Gestión de Consorcios
-          </p>
+        <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-4" aria-label="Secciones del CRM">
+          {isSidebarExpanded && (
+            <p className="mb-2 px-3 text-[11px] font-semibold tracking-wider uppercase text-text-muted">
+              Gestión
+            </p>
+          )}
           <div className="grid gap-1">
             {navigationItems.map(({ id, label, icon: Icon }) => {
               const isActive = id === activeTab;
@@ -548,36 +695,75 @@ export default function App() {
                     setActiveTab(id);
                     if (id === 'inbox') setMobileChatOpen(false);
                   }}
-                  className={`flex min-h-10 xl:min-h-11 w-full items-center gap-3 rounded-base px-3 text-xs xl:text-sm font-semibold transition-all cursor-pointer ${
+                  title={!isSidebarExpanded ? label : undefined}
+                  className={`flex min-h-10 w-full items-center rounded-base text-xs font-semibold transition-all cursor-pointer ${
+                    isSidebarExpanded
+                      ? 'gap-3 px-3 xl:text-sm'
+                      : 'justify-center px-0'
+                  } ${
                     isActive
-                      ? 'bg-brand-ink bg-[image:var(--gradient-action-primary)] text-white shadow-sm'
+                      ? 'bg-brand-ink text-white shadow-sm'
                       : 'text-text-secondary hover:bg-surface-muted hover:text-brand-ink'
                   }`}
                 >
-                  <Icon size={18} aria-hidden="true" />
-                  <span>{label}</span>
+                  <Icon size={18} aria-hidden="true" className="shrink-0" />
+                  {isSidebarExpanded && <span className="truncate">{label}</span>}
                 </button>
               );
             })}
           </div>
         </nav>
 
-        {/* Perfil en la Base */}
-        <div className="border-t border-border p-3 xl:p-4 bg-surface-soft/60">
-          <div className="flex items-center gap-3 px-1 xl:px-2">
-            <div className="grid size-8 xl:size-9 place-items-center rounded-full bg-brand-ink text-white text-xs font-bold shadow-sm">
-              IS
+        {/* Perfil en la Base con Botón de Logout */}
+        <div className="border-t border-border p-2.5 bg-surface-soft/60">
+          {isSidebarExpanded ? (
+            <div className="flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-ink text-white text-xs font-bold shadow-sm">
+                  {userInitials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-brand-ink truncate">
+                    {currentUser?.nombre_completo || 'Dra. Ivana Seliz'}
+                  </p>
+                  <p className="text-[10px] text-text-secondary truncate">
+                    {currentUser?.email || 'admin@selizadministraciones.com.ar'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => ApiService.logout()}
+                title="Cerrar sesión segura"
+                className="size-8 rounded-base flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer shrink-0"
+              >
+                <LogOut size={15} />
+              </button>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-brand-ink truncate">Dra. Ivana Seliz</p>
-              <p className="text-[11px] text-text-secondary truncate">Administradora Legal</p>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <div
+                title={currentUser?.nombre_completo || 'Dra. Ivana Seliz'}
+                className="grid size-8 place-items-center rounded-full bg-brand-ink text-white text-xs font-bold shadow-sm cursor-default"
+              >
+                {userInitials}
+              </div>
+              <button
+                type="button"
+                onClick={() => ApiService.logout()}
+                title="Cerrar sesión segura"
+                className="size-8 rounded-base flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
+              >
+                <LogOut size={15} />
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </aside>
 
-      {/* Contenedor Principal (con compensación de sidebar para lg+) */}
-      <div className="flex-1 min-w-0 lg:pl-64 xl:pl-72 flex flex-col h-[100dvh] overflow-hidden">
+      {/* Contenedor Principal (con compensación de ancho según sidebarPinned) */}
+      <div className={`flex-1 min-w-0 ${sidebarPinned ? 'lg:pl-64 xl:pl-72' : 'lg:pl-[68px]'} flex flex-col h-[100dvh] overflow-hidden transition-all duration-200`}>
         {/* Barra Superior Minimalista */}
         <header className="sticky top-0 z-20 flex min-h-12 sm:min-h-14 items-center justify-between border-b border-border/80 bg-white/95 px-3 sm:px-5 lg:px-6 backdrop-blur shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -635,6 +821,16 @@ export default function App() {
                 <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
             </div>
+
+            {/* Logout en Móvil */}
+            <button
+              type="button"
+              onClick={() => ApiService.logout()}
+              title="Cerrar sesión"
+              className="lg:hidden size-7 rounded-full flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
+            >
+              <LogOut size={14} />
+            </button>
           </div>
         </header>
 
@@ -645,11 +841,13 @@ export default function App() {
         >
           {activeTab === 'inbox' && (
             <Card className="h-full flex overflow-hidden border border-border/80 bg-white shadow-subtle">
-              {/* Columna Izquierda: Inbox (Master view en móvil, proporcional en desktop) */}
+              {/* Columna Izquierda: Inbox (Master view en móvil, colapsable en desktop) */}
               <div
                 className={`${
                   mobileChatOpen ? 'hidden md:flex' : 'flex'
-                } w-full md:w-[38%] lg:w-[32%] xl:w-[28%] min-w-[260px] max-w-[380px] h-full overflow-hidden shrink-0 flex-col`}
+                } ${
+                  inboxListCollapsed ? 'hidden' : 'w-full md:w-[38%] lg:w-[32%] xl:w-[28%] min-w-[260px] max-w-[380px]'
+                } h-full overflow-hidden shrink-0 flex-col transition-all duration-200`}
               >
                 <ChatInbox
                   conversations={conversations}
@@ -661,7 +859,7 @@ export default function App() {
                 />
               </div>
 
-              {/* Columna Derecha: Hilo de Mensajes & Borrador IA (Detail view en móvil) */}
+              {/* Columna Derecha: Hilo de Mensajes & Borrador IA (Detail view en móvil, expandible al 100%) */}
               <div
                 className={`${
                   mobileChatOpen ? 'flex' : 'hidden md:flex'
@@ -679,26 +877,59 @@ export default function App() {
                     onGenerateAiDraft={handleGenerateAiDraft}
                     generatingDraft={generatingDraft}
                     onBack={() => setMobileChatOpen(false)}
+                    inboxListCollapsed={inboxListCollapsed}
+                    onToggleInboxList={() => setInboxListCollapsed((prev) => !prev)}
                   />
                 </div>
 
-                {/* Panel de Borrador IA */}
+                {/* Panel de Borrador IA Minimizable */}
                 {currentDraft && (
-                  <div className="p-2.5 sm:p-3.5 border-t border-border bg-white shrink-0">
-                    <AiDraftBox
-                      initialDraft={currentDraft.text}
-                      onApprove={handleApproveDraft}
-                      onReject={() =>
-                        setAiDrafts({
-                          ...aiDrafts,
-                          [selectedConvId]: null,
-                        })
-                      }
-                    />
+                  <div className="border-t border-border bg-white shrink-0 transition-all duration-200">
+                    <div
+                      onClick={() => setDraftCollapsed((prev) => !prev)}
+                      className="flex items-center justify-between px-3 sm:px-4 py-2 bg-surface-muted/70 hover:bg-surface-muted border-b border-border/60 text-xs font-semibold text-brand-ink cursor-pointer select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Sparkles size={14} className="text-brand-ink shrink-0" />
+                        <span className="truncate">Sugerencia inteligente de respuesta (IA)</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-text-secondary text-[11px] font-medium shrink-0">
+                        <span>{draftCollapsed ? 'Desplegar borrador' : 'Minimizar'}</span>
+                        {draftCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </div>
+                    </div>
+
+                    {!draftCollapsed && (
+                      <div className="p-2.5 sm:p-3.5">
+                        <AiDraftBox
+                          key={currentDraft.text}
+                          initialDraft={currentDraft.text}
+                          onApprove={handleApproveDraft}
+                          onReject={() =>
+                            setAiDrafts({
+                              ...aiDrafts,
+                              [selectedConvId]: null,
+                            })
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             </Card>
+          )}
+
+          {activeTab === 'expedientes' && (
+            <div className="h-full overflow-y-auto">
+              <ExpedientesTable
+                expedientes={expedientes}
+                loading={loadingExpedientes}
+                onRefresh={loadExpedientes}
+                onUpdateStatus={handleUpdateExpedienteStatus}
+                onNotifyNeighbors={handleNotifyNeighbors}
+              />
+            </div>
           )}
 
           {activeTab === 'tickets' && (
@@ -721,9 +952,6 @@ export default function App() {
                       <h2 className="text-sm sm:text-base font-bold tracking-tight text-brand-ink">
                         Directorio de Consorcios Administrados
                       </h2>
-                      <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
-                        Cuentas bancarias homologadas para cobranzas y teléfonos oficiales de guardia
-                      </p>
                     </div>
                     <div className="flex items-center gap-2 self-start sm:self-auto">
                       <Button

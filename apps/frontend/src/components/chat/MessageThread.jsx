@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, ArrowLeft, Sparkles } from 'lucide-react';
+import { Send, Paperclip, ArrowLeft, MessageSquareDot, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 
 export function MessageThread({
@@ -12,6 +12,8 @@ export function MessageThread({
   onGenerateAiDraft,
   generatingDraft = false,
   onBack,
+  inboxListCollapsed = false,
+  onToggleInboxList,
 }) {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
@@ -42,6 +44,17 @@ export function MessageThread({
               <ArrowLeft className="w-3.5 h-3.5" />
             </button>
           )}
+          {onToggleInboxList && (
+            <button
+              type="button"
+              onClick={onToggleInboxList}
+              aria-label={inboxListCollapsed ? 'Mostrar lista de conversaciones' : 'Maximizar espacio de chat'}
+              title={inboxListCollapsed ? 'Mostrar lista de conversaciones' : 'Maximizar espacio de chat'}
+              className="hidden md:grid size-8 place-items-center rounded-base border border-border/70 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors shrink-0 cursor-pointer"
+            >
+              {inboxListCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+          )}
           <div className="size-8 sm:size-9 rounded-full bg-brand-ink text-white flex items-center justify-center text-xs font-bold shadow-subtle shrink-0">
             {senderName ? senderName.charAt(0) : 'V'}
           </div>
@@ -69,7 +82,7 @@ export function MessageThread({
               className="h-8 px-2 sm:px-2.5 text-xs text-brand-ink hover:border-brand-ink font-semibold"
               title="Generar propuesta de respuesta con IA basada en el último mensaje"
             >
-              <Sparkles className={`w-3.5 h-3.5 text-brand-ink ${generatingDraft ? 'animate-spin' : ''}`} />
+              <MessageSquareDot className={`w-3.5 h-3.5 text-brand-ink ${generatingDraft ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{generatingDraft ? 'Generando...' : 'Sugerir con IA'}</span>
             </Button>
           </div>

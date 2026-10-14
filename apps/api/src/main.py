@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +8,8 @@ from api.v1.webhook_evolution import router as webhook_router
 from api.v1.consorcios import router as consorcios_router
 from api.v1.contactos import router as contactos_router
 from api.v1.tickets import router as tickets_router
+from api.v1.expedientes import router as expedientes_router
+from api.v1.auth import router as auth_router
 from api.v1.debug import router as debug_router
 from infrastructure.database import engine, Base, AsyncSessionLocal
 from infrastructure.seed import seed_initial_data
@@ -15,9 +18,21 @@ from infrastructure.seed import seed_initial_data
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"[API_STARTUP] Inicializando base de datos en entorno {settings.ENV}")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("[API_STARTUP] Tablas sincronizadas correctamente.")
+    connected = False
+    for attempt in range(1, 15):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            connected = True
+            logger.info("[API_STARTUP] Tablas sincronizadas correctamente.")
+            break
+        except Exception as e:
+            logger.warning(f"[API_STARTUP] Intento {attempt}/14 de conexión a BD falló: {e}. Reintentando en 2s...")
+            await asyncio.sleep(2)
+
+    if not connected:
+        logger.error("[API_STARTUP] Imposible conectar a la base de datos tras múltiples intentos.")
+        raise RuntimeError("Fallo de conexión persistente con la base de datos PostgreSQL")
 
     # Sembrado inicial automático si la base de datos está vacía
     async with AsyncSessionLocal() as session:
@@ -47,9 +62,11 @@ app.add_middleware(
 
 # Inclusión de Routers
 app.include_router(webhook_router, prefix="/api/v1", tags=["Webhooks"])
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["Autenticación"])
 app.include_router(consorcios_router, prefix="/api/v1/consorcios", tags=["Consorcios"])
 app.include_router(contactos_router, prefix="/api/v1/contactos", tags=["Contactos"])
 app.include_router(tickets_router, prefix="/api/v1/tickets", tags=["Tickets"])
+app.include_router(expedientes_router, prefix="/api/v1/expedientes", tags=["Expedientes"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["Debug Simulator"])
 
 

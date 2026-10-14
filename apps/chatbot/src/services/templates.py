@@ -29,6 +29,14 @@ TEMPLATES = {
         "Hola{nombre_saludo}, para poder ayudarte con la información correspondiente, ¿me indicarías a qué edificio pertenecés y cuál es tu unidad funcional (piso y departamento)? Muchas gracias."
     ),
 
+    "SOLICITAR_CONSORCIO_PAGO": (
+        "Hola{nombre_saludo}, para poder facilitarte los datos de cuenta bancaria y CBU correspondientes para el pago de expensas, ¿podrías indicarnos de qué edificio y qué unidad funcional (piso y departamento) nos escribís? Así te enviamos la información exacta de tu consorcio."
+    ),
+
+    "FUERA_HORARIO_SOLICITAR_EDIFICIO": (
+        "Hola{nombre_saludo}, ¿cómo estás? Recibimos tu mensaje para la administración. Para poder identificar tu reclamo y coordinarlo a primera hora con el equipo técnico correspondiente, ¿podrías indicarnos a qué edificio/consorcio pertenecés y tu unidad (piso y departamento)? Muchas gracias."
+    ),
+
     "EXPENSAS_PAGO_INFO": (
         "Hola{nombre_saludo}, te paso los datos para la transferencia de expensas de {nombre_consorcio}:\n\n"
         "• CBU: {cbu}\n"

@@ -18,7 +18,13 @@ async def override_get_db():
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def setup_test_db():
+async def setup_test_db(monkeypatch):
+    import infrastructure.database as db_mod
+    import api.v1.webhook_evolution as webhook_mod
+
+    monkeypatch.setattr(db_mod, "AsyncSessionLocal", TestSessionLocal)
+    monkeypatch.setattr(webhook_mod, "AsyncSessionLocal", TestSessionLocal)
+
     app.dependency_overrides[get_db] = override_get_db
 
     async with test_engine.begin() as conn:

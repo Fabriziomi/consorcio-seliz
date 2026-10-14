@@ -1,7 +1,10 @@
 from datetime import datetime, time
 from typing import Tuple
+from zoneinfo import ZoneInfo
 from core.config import settings
 from enum import Enum
+
+ARGENTINA_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
 
 
 class ScheduleStatus(str, Enum):
@@ -25,7 +28,7 @@ def evaluate_schedule(dt: datetime = None) -> ScheduleStatus:
     if dt is None:
         if settings.OVERRIDE_SCHEDULE_OFF_HOURS:
             return ScheduleStatus.BOT_ACTIVE_OFF_HOURS
-        dt = datetime.now()
+        dt = datetime.now(ARGENTINA_TZ)
 
     current_time = dt.time()
     weekday = dt.weekday()  # 0 = Lunes, 5 = Sábado, 6 = Domingo

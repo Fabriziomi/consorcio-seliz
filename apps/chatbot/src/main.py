@@ -43,3 +43,11 @@ if __name__ == "__main__":
 
     # 6. Consulta No Catalogada (Asentar ticket neutro)
     test_scenario("+5491100001111", "Quisiera consultar cuándo convocan a la próxima asamblea ordinaria de consorcio")
+
+    print("\n✅ Pruebas locales completadas con éxito. Motor Chatbot activo en modo espera.")
+    import time
+    try:
+        while True:
+            time.sleep(3600)
+    except (KeyboardInterrupt, SystemExit):
+        print("\n🛑 Deteniendo Motor Chatbot...")

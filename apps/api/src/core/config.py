@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     # Base de Datos (SQLite local para dev MVP / PostgreSQL para producción)
     DATABASE_URL: str = "sqlite+aiosqlite:///./consorcio.db"
 
+    # Seguridad y Autenticación JWT
+    JWT_SECRET_KEY: str = "consorcio_seliz_secret_jwt_key_2026_production_safe"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 horas
+
     # Cache Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 

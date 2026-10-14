@@ -6,8 +6,10 @@ from infrastructure.models import (
     ConsorcioAtributoDinamicoModel,
     ContactoModel,
     TicketConsultaModel,
+    UsuarioModel,
 )
-from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket
+from domain.schemas import RolContacto, RolUsuario, PrioridadTicket, EstadoTicket
+from core.security import hash_password
 
 
 async def seed_initial_data(db: AsyncSession):
@@ -15,13 +17,37 @@ async def seed_initial_data(db: AsyncSession):
     Pobla la base de datos con los consorcios administrados por Dra. Ivana Seliz,
     atributos dinámicos, contactos de prueba y tickets iniciales si la base está vacía.
     """
+    # 0. Verificar y sembrar usuario administrador principal
+    user_res = await db.execute(select(UsuarioModel).where(UsuarioModel.email == "admin@selizadministraciones.com.ar"))
+    admin_user = user_res.scalar_one_or_none()
+    if not admin_user:
+        logger.info("[DB_SEED] Creando usuario administrador por defecto: admin@selizadministraciones.com.ar")
+        admin_user = UsuarioModel(
+            id="user-admin-seliz",
+            email="admin@selizadministraciones.com.ar",
+            password_hash=hash_password("AdminSeliz2026!"),
+            nombre_completo="Dra. Ivana Seliz",
+            rol=RolUsuario.SUPER_ADMIN,
+            activo=True,
+        )
+        operador_user = UsuarioModel(
+            id="user-operador-1",
+            email="operador@selizadministraciones.com.ar",
+            password_hash=hash_password("Operador2026!"),
+            nombre_completo="Mesa de Entrada y Guardia",
+            rol=RolUsuario.OPERADOR,
+            activo=True,
+        )
+        db.add_all([admin_user, operador_user])
+        await db.commit()
+
     res = await db.execute(select(ConsorcioModel))
     existing = res.scalars().first()
     if existing:
-        logger.info("[DB_SEED] La base de datos ya cuenta con consorcios. Omitiendo seed.")
+        logger.info("[DB_SEED] La base de datos ya cuenta con consorcios. Omitiendo seed de consorcios.")
         return
 
-    logger.info("[DB_SEED] Base de datos vacía detectada. Sembrando datos iniciales de Consorcios Seliz...")
+    logger.info("[DB_SEED] Base de datos vacía de consorcios. Sembrando datos iniciales de Consorcios Seliz...")
 
     # 1. Consorcios
     c1 = ConsorcioModel(

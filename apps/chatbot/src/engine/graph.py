@@ -41,7 +41,7 @@ def content_guardrails_node(state: ChatState) -> dict:
     """
     Evalúa la calidad del contenido del mensaje:
     1. Cierre cordial / Agradecimiento -> Silencio inteligente.
-    2. Ruido / Caracteres sueltos / Spam -> Silencio inteligente.
+    2. Ruido real / Teclazos sin sentido -> Silencio inteligente.
     3. Saludo puro sin consulta -> Bienvenida humana sin crear ticket.
     """
     raw = state.user_message.strip().lower()
@@ -49,14 +49,23 @@ def content_guardrails_node(state: ChatState) -> dict:
     words = [t for t in tokens if t not in {".", "!", "?", ",", ";", ":", "-", "¡", "¿", "_", "/", "\\"}]
     clean_letters = re.sub(r"[^\w]", "", raw)
 
-    # 1. Filtro de ruido / Teclazos al azar ("a", "asd", "da", "...")
+    # 1. Comprobaciones de mensajes cortos legítimos (departamento con número, afirmaciones, o pb)
+    # Por ejemplo: "4B", "1A", "PB", "1240", "si", "no", "dale"
+    is_legit_short = bool(
+        re.match(r"^(\d{1,4}[a-zA-Z]?|[a-zA-Z]{1,2}\d{1,4}|pb|si|sí|no|ok|oka|dale)$", clean_letters)
+        or re.search(r"\d+", raw)
+    )
+
+    # Filtro de ruido real: solo teclazos al azar ("asdf", "qwer", "zzzz") o caracteres sueltos sin sentido
     is_noise = False
-    if len(clean_letters) < 3:
-        is_noise = True
-    elif clean_letters in NOISE_WORDS:
-        is_noise = True
-    elif len(clean_letters) >= 3 and not re.search(r"[aeiouáéíóú]", clean_letters):
-        is_noise = True
+    if not is_legit_short:
+        if len(clean_letters) <= 2:
+            is_noise = True
+        elif clean_letters in NOISE_WORDS:
+            is_noise = True
+        elif len(clean_letters) >= 4 and not re.search(r"[aeiouáéíóú\d]", clean_letters):
+            # Secuencia larga de puras consonantes sin dígitos ("qwrty", "zxcvb")
+            is_noise = True
 
     if is_noise:
         return {
@@ -65,7 +74,7 @@ def content_guardrails_node(state: ChatState) -> dict:
             "is_pure_greeting": False,
         }
 
-    # 2. Cierre cordial / Prevención de bucles ("gracias", "dale listo", "👍")
+    # 2. Cierre cordial / Prevención de bucles ("gracias", "dale listo", "👍", "buen finde")
     is_close = len(words) <= 6 and all(t in CORDIAL_TOKENS for t in words)
     if is_close:
         return {
@@ -204,13 +213,27 @@ def generate_mudanza_response(state: ChatState) -> dict:
 
 
 def generate_off_hours_response(state: ChatState) -> dict:
-    # Comprobar si coincide con un atributo dinámico del consorcio
     msg_lower = state.user_message.lower()
-    if state.atributos_dinamicos:
+
+    # 1. Si el mensaje es una queja, avería o reclamo técnico, NO devolver atributos informativos al azar
+    is_complaint = any(
+        term in msg_lower
+        for term in (
+            "roto", "rotos", "rota", "rotas", "no anda", "no funciona",
+            "olor", "sucio", "sucia", "tirada", "tirado", "perdida", "pérdida",
+            "gotea", "filtracion", "filtración", "humedad", "inund", "desborde",
+            "queja", "molesto", "molesta", "ruido", "averi", "falta", "reclamo",
+            "no limpian", "no limpiaron", "no anda bien", "descompuesto"
+        )
+    )
+
+    # 2. Solo evaluar atributos dinámicos si NO es reclamo y contiene intención de consulta informativa
+    if not is_complaint and state.atributos_dinamicos:
+        is_query = any(q in msg_lower for q in ("que", "qué", "cual", "cuál", "donde", "dónde", "como", "cómo", "cuando", "cuándo", "hora", "horario", "quien", "quién", "saber", "consulta", "info"))
         for clave, info in state.atributos_dinamicos.items():
             etiqueta = info.get("etiqueta", clave).lower()
             palabras = [w for w in (clave.split("_") + etiqueta.split()) if len(w) >= 4 and w not in ("para", "este", "esta", "codigo", "código", "ubicacion", "ubicación")]
-            if any(p in msg_lower for p in palabras):
+            if is_query and any(p in msg_lower for p in palabras):
                 if info.get("es_publico", False):
                     resp = render_template(
                         "ATRIBUTO_DINAMICO_INFO",
@@ -237,6 +260,17 @@ def generate_off_hours_response(state: ChatState) -> dict:
                         "should_respond": True,
                         "response_text": resp,
                     }
+
+    if not state.consorcio_id and not state.consorcio_nombre:
+        response = render_template(
+            "FUERA_HORARIO_SOLICITAR_EDIFICIO",
+            user_name=state.user_name,
+        )
+        return {
+            "intent": "FUERA_HORARIO_TICKET",
+            "should_respond": True,
+            "response_text": response,
+        }
 
     response = render_template(
         "FUERA_HORARIO",

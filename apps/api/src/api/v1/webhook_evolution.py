@@ -19,6 +19,8 @@ from infrastructure.evolution_client import evolution_client
 from infrastructure.chatwoot_client import chatwoot_client
 from infrastructure.takeover_service import takeover_service
 from infrastructure.debounce_service import debounce_service
+from services.ticket_service import process_and_consolidate_ticket
+from services.audio_transcriber import audio_transcriber
 from engine.graph import decision_graph
 from engine.state import ChatState
 
@@ -103,7 +105,7 @@ async def execute_bot_pipeline(remote_jid: str, text: str, push_name: str = "Vec
         should_respond = graph_result.get("should_respond", False)
         response_text = graph_result.get("response_text")
 
-        # 4. Gestión de Tickets
+        # 4. Gestión Inteligente de Tickets & Expedientes (Consolidación 24hs y Cero Duplicados)
         should_create_ticket = (
             (intent in ("EMERGENCIA", "FUERA_HORARIO_TICKET", "PAGO_REALIZADO", "CONSULTA_ATRIBUTO_RESTRINGIDO") or graph_result.get("tev1_decision") == "D")
             and not graph_result.get("is_pure_greeting", False)
@@ -111,51 +113,18 @@ async def execute_bot_pipeline(remote_jid: str, text: str, push_name: str = "Vec
             and not graph_result.get("is_cordial_close", False)
         )
 
-        created_ticket_id = None
+        ticket_result = None
         if should_create_ticket:
-            cutoff = datetime.utcnow() - timedelta(seconds=120)
-            recent_q = (
-                select(TicketConsultaModel)
-                .where(
-                    TicketConsultaModel.contacto_id == contacto.id,
-                    TicketConsultaModel.estado == EstadoTicket.NUEVO,
-                    TicketConsultaModel.creado_el >= cutoff,
-                )
-                .order_by(TicketConsultaModel.creado_el.desc())
+            ticket_result = await process_and_consolidate_ticket(
+                db=db,
+                contacto=contacto,
+                message=text,
+                intent=intent,
+                is_emergency=graph_result.get("is_emergency", False),
+                created_off_hours=True,
+                consorcio_id=consorcio_id,
+                consorcio_nombre=consorcio_nombre,
             )
-            recent_res = await db.execute(recent_q)
-            existing_ticket = recent_res.scalars().first()
-
-            if existing_ticket:
-                existing_ticket.descripcion = f"{existing_ticket.descripcion}\n- {text}"
-                if graph_result.get("is_emergency"):
-                    existing_ticket.prioridad = PrioridadTicket.CRITICA
-                await db.commit()
-                created_ticket_id = existing_ticket.id
-                logger.info(f"[WEBHOOK_EVOLUTION] Mensaje anexado al ticket {existing_ticket.id}")
-            else:
-                ticket_id = f"tick-{str(uuid.uuid4())[:8]}"
-                if graph_result.get("is_emergency"):
-                    prioridad = PrioridadTicket.CRITICA
-                elif intent == "CONSULTA_ATRIBUTO_RESTRINGIDO":
-                    prioridad = PrioridadTicket.ALTA
-                else:
-                    prioridad = PrioridadTicket.NORMAL
-
-                ticket = TicketConsultaModel(
-                    id=ticket_id,
-                    contacto_id=contacto.id,
-                    consorcio_id=consorcio_id,
-                    intencion=intent or "CONSULTA_GENERAL",
-                    descripcion=text,
-                    prioridad=prioridad,
-                    estado=EstadoTicket.NUEVO,
-                    creado_fuera_de_horario=True,
-                )
-                db.add(ticket)
-                await db.commit()
-                created_ticket_id = ticket_id
-                logger.info(f"[WEBHOOK_EVOLUTION] Nuevo ticket creado: {ticket_id} [{prioridad.value}]")
 
         # 5. Sincronización con Chatwoot
         chatwoot_conv_id = None
@@ -167,11 +136,23 @@ async def execute_bot_pipeline(remote_jid: str, text: str, push_name: str = "Vec
                     if chatwoot_conv_id:
                         # Registrar mensaje entrante en Chatwoot
                         await chatwoot_client.send_message(chatwoot_conv_id, text, is_private=False, message_type="incoming")
-                        if created_ticket_id:
-                            await chatwoot_client.create_private_note(
-                                chatwoot_conv_id,
-                                f"📋 Ticket registrado automáticamente #{created_ticket_id} (Intención: {intent})."
-                            )
+                        
+                        # CERO INFORMES DUPLICADOS: Solo emitir nota privada si se abrió un ticket nuevo o si escaló a crítico
+                        if ticket_result:
+                            t_id = ticket_result["id"]
+                            exp_code = ticket_result.get("expediente_codigo")
+                            exp_str = f" [Expediente #{exp_code}]" if exp_code else ""
+                            
+                            if ticket_result["accion"] == "NUEVO_TICKET_CREADO":
+                                await chatwoot_client.create_private_note(
+                                    chatwoot_conv_id,
+                                    f"📋 Ticket registrado automáticamente #{t_id}{exp_str} (Intención: {intent})."
+                                )
+                            elif ticket_result.get("is_escalation"):
+                                await chatwoot_client.create_private_note(
+                                    chatwoot_conv_id,
+                                    f"🚨 ATENCIÓN: El ticket #{t_id}{exp_str} fue escalado a PRIORIDAD CRÍTICA por nuevo mensaje del vecino."
+                                )
             except Exception as e:
                 logger.warning(f"[WEBHOOK_EVOLUTION] Error al sincronizar con Chatwoot: {e}")
 
@@ -207,7 +188,9 @@ async def process_incoming_message(payload: dict):
     if "@g.us" in remote_jid or "status@broadcast" in remote_jid or not remote_jid:
         return
 
-    # Extracción de contenido de texto
+    push_name = data.get("pushName") or "Vecino"
+
+    # Extracción de contenido de texto o audio (nota de voz WhatsApp)
     message_content = data.get("message", {})
     text = (
         message_content.get("conversation")
@@ -215,10 +198,25 @@ async def process_incoming_message(payload: dict):
         or ""
     ).strip()
 
-    if not text:
-        return
+    is_audio = "audioMessage" in message_content
+    if not text and is_audio:
+        logger.info(f"[WEBHOOK_EVOLUTION] Nota de voz recibida de {push_name} ({remote_jid}). Iniciando transcripción Whisper...")
+        audio_b64 = message_content.get("base64")
+        if not audio_b64:
+            audio_b64 = await evolution_client.get_media_base64(message_content)
 
-    push_name = data.get("pushName") or "Vecino"
+        if audio_b64:
+            transcription = await audio_transcriber.transcribe_async(audio_b64)
+            if transcription:
+                text = transcription.strip()
+                logger.info(f"[WEBHOOK_EVOLUTION] Audio transcripto exitosamente para {remote_jid}: '{text}'")
+
+    if not text:
+        if is_audio:
+            logger.info(f"[WEBHOOK_EVOLUTION] Audio inaudible de {remote_jid}. Solicitando aclaración por texto.")
+            prompt_text = "Hola, recibimos tu nota de voz pero no logramos escucharla con claridad. ¿Podrías escribirnos tu consulta brevemente por texto para que podamos ayudarte?"
+            await evolution_client.send_text(remote_jid, prompt_text)
+        return
 
     # CASO 1: Mensaje saliente de la administración física (Takeover Humano)
     if from_me:
@@ -279,7 +277,11 @@ async def chatwoot_webhook(request: Request, background_tasks: BackgroundTasks):
             conversation = payload.get("conversation", {})
             meta = conversation.get("meta", {})
             sender = meta.get("sender", {})
-            phone_number = sender.get("phone_number")
+            phone_number = (
+                sender.get("phone_number")
+                or conversation.get("contact_inbox", {}).get("source_id")
+                or sender.get("identifier")
+            )
 
             if phone_number and content:
                 clean_phone = phone_number.replace("+", "").strip()

@@ -12,7 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from infrastructure.database import Base
-from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket
+from domain.schemas import RolContacto, RolUsuario, PrioridadTicket, EstadoTicket, CategoriaIncidencia, EstadoExpediente
 
 
 class ConsorcioModel(Base):
@@ -34,6 +34,7 @@ class ConsorcioModel(Base):
 
     contactos = relationship("ContactoModel", back_populates="consorcio")
     tickets = relationship("TicketConsultaModel", back_populates="consorcio")
+    expedientes = relationship("ExpedienteIncidenciaModel", back_populates="consorcio")
     atributos_dinamicos = relationship("ConsorcioAtributoDinamicoModel", back_populates="consorcio")
 
 
@@ -66,8 +67,36 @@ class ContactoModel(Base):
     tickets = relationship("TicketConsultaModel", back_populates="contacto")
 
     @property
-    def consorcio_nombre(self) -> Optional[str]:
+    def consorcio_nombre(self):
         return self.consorcio.nombre if self.consorcio else None
+
+
+class ExpedienteIncidenciaModel(Base):
+    __tablename__ = "expedientes_incidencias"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    codigo = Column(String(50), unique=True, nullable=False, index=True)
+    consorcio_id = Column(String(36), ForeignKey("consorcios.id"), nullable=False, index=True)
+    titulo = Column(String(255), nullable=False)
+    categoria = Column(SQLEnum(CategoriaIncidencia), default=CategoriaIncidencia.OTRO, nullable=False)
+    prioridad = Column(SQLEnum(PrioridadTicket), default=PrioridadTicket.NORMAL, nullable=False)
+    estado = Column(SQLEnum(EstadoExpediente), default=EstadoExpediente.ABIERTO, nullable=False)
+    descripcion_consolidada = Column(Text, nullable=False)
+    proveedor_asignado = Column(String(150), nullable=True)
+    creado_el = Column(DateTime, default=datetime.utcnow, nullable=False)
+    actualizado_el = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    resuelto_el = Column(DateTime, nullable=True)
+
+    consorcio = relationship("ConsorcioModel", back_populates="expedientes")
+    tickets = relationship("TicketConsultaModel", back_populates="expediente")
+
+    @property
+    def consorcio_nombre(self):
+        return self.consorcio.nombre if self.consorcio else None
+
+    @property
+    def tickets_count(self):
+        return len(self.tickets) if self.tickets else 0
 
 
 class TicketConsultaModel(Base):
@@ -76,6 +105,7 @@ class TicketConsultaModel(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     contacto_id = Column(String(36), ForeignKey("contactos.id"), nullable=False)
     consorcio_id = Column(String(36), ForeignKey("consorcios.id"), nullable=True)
+    expediente_id = Column(String(36), ForeignKey("expedientes_incidencias.id"), nullable=True, index=True)
     intencion = Column(String(50), nullable=False)
     sub_intencion = Column(String(100), nullable=True)
     prioridad = Column(SQLEnum(PrioridadTicket), default=PrioridadTicket.NORMAL)
@@ -87,6 +117,7 @@ class TicketConsultaModel(Base):
 
     contacto = relationship("ContactoModel", back_populates="tickets")
     consorcio = relationship("ConsorcioModel", back_populates="tickets")
+    expediente = relationship("ExpedienteIncidenciaModel", back_populates="tickets")
 
     @property
     def contacto_nombre(self):
@@ -100,6 +131,10 @@ class TicketConsultaModel(Base):
     def consorcio_nombre(self):
         return self.consorcio.nombre if self.consorcio else None
 
+    @property
+    def expediente_codigo(self):
+        return self.expediente.codigo if self.expediente else None
+
 
 class FaqAprobadaModel(Base):
     __tablename__ = "faqs_aprobadas"
@@ -109,3 +144,16 @@ class FaqAprobadaModel(Base):
     pregunta = Column(Text, nullable=False)
     respuesta_oficial = Column(Text, nullable=False)
     activo = Column(Boolean, default=True)
+
+
+class UsuarioModel(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    nombre_completo = Column(String(150), nullable=False)
+    rol = Column(SQLEnum(RolUsuario), default=RolUsuario.ADMINISTRADOR, nullable=False)
+    activo = Column(Boolean, default=True, nullable=False)
+    creado_el = Column(DateTime, default=datetime.utcnow, nullable=False)
+    ultimo_login = Column(DateTime, nullable=True)

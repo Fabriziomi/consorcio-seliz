@@ -51,5 +51,27 @@ class EvolutionClient:
                 logger.warning(f"[EVOLUTION_CLIENT] No se pudo enviar presencia a {remote_jid}: {e}")
                 return False
 
+    async def get_media_base64(self, message_dict: dict) -> Optional[str]:
+        """Obtiene el contenido en base64 de un mensaje multimedia (ej. audioMessage) desde Evolution API v2."""
+        url = f"{self.base_url}/chat/getBase64FromMediaMessage/{self.instance}"
+        payload = {
+            "message": message_dict,
+            "convertToMp3": False,
+        }
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                res = await client.post(url, json=payload, headers=self.headers)
+                if res.status_code in (200, 201):
+                    data = res.json()
+                    b64 = data.get("base64")
+                    if b64:
+                        if "," in b64:
+                            b64 = b64.split(",", 1)[1]
+                        return b64
+                logger.warning(f"[EVOLUTION_CLIENT] Fallo al obtener base64 de audio: {res.status_code} {res.text[:100]}")
+            except Exception as e:
+                logger.error(f"[EVOLUTION_CLIENT] Error al solicitar base64 a Evolution API: {e}")
+        return None
+
 
 evolution_client = EvolutionClient()

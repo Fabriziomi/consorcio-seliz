@@ -15,6 +15,7 @@ import {
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Badge } from '../ui/Badge.jsx';
+import { SelectField } from '../ui/SelectField.jsx';
 import { ApiService } from '../../lib/api-client.js';
 
 export function DebugSimulator() {
@@ -127,9 +128,6 @@ export function DebugSimulator() {
                 <h2 className="text-base font-bold tracking-tight text-brand-ink">
                   Simulador de Conversación HTTP Local
                 </h2>
-                <p className="text-xs text-text-secondary mt-0.5">
-                  Prueba de guardrails, RAG FAQs, Tev1 Router y respuesta personalizada sin WhatsApp
-                </p>
               </div>
             </div>
 
@@ -180,16 +178,16 @@ export function DebugSimulator() {
                 <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary mb-1">
                   Guardrail Horario (Override)
                 </label>
-                <select
+                <SelectField
                   value={scheduleOverride}
                   onChange={(e) => setScheduleOverride(e.target.value)}
-                  className="min-h-11 w-full rounded-base border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
+                  className="w-full"
                 >
                   <option value="">Automático (Evaluar hora actual)</option>
                   <option value="BOT_ACTIVE_OFF_HOURS">BOT_ACTIVE_OFF_HOURS (Fuera de horario - Bot Activo)</option>
                   <option value="HUMAN_OFFICE_HOURS">HUMAN_OFFICE_HOURS (Horario Oficina - Bot Silencio)</option>
                   <option value="QUIET_HOURS">QUIET_HOURS (Madrugada 00-07:30 - Silencio)</option>
-                </select>
+                </SelectField>
               </div>
 
               {/* Botón Enviar */}

@@ -12,6 +12,35 @@ export const apiClient = axios.create({
   timeout: API_TIMEOUT_MS,
 });
 
+// Interceptor para inyectar token JWT automáticamente
+apiClient.interceptors.request.use((config) => {
+  try {
+    const token = localStorage.getItem('seliz_auth_token');
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {}
+  return config;
+});
+
+// Interceptor de respuesta para manejar tokens expirados (401)
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      const isLoginRequest = error.config?.url?.includes('/api/v1/auth/login');
+      if (!isLoginRequest) {
+        try {
+          localStorage.removeItem('seliz_auth_token');
+          localStorage.removeItem('seliz_user');
+          window.dispatchEvent(new Event('seliz_auth_logout'));
+        } catch {}
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 /**
  * Formatea fechas ISO a un formato legible y conciso: "13/10 18:42"
  */
@@ -46,8 +75,35 @@ export function normalizeTicket(t) {
     prioridad: t.prioridad || 'NORMAL',
     estado: t.estado || 'NUEVO',
     intencion: t.intencion || 'CONSULTA',
+    expediente_id: t.expediente_id,
+    expediente_codigo: t.expediente_codigo,
     creado_el: formatDateTime(t.creado_el),
     raw_creado_el: t.creado_el,
+  };
+}
+
+/**
+ * Normaliza un expediente edilicio de la API
+ */
+export function normalizeExpediente(exp) {
+  if (!exp) return null;
+  return {
+    ...exp,
+    id: exp.id,
+    codigo: exp.codigo || exp.id,
+    consorcio: exp.consorcio_nombre || 'Consorcio General',
+    consorcio_id: exp.consorcio_id,
+    titulo: exp.titulo || 'Incidencia General',
+    categoria: exp.categoria || 'OTRO',
+    prioridad: exp.prioridad || 'NORMAL',
+    estado: exp.estado || 'ABIERTO',
+    descripcion: exp.descripcion_consolidada || '',
+    proveedor: exp.proveedor_asignado || 'Sin asignar',
+    ticketsCount: exp.tickets_count || (exp.tickets ? exp.tickets.length : 0),
+    tickets: (exp.tickets || []).map(normalizeTicket),
+    creado_el: formatDateTime(exp.creado_el),
+    actualizado_el: formatDateTime(exp.actualizado_el),
+    resuelto_el: exp.resuelto_el ? formatDateTime(exp.resuelto_el) : null,
   };
 }
 
@@ -78,6 +134,39 @@ export const ApiService = {
    */
   async getConsorcio(consorcioId) {
     const res = await apiClient.get(`/api/v1/consorcios/${consorcioId}`);
+    return res.data;
+  },
+
+  /**
+   * Obtiene la lista de expedientes edilicios
+   */
+  async getExpedientes(params = {}) {
+    const res = await apiClient.get('/api/v1/expedientes/', { params });
+    const list = res.data || [];
+    return list.map(normalizeExpediente);
+  },
+
+  /**
+   * Obtiene el detalle de un expediente con sus tickets vinculados
+   */
+  async getExpediente(expedienteId) {
+    const res = await apiClient.get(`/api/v1/expedientes/${expedienteId}`);
+    return normalizeExpediente(res.data);
+  },
+
+  /**
+   * Actualiza el estado o notas de un expediente
+   */
+  async updateExpediente(expedienteId, data) {
+    const res = await apiClient.patch(`/api/v1/expedientes/${expedienteId}`, data);
+    return normalizeExpediente(res.data);
+  },
+
+  /**
+   * Envía una notificación por WhatsApp a todos los vecinos del expediente
+   */
+  async notificarVecinosExpediente(expedienteId, mensaje) {
+    const res = await apiClient.post(`/api/v1/expedientes/${expedienteId}/notificar-vecinos`, { mensaje });
     return res.data;
   },
 
@@ -180,5 +269,58 @@ export const ApiService = {
   async releaseTakeover(phone) {
     const res = await apiClient.post(`/api/v1/takeover/${encodeURIComponent(phone)}/release`);
     return res.data;
+  },
+
+  /**
+   * Métodos de Autenticación y Control de Sesión
+   */
+  async login(email, password) {
+    const res = await apiClient.post('/api/v1/auth/login', { email, password });
+    const { access_token, user } = res.data;
+    try {
+      localStorage.setItem('seliz_auth_token', access_token);
+      localStorage.setItem('seliz_user', JSON.stringify(user));
+    } catch {}
+    return { token: access_token, user };
+  },
+
+  async getMe() {
+    const res = await apiClient.get('/api/v1/auth/me');
+    return res.data;
+  },
+
+  async getUsuarios() {
+    const res = await apiClient.get('/api/v1/auth/usuarios');
+    return res.data || [];
+  },
+
+  async createUsuario(data) {
+    const res = await apiClient.post('/api/v1/auth/usuarios', data);
+    return res.data;
+  },
+
+  logout() {
+    try {
+      localStorage.removeItem('seliz_auth_token');
+      localStorage.removeItem('seliz_user');
+      window.dispatchEvent(new Event('seliz_auth_logout'));
+    } catch {}
+  },
+
+  getStoredUser() {
+    try {
+      const u = localStorage.getItem('seliz_user');
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  isAuthenticated() {
+    try {
+      return !!localStorage.getItem('seliz_auth_token');
+    } catch {
+      return false;
+    }
   },
 };

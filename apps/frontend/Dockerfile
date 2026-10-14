@@ -1,15 +1,19 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci || npm install
 
 COPY . .
 
-EXPOSE 3000
+RUN npm run build
 
-ENV PORT=3000
-ENV HOST=0.0.0.0
+FROM nginx:stable-alpine AS runner
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+COPY nginx/spa.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
