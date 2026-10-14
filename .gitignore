@@ -1,0 +1,39 @@
+# Entornos virtuales Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Node & Frontend
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Variables de entorno y secretos
+.env
+*.local
+
+# Modelos locales pesados
+models/*.gguf
+models/*.bin
+
+# Base de datos local y Redis
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+redis_data/
+
+# Logs e IDE
+*.log
+.vscode/
+.idea/
+.DS_Store

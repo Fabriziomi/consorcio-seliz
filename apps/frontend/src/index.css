@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-brand-ink: #1B1B1D;
+  --color-brand-ink-elevated: #303034;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #F8F9FA;
+  --color-surface-muted: #F1F3F5;
+  --color-border: #E5E7EB;
+  --color-border-strong: #62656B;
+  --color-text-primary: #1B1B1D;
+  --color-text-secondary: #62656B;
+  --color-text-muted: #62656B;
+
+  --color-success: #2F6F5E;
+  --color-success-soft: #EAF4F0;
+  --color-warning: #8A5A00;
+  --color-warning-soft: #FBF3E4;
+  --color-info: #3A6576;
+  --color-info-soft: #EAF2F5;
+  --color-danger: #A33D47;
+  --color-danger-soft: #FBECEE;
+
+  --gradient-action-primary: linear-gradient(180deg, #303034 0%, #1B1B1D 100%);
+  --gradient-action-primary-hover: linear-gradient(180deg, #3A3A3E 0%, #222225 100%);
+  --gradient-surface-soft: linear-gradient(180deg, #FFFFFF 0%, #F8F9FA 100%);
+  --gradient-surface-section: linear-gradient(135deg, #F8F9FA 0%, #EEF0F3 100%);
+
+  --transition-fast: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-enter: 480ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #F8F9FA !important;
+  color: #1B1B1D !important;
+  font-family: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  background-color: #F8F9FA;
+  color: #1B1B1D;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button, a, select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Foco accesible y limpio: sin desfasaje que cree lineas flotantes exteriores */
+:focus-visible {
+  outline: 2px solid var(--color-brand-ink);
+  outline-offset: 0;
+}
+
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid var(--color-brand-ink) !important;
+  outline-offset: 0 !important;
+}
+
+button:focus:not(:focus-visible), a:focus:not(:focus-visible), [role="button"]:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+/* Campos de formulario */
+input, textarea, select {
+  outline: none !important;
+  color: #1B1B1D !important;
+  background-color: #FFFFFF !important;
+  border-color: #E5E7EB;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+input:hover:not(:disabled), textarea:hover:not(:disabled), select:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+input:focus, input:focus-visible, textarea:focus, textarea:focus-visible, select:focus, select:focus-visible {
+  outline: none !important;
+  border-color: var(--color-brand-ink) !important;
+  box-shadow: 0 0 0 1px var(--color-brand-ink) !important;
+  background-color: #FFFFFF !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #62656B !important;
+  opacity: 0.8;
+}
+
+button:active:not(:disabled), a:active {
+  transform: translateY(1px);
+}
+
+/* Scrollbars limpias para tablas y feeds */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface-soft);
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
