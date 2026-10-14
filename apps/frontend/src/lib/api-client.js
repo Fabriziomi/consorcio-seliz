@@ -155,4 +155,30 @@ export const ApiService = {
     const res = await apiClient.post('/api/v1/debug/chat', payload);
     return res.data;
   },
+
+  /**
+   * Consulta el estado de takeover humano para un número
+   */
+  async getTakeoverStatus(phone) {
+    const res = await apiClient.get(`/api/v1/takeover/${encodeURIComponent(phone)}/status`);
+    return res.data;
+  },
+
+  /**
+   * Activa el silencio/takeover humano para pausar el bot
+   */
+  async lockTakeover(phone, durationSeconds = 43200) {
+    const res = await apiClient.post(`/api/v1/takeover/${encodeURIComponent(phone)}/lock`, null, {
+      params: { duration_seconds: durationSeconds },
+    });
+    return res.data;
+  },
+
+  /**
+   * Reactiva las respuestas automáticas del bot
+   */
+  async releaseTakeover(phone) {
+    const res = await apiClient.post(`/api/v1/takeover/${encodeURIComponent(phone)}/release`);
+    return res.data;
+  },
 };

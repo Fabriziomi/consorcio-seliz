@@ -377,6 +377,15 @@ export default function App() {
       [selectedConvId]: null,
     }));
 
+    // Bloquear bot (Takeover humano) para este contacto automáticamente
+    if (currentConv?.phone) {
+      try {
+        await ApiService.lockTakeover(currentConv.phone);
+      } catch (err) {
+        console.warn('[CRM] No se pudo activar takeover en backend:', err.message);
+      }
+    }
+
     // Integración opcional con Chatwoot
     try {
       if (import.meta.env.VITE_CHATWOOT_API_TOKEN) {

@@ -251,3 +251,92 @@ async def test_list_contactos_endpoint():
         assert len(data) >= 1
         assert data[0]["nombre_completo"] == "Carlos Méndez"
         assert data[0]["consorcio_nombre"] == "Consorcio Corrientes y Lavalle"
+
+
+@pytest.mark.asyncio
+async def test_takeover_endpoints():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        test_phone = "+5491199887766"
+        # 1. Chequear status inicial (debe ser inactivo)
+        res = await client.get(f"/api/v1/takeover/{test_phone}/status")
+        assert res.status_code == 200
+        assert res.json()["takeover_active"] is False
+
+        # 2. Activar bloqueo (lock)
+        res_lock = await client.post(f"/api/v1/takeover/{test_phone}/lock?duration_seconds=3600")
+        assert res_lock.status_code == 200
+        assert res_lock.json()["takeover_active"] is True
+
+        # 3. Verificar que ahora está activo
+        res_status = await client.get(f"/api/v1/takeover/{test_phone}/status")
+        assert res_status.status_code == 200
+        assert res_status.json()["takeover_active"] is True
+
+        # 4. Liberar bloqueo (release)
+        res_release = await client.post(f"/api/v1/takeover/{test_phone}/release")
+        assert res_release.status_code == 200
+        assert res_release.json()["takeover_active"] is False
+
+        # 5. Verificar que vuelve a estar inactivo
+        res_final = await client.get(f"/api/v1/takeover/{test_phone}/status")
+        assert res_final.status_code == 200
+        assert res_final.json()["takeover_active"] is False
+
+
+@pytest.mark.asyncio
+async def test_webhook_evolution_from_me_activates_takeover():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        target_phone = "5491122334455"
+        payload = {
+            "event": "messages.upsert",
+            "data": {
+                "key": {
+                    "remoteJid": f"{target_phone}@s.whatsapp.net",
+                    "fromMe": True,
+                    "id": "MSG-IVANA-001"
+                },
+                "pushName": "Ivana Seliz",
+                "message": {
+                    "conversation": "Hola, ya me encargo personalmente del tema."
+                }
+            }
+        }
+        res = await client.post("/api/v1/webhook/evolution", json=payload)
+        assert res.status_code == 200
+        assert res.json()["status"] == "received"
+
+        # Verificar que el takeover para este teléfono se activó
+        status_res = await client.get(f"/api/v1/takeover/{target_phone}/status")
+        assert status_res.status_code == 200
+        assert status_res.json()["takeover_active"] is True
+
+
+@pytest.mark.asyncio
+async def test_webhook_chatwoot_operator_message():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        target_phone = "5491177665544"
+        payload = {
+            "event": "message_created",
+            "message_type": "outgoing",
+            "private": False,
+            "content": "Estimado vecino, enviamos técnico mañana.",
+            "conversation": {
+                "meta": {
+                    "sender": {
+                        "phone_number": f"+{target_phone}"
+                    }
+                }
+            }
+        }
+        res = await client.post("/api/v1/webhook/chatwoot", json=payload)
+        assert res.status_code == 200
+        assert res.json()["status"] == "received"
+
+        # El background task activa el takeover
+        status_res = await client.get(f"/api/v1/takeover/{target_phone}/status")
+        assert status_res.status_code == 200
+        assert status_res.json()["takeover_active"] is True
+
