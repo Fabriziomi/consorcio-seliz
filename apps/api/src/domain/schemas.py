@@ -70,6 +70,7 @@ class ContactoResponse(ContactoBase):
     id: str
     creado_el: datetime
     ultimo_contacto_el: Optional[datetime] = None
+    consorcio_nombre: Optional[str] = None
 
 
 class TicketBase(BaseModel):

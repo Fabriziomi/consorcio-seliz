@@ -41,13 +41,21 @@ async def setup_test_db():
                 direccion="Av. Callao 2334",
                 activo=True
             ))
+            session.add(ContactoModel(
+                id="cont-1",
+                telefono_wa="+5491144558899",
+                nombre_completo="Carlos Méndez",
+                consorcio_id="cons-corrientes-lavalle",
+                unidad_funcional="Torre Corrientes 4° B",
+                rol=RolContacto.PROPIETARIO
+            ))
             session.add(TicketConsultaModel(
                 id="tick-1042",
                 contacto_id="cont-1",
                 intencion="RECLAMO",
                 descripcion="Prueba reclamo",
                 prioridad=PrioridadTicket.NORMAL,
-                estado=EstadoTicket.NUEVO
+                estado=EstadoTicket.EN_REVISION
             ))
             await session.commit()
 
@@ -231,3 +239,15 @@ async def test_debug_chat_endpoint_burst_consolidation():
         assert data2["ticket_created"] is not None
         assert data2["ticket_created"]["id"] == ticket_id
         assert data2["ticket_created"]["accion"] == "CONSOLIDADO_EN_TICKET_EXISTENTE"
+
+
+@pytest.mark.asyncio
+async def test_list_contactos_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.get("/api/v1/contactos/")
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data) >= 1
+        assert data[0]["nombre_completo"] == "Carlos Méndez"
+        assert data[0]["consorcio_nombre"] == "Consorcio Corrientes y Lavalle"

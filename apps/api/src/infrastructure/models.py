@@ -65,6 +65,10 @@ class ContactoModel(Base):
     consorcio = relationship("ConsorcioModel", back_populates="contactos")
     tickets = relationship("TicketConsultaModel", back_populates="contacto")
 
+    @property
+    def consorcio_nombre(self) -> Optional[str]:
+        return self.consorcio.nombre if self.consorcio else None
+
 
 class TicketConsultaModel(Base):
     __tablename__ = "tickets_consultas"

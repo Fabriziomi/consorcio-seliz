@@ -17,6 +17,7 @@ import { Card, CardHeader, CardContent } from './components/ui/Card.jsx';
 import { Badge } from './components/ui/Badge.jsx';
 import { Button } from './components/ui/Button.jsx';
 import { ApiService } from './lib/api-client.js';
+import { ChatwootService } from './lib/chatwoot-client.js';
 
 const INITIAL_CONSORCIOS = [
   {
@@ -86,6 +87,96 @@ const INITIAL_TICKETS = [
   },
 ];
 
+const INITIAL_CONVERSATIONS = [
+  {
+    id: 'conv-1',
+    senderName: 'Carlos Méndez',
+    phone: '+5491144558899',
+    consorcio: 'Torre Corrientes',
+    unidad: '4° B (Propietario)',
+    lastMessage: 'Hola, se cortó la luz en el palier del piso 4. ¿Podrán mandar al electricista?',
+    timestamp: '18:42',
+    unreadCount: 1,
+    status: 'open',
+  },
+  {
+    id: 'conv-2',
+    senderName: 'Lucía Rossi',
+    phone: '+5491166778899',
+    consorcio: 'Callao 2334',
+    unidad: '7° A (Inquilina)',
+    lastMessage: 'Buenas tardes, me podrían confirmar el CBU para transferir las expensas?',
+    timestamp: '18:15',
+    unreadCount: 0,
+    status: 'open',
+  },
+  {
+    id: 'conv-3',
+    senderName: 'Mariano Gómez',
+    phone: '+5491133221100',
+    consorcio: 'Torre Lavalle',
+    unidad: 'Cochera 14 (Propietario)',
+    lastMessage: 'Urgente, hay dos personas atrapadas en el ascensor!',
+    timestamp: '17:50',
+    unreadCount: 0,
+    status: 'emergency',
+  },
+];
+
+const INITIAL_MESSAGES = {
+  'conv-1': [
+    {
+      id: 'm-1',
+      sender: 'vecino',
+      text: 'Hola, se cortó la luz en el palier del piso 4. ¿Podrán mandar al electricista?',
+      timestamp: '18:42',
+    },
+  ],
+  'conv-2': [
+    {
+      id: 'm-2',
+      sender: 'vecino',
+      text: 'Buenas tardes, me podrían confirmar el CBU para transferir las expensas?',
+      timestamp: '18:15',
+    },
+  ],
+  'conv-3': [
+    {
+      id: 'm-3',
+      sender: 'vecino',
+      text: 'Urgente, hay dos personas atrapadas en el ascensor!',
+      timestamp: '17:50',
+    },
+    {
+      id: 'm-4',
+      sender: 'bot',
+      text: 'Hola Mariano. Si estás ante una emergencia con riesgo en el edificio, por favor comunicate urgente con la guardia al +54 9 11 4444-1111 o con los servicios de auxilio (Bomberos 100 / SAME 107).\n\nDejamos asentado el aviso de forma prioritaria para la administración.',
+      timestamp: '17:50',
+    },
+  ],
+};
+
+const INITIAL_DRAFTS = {
+  'conv-1': {
+    text:
+      'Hola Carlos, ¿cómo estás? Tomamos conocimiento del corte de luz en el palier de Torre Corrientes.\n' +
+      'El reclamo quedó registrado bajo el ticket #1042 y lo evaluamos a primera hora mañana a partir de las 10:00 hs con el electricista.',
+    source: 'LangGraph Reclamos',
+    confidence: 0.94,
+  },
+  'conv-2': {
+    text:
+      'Hola Lucía, te paso los datos para la transferencia de expensas de Callao 2334:\n\n' +
+      '• CBU: 0140000000000000000002\n' +
+      '• Alias: CALLAO.2334.EXPENSAS\n' +
+      '• CUIT: 30-71998877-6\n\n' +
+      'Una vez hecho el pago, envianos por favor el comprobante a callao2334@selizadministraciones.com.ar indicando tu unidad (7° A). Saludos.',
+    source: 'Tev1 Router (Cobranzas)',
+    confidence: 0.98,
+  },
+  'conv-3': null,
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('inbox');
   const [selectedConvId, setSelectedConvId] = useState('conv-1');
@@ -97,6 +188,12 @@ export default function App() {
   const [tickets, setTickets] = useState(INITIAL_TICKETS);
   const [loadingTickets, setLoadingTickets] = useState(false);
   const [loadingConsorcios, setLoadingConsorcios] = useState(false);
+
+  // Estados dinámicos del Inbox Omnicanal
+  const [conversations, setConversations] = useState(INITIAL_CONVERSATIONS);
+  const [messagesByConv, setMessagesByConv] = useState(INITIAL_MESSAGES);
+  const [aiDrafts, setAiDrafts] = useState(INITIAL_DRAFTS);
+  const [generatingDraft, setGeneratingDraft] = useState(false);
 
   // Controlador de zoom con persistencia en localStorage
   const [zoomLevel, setZoomLevel] = useState(() => {
@@ -161,10 +258,49 @@ export default function App() {
     }
   }, []);
 
+  // Carga y sincronización de contactos desde la API
+  const loadContactos = useCallback(async () => {
+    try {
+      const contactosList = await ApiService.getContactos();
+      if (Array.isArray(contactosList) && contactosList.length > 0) {
+        // Enriquecer conversaciones con datos oficiales de la base de datos
+        setConversations((prev) => {
+          const map = new Map(prev.map((c) => [c.phone, c]));
+          contactosList.forEach((cont) => {
+            if (map.has(cont.telefono_wa)) {
+              const existing = map.get(cont.telefono_wa);
+              map.set(cont.telefono_wa, {
+                ...existing,
+                senderName: cont.nombre_completo || existing.senderName,
+                consorcio: cont.consorcio_nombre || existing.consorcio,
+                unidad: `${cont.unidad_funcional || ''} (${cont.rol || ''})`.trim() || existing.unidad,
+              });
+            } else {
+              const newId = `conv-${cont.id}`;
+              map.set(cont.telefono_wa, {
+                id: newId,
+                senderName: cont.nombre_completo || 'Vecino',
+                phone: cont.telefono_wa,
+                consorcio: cont.consorcio_nombre || 'Consorcio General',
+                unidad: cont.unidad_funcional || 'Unidad S/E',
+                lastMessage: 'Sin mensajes recientes',
+                timestamp: 'Reciente',
+                unreadCount: 0,
+                status: 'open',
+              });
+            }
+          });
+          return Array.from(map.values());
+        });
+      }
+    } catch (err) {
+      console.warn('[CRM] No se pudieron sincronizar contactos con backend:', err.message);
+    }
+  }, []);
+
   // Actualización de estado de un ticket
   const handleUpdateTicketStatus = async (ticketId, newStatus) => {
     const originalTickets = [...tickets];
-    // Actualización optimista
     setTickets((prev) =>
       prev.map((t) => (t.id === ticketId || t.rawId === ticketId ? { ...t, estado: newStatus } : t))
     );
@@ -176,7 +312,6 @@ export default function App() {
       );
     } catch (err) {
       console.error('[CRM] Error al actualizar estado del ticket:', err);
-      // Revertir en caso de error
       setTickets(originalTickets);
     }
   };
@@ -188,100 +323,10 @@ export default function App() {
       if (health && health.status === 'ok') {
         setApiConnected(true);
       }
-      await Promise.allSettled([loadTickets(), loadConsorcios()]);
+      await Promise.allSettled([loadTickets(), loadConsorcios(), loadContactos()]);
     }
     init();
-  }, [loadTickets, loadConsorcios]);
-
-  const [conversations, setConversations] = useState([
-    {
-      id: 'conv-1',
-      senderName: 'Carlos Méndez',
-      phone: '+54 9 11 4455-8899',
-      consorcio: 'Torre Corrientes',
-      unidad: '4° B (Propietario)',
-      lastMessage: 'Hola, se cortó la luz en el palier del piso 4. ¿Podrán mandar al electricista?',
-      timestamp: '18:42',
-      unreadCount: 1,
-      status: 'open',
-    },
-    {
-      id: 'conv-2',
-      senderName: 'Lucía Rossi',
-      phone: '+54 9 11 6677-8899',
-      consorcio: 'Callao 2334',
-      unidad: '7° A (Inquilina)',
-      lastMessage: 'Buenas tardes, me podrían confirmar el CBU para transferir las expensas?',
-      timestamp: '18:15',
-      unreadCount: 0,
-      status: 'open',
-    },
-    {
-      id: 'conv-3',
-      senderName: 'Mariano Gómez',
-      phone: '+54 9 11 3322-1100',
-      consorcio: 'Torre Lavalle',
-      unidad: 'Cochera 14',
-      lastMessage: 'Urgente, hay dos personas atrapadas en el ascensor!',
-      timestamp: '17:50',
-      unreadCount: 0,
-      status: 'emergency',
-    },
-  ]);
-
-  const [messagesByConv, setMessagesByConv] = useState({
-    'conv-1': [
-      {
-        id: 'm-1',
-        sender: 'vecino',
-        text: 'Hola, se cortó la luz en el palier del piso 4. ¿Podrán mandar al electricista?',
-        timestamp: '18:42',
-      },
-    ],
-    'conv-2': [
-      {
-        id: 'm-2',
-        sender: 'vecino',
-        text: 'Buenas tardes, me podrían confirmar el CBU para transferir las expensas?',
-        timestamp: '18:15',
-      },
-    ],
-    'conv-3': [
-      {
-        id: 'm-3',
-        sender: 'vecino',
-        text: 'Urgente, hay dos personas atrapadas en el ascensor!',
-        timestamp: '17:50',
-      },
-      {
-        id: 'm-4',
-        sender: 'bot',
-        text: 'Hola Mariano. Si estás ante una emergencia con riesgo en el edificio, por favor comunicate urgente con la guardia al +54 9 11 4444-1111 o con los servicios de auxilio (Bomberos 100 / SAME 107).\n\nDejamos asentado el aviso de forma prioritaria para la administración.',
-        timestamp: '17:50',
-      },
-    ],
-  });
-
-  const [aiDrafts, setAiDrafts] = useState({
-    'conv-1': {
-      text:
-        'Hola Carlos, ¿cómo estás? Tomamos conocimiento del corte de luz en el palier de Torre Corrientes.\n' +
-        'El reclamo quedó registrado bajo el ticket #1042 y lo evaluamos a primera hora mañana a partir de las 10:00 hs con el electricista.',
-      source: 'LangGraph Reclamos',
-      confidence: 0.94,
-    },
-    'conv-2': {
-      text:
-        'Hola Lucía, te paso los datos para la transferencia de expensas de Callao 2334:\n\n' +
-        '• CBU: 0140000000000000000002\n' +
-        '• Alias: CALLAO.2334.EXPENSAS\n' +
-        '• CUIT: 30-71998877-6\n\n' +
-        'Una vez hecho el pago, envianos por favor el comprobante a callao2334@selizadministraciones.com.ar indicando tu unidad (7° A). Saludos.',
-      source: 'Tev1 Router (Cobranzas)',
-      confidence: 0.98,
-    },
-    'conv-3': null,
-  });
+  }, [loadTickets, loadConsorcios, loadContactos]);
 
   const navigationItems = [
     { id: 'inbox', label: 'Inbox Omnicanal', icon: MessageSquare },
@@ -295,25 +340,173 @@ export default function App() {
   const currentDraft = aiDrafts[selectedConvId];
   const activeLabel = navigationItems.find((item) => item.id === activeTab)?.label || 'Inbox';
 
-  const handleSendMessage = (text) => {
+  // 1. Envío de mensaje en representación de la administración (Dra. Ivana Seliz)
+  const handleSendMessage = async (text) => {
+    if (!text.trim()) return;
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
     const newMsg = {
       id: `m-${Date.now()}`,
       sender: 'ivana',
-      text,
-      timestamp: 'Ahora',
+      text: text.trim(),
+      timestamp: timeStr,
     };
-    setMessagesByConv({
-      ...messagesByConv,
-      [selectedConvId]: [...currentMessages, newMsg],
-    });
+
+    setMessagesByConv((prev) => ({
+      ...prev,
+      [selectedConvId]: [...(prev[selectedConvId] || []), newMsg],
+    }));
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === selectedConvId
+          ? {
+              ...c,
+              lastMessage: text.trim(),
+              timestamp: timeStr,
+              unreadCount: 0,
+            }
+          : c
+      )
+    );
+
+    // Limpiar borrador de IA si estaba abierto
+    setAiDrafts((prev) => ({
+      ...prev,
+      [selectedConvId]: null,
+    }));
+
+    // Integración opcional con Chatwoot
+    try {
+      if (import.meta.env.VITE_CHATWOOT_API_TOKEN) {
+        await ChatwootService.sendMessage(selectedConvId, text.trim(), false);
+      }
+    } catch (err) {
+      console.warn('[CRM] Envío opcional a Chatwoot no completado:', err.message);
+    }
   };
 
+  // 2. Aprobación y despacho de borrador sugerido por IA
   const handleApproveDraft = (text) => {
     handleSendMessage(text);
-    setAiDrafts({
-      ...aiDrafts,
-      [selectedConvId]: null,
-    });
+  };
+
+  // 3. Generación bajo demanda de sugerencia de respuesta con IA
+  const handleGenerateAiDraft = async () => {
+    if (!currentConv) return;
+    setGeneratingDraft(true);
+    try {
+      const lastNeighborMsg = [...currentMessages].reverse().find((m) => m.sender === 'vecino');
+      const messageToAnalyze = lastNeighborMsg ? lastNeighborMsg.text : currentConv.lastMessage;
+
+      const suggestion = await ApiService.generateAiSuggestion(
+        messageToAnalyze,
+        currentConv.phone,
+        currentConv.senderName
+      );
+
+      if (suggestion && suggestion.text) {
+        setAiDrafts((prev) => ({
+          ...prev,
+          [selectedConvId]: {
+            text: suggestion.text,
+            source: suggestion.intent || 'LangGraph IA',
+            confidence: 0.96,
+          },
+        }));
+      }
+
+      if (suggestion?.ticketCreated) {
+        await loadTickets();
+      }
+    } catch (err) {
+      console.error('[CRM] Error al generar propuesta IA:', err);
+    } finally {
+      setGeneratingDraft(false);
+    }
+  };
+
+  // 4. Simulación de mensaje entrante de vecino en tiempo real
+  const handleSimulateNeighborMessage = async (text) => {
+    if (!currentConv || !text.trim()) return;
+
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const newNeighborMsg = {
+      id: `m-${Date.now()}`,
+      sender: 'vecino',
+      text: text.trim(),
+      timestamp: timeStr,
+    };
+
+    setMessagesByConv((prev) => ({
+      ...prev,
+      [selectedConvId]: [...(prev[selectedConvId] || []), newNeighborMsg],
+    }));
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === selectedConvId
+          ? {
+              ...c,
+              lastMessage: text.trim(),
+              timestamp: timeStr,
+              unreadCount: (c.unreadCount || 0) + 1,
+            }
+          : c
+      )
+    );
+
+    // Procesar con el motor LangGraph en backend
+    setGeneratingDraft(true);
+    try {
+      const suggestion = await ApiService.generateAiSuggestion(
+        text.trim(),
+        currentConv.phone,
+        currentConv.senderName
+      );
+
+      if (suggestion && suggestion.text) {
+        if (suggestion.isEmergency) {
+          // Si es emergencia con riesgo, el bot emite respuesta automática prioritaria
+          const botMsg = {
+            id: `m-${Date.now() + 1}`,
+            sender: 'bot',
+            text: suggestion.text,
+            timestamp: timeStr,
+          };
+          setMessagesByConv((prev) => ({
+            ...prev,
+            [selectedConvId]: [...(prev[selectedConvId] || []), botMsg],
+          }));
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === selectedConvId ? { ...c, status: 'emergency' } : c
+            )
+          );
+        } else {
+          // Dejar propuesta como borrador para aprobación de la Dra. Ivana Seliz
+          setAiDrafts((prev) => ({
+            ...prev,
+            [selectedConvId]: {
+              text: suggestion.text,
+              source: suggestion.intent || 'LangGraph Engine',
+              confidence: 0.95,
+            },
+          }));
+        }
+      }
+
+      if (suggestion?.ticketCreated || suggestion?.isEmergency) {
+        await loadTickets();
+      }
+    } catch (err) {
+      console.warn('[CRM] Error al procesar mensaje simulado con IA:', err);
+    } finally {
+      setGeneratingDraft(false);
+    }
   };
 
   return (
@@ -474,6 +667,9 @@ export default function App() {
                     unidad={currentConv.unidad}
                     messages={currentMessages}
                     onSendMessage={handleSendMessage}
+                    onGenerateAiDraft={handleGenerateAiDraft}
+                    onSimulateNeighborMessage={handleSimulateNeighborMessage}
+                    generatingDraft={generatingDraft}
                     onBack={() => setMobileChatOpen(false)}
                   />
                 </div>

@@ -115,6 +115,40 @@ export const ApiService = {
   },
 
   /**
+   * Obtiene la lista de contactos de vecinos
+   */
+  async getContactos(params = {}) {
+    const res = await apiClient.get('/api/v1/contactos/', { params });
+    return res.data || [];
+  },
+
+  /**
+   * Obtiene detalle de un contacto
+   */
+  async getContacto(contactoId) {
+    const res = await apiClient.get(`/api/v1/contactos/${contactoId}`);
+    return res.data;
+  },
+
+  /**
+   * Genera una sugerencia de borrador con IA para una conversación
+   */
+  async generateAiSuggestion(message, phone, userName) {
+    const res = await this.simulateChat({
+      message,
+      phone,
+      user_name: userName,
+    });
+    return {
+      text: res.response_text,
+      intent: res.intent,
+      isEmergency: res.is_emergency,
+      ticketCreated: res.ticket_created,
+      raw: res,
+    };
+  },
+
+  /**
    * Ejecuta el simulador de chat / TEV1 router
    */
   async simulateChat(payload) {

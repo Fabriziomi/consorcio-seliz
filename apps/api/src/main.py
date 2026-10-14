@@ -5,6 +5,7 @@ from core.config import settings
 from core.logging import logger
 from api.v1.webhook_evolution import router as webhook_router
 from api.v1.consorcios import router as consorcios_router
+from api.v1.contactos import router as contactos_router
 from api.v1.tickets import router as tickets_router
 from api.v1.debug import router as debug_router
 from infrastructure.database import engine, Base
@@ -38,6 +39,7 @@ app.add_middleware(
 # Inclusión de Routers
 app.include_router(webhook_router, prefix="/api/v1", tags=["Webhooks"])
 app.include_router(consorcios_router, prefix="/api/v1/consorcios", tags=["Consorcios"])
+app.include_router(contactos_router, prefix="/api/v1/contactos", tags=["Contactos"])
 app.include_router(tickets_router, prefix="/api/v1/tickets", tags=["Tickets"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["Debug Simulator"])
 
