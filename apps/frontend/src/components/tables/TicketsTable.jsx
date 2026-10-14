@@ -15,7 +15,7 @@ export function TicketsTable({ tickets, onSelectTicket }) {
               Registro operativo de reclamos edilicios, cobranzas y consultas administrativas
             </p>
           </div>
-          <Badge variant="neutral">{tickets.length} registros encontrados</Badge>
+          <span className="text-xs text-text-muted font-medium">{tickets.length} registros</span>
         </div>
       </CardHeader>
 
@@ -27,7 +27,7 @@ export function TicketsTable({ tickets, onSelectTicket }) {
                 <th scope="col" className="px-4 py-3.5 font-semibold">ID</th>
                 <th scope="col" className="px-4 py-3.5 font-semibold">Consorcio & Unidad</th>
                 <th scope="col" className="px-4 py-3.5 font-semibold">Contacto</th>
-                <th scope="col" className="px-4 py-3.5 font-semibold">Intención / Descripción</th>
+                <th scope="col" className="px-4 py-3.5 font-semibold">Descripción</th>
                 <th scope="col" className="px-4 py-3.5 font-semibold">Prioridad</th>
                 <th scope="col" className="px-4 py-3.5 font-semibold">Estado</th>
                 <th scope="col" className="px-4 py-3.5 font-semibold">Fecha</th>
@@ -40,7 +40,7 @@ export function TicketsTable({ tickets, onSelectTicket }) {
                   onClick={() => onSelectTicket && onSelectTicket(t.id)}
                   className="hover:bg-surface-muted/60 cursor-pointer transition-colors"
                 >
-                  <td className="px-4 py-3.5 font-mono text-xs font-semibold text-text-secondary">
+                  <td className="px-4 py-3.5 text-xs font-semibold text-text-secondary">
                     {t.id}
                   </td>
                   <td className="px-4 py-3.5">
@@ -48,11 +48,8 @@ export function TicketsTable({ tickets, onSelectTicket }) {
                     <div className="text-xs text-text-secondary">{t.unidad}</div>
                   </td>
                   <td className="px-4 py-3.5 text-brand-ink font-medium">{t.contacto}</td>
-                  <td className="px-4 py-3.5 max-w-xs">
-                    <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border border-border bg-surface-muted text-text-secondary mr-2">
-                      {t.intencion}
-                    </span>
-                    <span className="text-text-secondary truncate block sm:inline">
+                  <td className="px-4 py-3.5 max-w-xs text-text-secondary">
+                    <span className="truncate block sm:inline">
                       {t.descripcion}
                     </span>
                   </td>
@@ -76,7 +73,7 @@ export function TicketsTable({ tickets, onSelectTicket }) {
                       <Badge variant="neutral">Nuevo</Badge>
                     )}
                   </td>
-                  <td className="px-4 py-3.5 font-mono text-xs text-text-muted">
+                  <td className="px-4 py-3.5 text-xs text-text-muted">
                     {t.creado_el}
                   </td>
                 </tr>

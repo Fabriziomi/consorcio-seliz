@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Send, Building, Paperclip } from 'lucide-react';
+import { Send, Paperclip } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
-import { Badge } from '../ui/Badge.jsx';
 
 export function MessageThread({
   senderName,
@@ -31,21 +30,14 @@ export function MessageThread({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-brand-ink">{senderName}</span>
-              <span className="text-xs font-mono text-text-muted">{phone}</span>
+              <span className="text-xs text-text-muted">{phone}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-text-secondary mt-0.5">
-              <span className="flex items-center gap-1">
-                <Building className="w-3.5 h-3.5 text-text-muted" />
-                {consorcio}
-              </span>
+              <span>{consorcio}</span>
               <span>•</span>
               <span className="font-medium text-brand-ink">{unidad}</span>
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Badge variant="neutral">Evolution API v2</Badge>
         </div>
       </div>
 
@@ -55,7 +47,7 @@ export function MessageThread({
           if (m.isStatusNote) {
             return (
               <div key={m.id} className="text-center my-3">
-                <Badge variant="neutral">{m.text}</Badge>
+                <span className="text-xs text-text-muted">{m.text}</span>
               </div>
             );
           }
@@ -75,11 +67,11 @@ export function MessageThread({
                 }`}
               >
                 <div
-                  className={`flex items-center justify-between gap-4 mb-1.5 text-xs font-mono ${
+                  className={`flex items-center justify-between gap-4 mb-1.5 text-xs ${
                     isMe ? 'text-surface-muted' : 'text-text-muted'
                   }`}
                 >
-                  <span className="font-semibold uppercase tracking-wider text-[11px]">
+                  <span className="font-semibold text-xs">
                     {m.sender === 'bot'
                       ? 'Dra. Ivana Seliz (Auto)'
                       : m.sender === 'ivana'

@@ -164,7 +164,7 @@ export function DebugSimulator() {
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="min-h-11 w-full rounded-base border border-border bg-white px-3 text-sm font-mono outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
+                  className="min-h-11 w-full rounded-base border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
                   placeholder="+5491144558899"
                 />
               </div>
@@ -266,7 +266,7 @@ export function DebugSimulator() {
             <Terminal className="w-8 h-8 mx-auto mb-2 opacity-40 text-brand-ink" />
             <p className="text-sm font-medium text-brand-ink">No hay mensajes en esta sesión de debug.</p>
             <p className="text-xs text-text-secondary mt-1">
-              Ingresa un texto arriba o ejecuta el script CLI <code className="font-mono text-brand-ink">./scripts/chat_debug.sh "..."</code>
+              Ingresa un texto arriba o ejecuta el script CLI <code className="text-brand-ink">./scripts/chat_debug.sh "..."</code>
             </p>
           </Card>
         ) : (
@@ -275,7 +275,7 @@ export function DebugSimulator() {
               {/* Header de la interacción */}
               <div className="flex items-center justify-between text-xs border-b border-border pb-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-xs text-text-muted">[{item.timestamp}]</span>
+                  <span className="text-xs text-text-muted">[{item.timestamp}]</span>
                   <span className="font-bold text-brand-ink">
                     {item.response.contact?.nombre || item.request.phone}
                   </span>
@@ -290,7 +290,7 @@ export function DebugSimulator() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-text-secondary font-mono">
+                  <span className="text-xs text-text-secondary">
                     Latencia: <span className="font-bold text-brand-ink">{item.response.total_pipeline_ms} ms</span>
                   </span>
                   {item.response.is_emergency ? (
@@ -341,7 +341,7 @@ export function DebugSimulator() {
               </div>
 
               {/* Telemetría y Métricas del Pipeline */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-border text-xs font-mono">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-border text-xs">
                 <div className="bg-surface-soft p-2.5 rounded-base border border-border">
                   <span className="text-text-muted block text-[10px] uppercase font-semibold">Horario</span>
                   <span className="text-brand-ink font-medium">{item.response.schedule_status}</span>

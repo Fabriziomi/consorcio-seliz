@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, MessageSquare, AlertCircle } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Badge } from '../ui/Badge.jsx';
 
 export function ChatInbox({ conversations, selectedId, onSelect }) {
@@ -22,13 +22,10 @@ export function ChatInbox({ conversations, selectedId, onSelect }) {
       {/* Cabecera del Inbox */}
       <div className="p-4 border-b border-border space-y-3 shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-brand-ink" />
-            <h2 className="text-sm font-bold tracking-tight text-brand-ink">
-              Conversaciones
-            </h2>
-          </div>
-          <Badge variant="neutral">{filtered.length} activas</Badge>
+          <h2 className="text-sm font-bold tracking-tight text-brand-ink">
+            Conversaciones
+          </h2>
+          <span className="text-xs text-text-muted">{filtered.length}</span>
         </div>
 
         {/* Buscador */}
@@ -83,7 +80,7 @@ export function ChatInbox({ conversations, selectedId, onSelect }) {
                 <span className="text-xs font-bold text-brand-ink truncate">
                   {c.senderName}
                 </span>
-                <span className="text-[11px] font-mono text-text-muted">
+                <span className="text-xs text-text-muted">
                   {c.timestamp}
                 </span>
               </div>

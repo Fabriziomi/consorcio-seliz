@@ -54,6 +54,10 @@ html, body {
   box-sizing: border-box;
 }
 
+input, textarea, select, button, code, pre {
+  font-family: inherit;
+}
+
 button, a, select {
   -webkit-tap-highlight-color: transparent;
 }

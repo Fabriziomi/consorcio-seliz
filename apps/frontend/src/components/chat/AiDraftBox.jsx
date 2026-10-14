@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { Sparkles, Edit2, X, Clock, Send } from 'lucide-react';
+import { Edit2, X, Send } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
-import { Badge } from '../ui/Badge.jsx';
 
 export function AiDraftBox({
   initialDraft,
-  source,
-  confidence,
   onApprove,
   onReject,
 }) {
@@ -16,17 +13,10 @@ export function AiDraftBox({
   return (
     <div className="border border-border bg-white rounded-lg p-4 space-y-3.5 shadow-card">
       {/* Encabezado */}
-      <div className="flex items-center justify-between border-b border-border pb-3">
-        <div className="flex items-center gap-2.5">
-          <Clock className="w-4 h-4 text-brand-ink" />
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-ink">
-            Borrador Sugerido por IA
-          </span>
-          <Badge variant="neutral">{source}</Badge>
-        </div>
-        <div>
-          <Badge variant="success">{(confidence * 100).toFixed(0)}% Confianza</Badge>
-        </div>
+      <div className="flex items-center justify-between border-b border-border pb-2.5">
+        <span className="text-sm font-semibold text-brand-ink">
+          Respuesta sugerida
+        </span>
       </div>
 
       {/* Cuerpo */}
