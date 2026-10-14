@@ -121,3 +121,8 @@ button:active:not(:disabled), a:active {
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+
+/* Utilidades de área segura para dispositivos móviles */
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}

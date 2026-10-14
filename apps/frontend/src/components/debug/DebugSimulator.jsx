@@ -124,7 +124,7 @@ export function DebugSimulator() {
   };
 
   return (
-    <div className="h-full flex flex-col gap-6 overflow-hidden">
+    <div className="h-full flex flex-col gap-3.5 sm:gap-4 lg:gap-5 overflow-hidden">
       {/* Panel Superior: Formulario de Simulación HTTP */}
       <Card className="shrink-0">
         <CardHeader>
@@ -273,7 +273,7 @@ export function DebugSimulator() {
           history.map((item, idx) => (
             <Card key={idx} className="p-4 sm:p-5 space-y-3.5">
               {/* Header de la interacción */}
-              <div className="flex items-center justify-between text-xs border-b border-border pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs border-b border-border pb-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-text-muted">[{item.timestamp}]</span>
                   <span className="font-bold text-brand-ink">
@@ -289,8 +289,8 @@ export function DebugSimulator() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-text-secondary">
+                <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+                  <span className="text-[11px] sm:text-xs text-text-secondary">
                     Latencia: <span className="font-bold text-brand-ink">{item.response.total_pipeline_ms} ms</span>
                   </span>
                   {item.response.is_emergency ? (

@@ -4,6 +4,8 @@ import {
   MessageSquare,
   CheckSquare,
   Terminal,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import { ChatInbox } from './components/chat/ChatInbox.jsx';
 import { MessageThread } from './components/chat/MessageThread.jsx';
@@ -15,6 +17,36 @@ import { Card, CardHeader, CardContent } from './components/ui/Card.jsx';
 export default function App() {
   const [activeTab, setActiveTab] = useState('inbox');
   const [selectedConvId, setSelectedConvId] = useState('conv-1');
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crm_zoom_level');
+      return saved ? parseFloat(saved) : 1;
+    } catch {
+      return 1;
+    }
+  });
+
+  const handleZoomIn = () => {
+    setZoomLevel((prev) => {
+      const next = Math.min(Number((prev + 0.05).toFixed(2)), 1.25);
+      try { localStorage.setItem('crm_zoom_level', next.toString()); } catch {}
+      return next;
+    });
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel((prev) => {
+      const next = Math.max(Number((prev - 0.05).toFixed(2)), 0.8);
+      try { localStorage.setItem('crm_zoom_level', next.toString()); } catch {}
+      return next;
+    });
+  };
+
+  const handleZoomReset = () => {
+    setZoomLevel(1);
+    try { localStorage.setItem('crm_zoom_level', '1'); } catch {}
+  };
 
   const [conversations, setConversations] = useState([
     {
@@ -176,18 +208,18 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-soft text-brand-ink flex">
-      {/* Sidebar Fijo al estilo Contino CRM */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 lg:w-72 flex-col border-r border-border bg-white shadow-card lg:flex">
+    <div className="h-[100dvh] min-h-[100dvh] bg-surface-soft text-brand-ink flex flex-col lg:flex-row overflow-hidden">
+      {/* Sidebar Fijo para Desktop y Laptops Grandes */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 xl:w-72 flex-col border-r border-border bg-white shadow-card lg:flex">
         {/* Marca y Encabezado */}
-        <div className="flex min-h-20 items-center border-b border-border px-6">
+        <div className="flex min-h-16 xl:min-h-20 items-center border-b border-border px-5 xl:px-6">
           <span className="text-sm font-bold tracking-tight text-brand-ink">
             Dra. Ivana Seliz
           </span>
         </div>
 
         {/* Navegación Principal */}
-        <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-6" aria-label="Secciones del CRM">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 xl:px-4 py-5" aria-label="Secciones del CRM">
           <p className="mb-2 px-3 text-xs font-medium text-text-muted">
             Gestión de Consorcios
           </p>
@@ -197,8 +229,11 @@ export default function App() {
               return (
                 <button
                   key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={`flex min-h-11 w-full items-center gap-3 rounded-base px-3 text-sm font-semibold transition-all cursor-pointer ${
+                  onClick={() => {
+                    setActiveTab(id);
+                    if (id === 'inbox') setMobileChatOpen(false);
+                  }}
+                  className={`flex min-h-10 xl:min-h-11 w-full items-center gap-3 rounded-base px-3 text-xs xl:text-sm font-semibold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-brand-ink bg-[image:var(--gradient-action-primary)] text-white shadow-sm'
                       : 'text-text-secondary hover:bg-surface-muted hover:text-brand-ink'
@@ -213,9 +248,9 @@ export default function App() {
         </nav>
 
         {/* Perfil en la Base */}
-        <div className="border-t border-border p-4 bg-surface-soft/60">
-          <div className="flex items-center gap-3 px-2">
-            <div className="grid size-9 place-items-center rounded-full bg-brand-ink text-white text-xs font-bold shadow-sm">
+        <div className="border-t border-border p-3 xl:p-4 bg-surface-soft/60">
+          <div className="flex items-center gap-3 px-1 xl:px-2">
+            <div className="grid size-8 xl:size-9 place-items-center rounded-full bg-brand-ink text-white text-xs font-bold shadow-sm">
               IS
             </div>
             <div className="min-w-0 flex-1">
@@ -226,50 +261,90 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Contenedor Principal (con padding izquierdo para sidebar en lg) */}
-      <div className="flex-1 min-w-0 lg:pl-72 flex flex-col h-screen overflow-hidden">
-        {/* Barra Superior Sticky al estilo Contino CRM */}
-        <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur sm:min-h-20 sm:px-6 lg:px-8 shrink-0">
-          <div className="flex items-center gap-3">
-            {/* Selector Móvil de Pestañas */}
-            <div className="flex items-center gap-2 lg:hidden">
-              <select
-                value={activeTab}
-                onChange={(e) => setActiveTab(e.target.value)}
-                className="text-xs font-semibold py-1.5 px-2.5 rounded-base border border-border bg-white text-brand-ink"
-              >
-                {navigationItems.map((n) => (
-                  <option key={n.id} value={n.id}>{n.label}</option>
-                ))}
-              </select>
+      {/* Contenedor Principal (con compensación de sidebar para lg+) */}
+      <div className="flex-1 min-w-0 lg:pl-64 xl:pl-72 flex flex-col h-[100dvh] overflow-hidden">
+        {/* Barra Superior Minimalista */}
+        <header className="sticky top-0 z-20 flex min-h-12 sm:min-h-14 items-center justify-between border-b border-border/80 bg-white/95 px-3 sm:px-5 lg:px-6 backdrop-blur shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Branding Móvil */}
+            <div className="lg:hidden flex items-center gap-1.5 shrink-0">
+              <span className="text-xs sm:text-sm font-bold tracking-tight text-brand-ink">
+                Dra. Ivana Seliz
+              </span>
+              <span className="text-text-muted text-xs">/</span>
             </div>
 
-            {/* Breadcrumb de escritorio */}
-            <div className="hidden min-w-0 items-center gap-2 text-sm text-text-secondary lg:flex font-medium">
-              <span className="font-semibold text-brand-ink">Consorcios</span>
-              <span aria-hidden="true">/</span>
-              <span className="truncate">{activeLabel}</span>
+            {/* Breadcrumb */}
+            <div className="min-w-0 flex items-center gap-1 text-xs sm:text-sm text-text-secondary font-medium">
+              <span className="font-semibold text-brand-ink hidden sm:inline">Consorcios /</span>
+              <span className="truncate font-semibold text-brand-ink">{activeLabel}</span>
             </div>
           </div>
 
+          {/* Controlador de Zoom Minimalista */}
+          <div className="flex items-center gap-0.5 rounded-full border border-border/80 bg-surface-muted/60 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              disabled={zoomLevel <= 0.8}
+              aria-label="Reducir zoom"
+              className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+              title="Reducir zoom (-)"
+            >
+              <Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomReset}
+              aria-label="Restablecer zoom al 100%"
+              className="px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-brand-ink hover:text-black transition-colors cursor-pointer select-none"
+              title="Click para restablecer zoom al 100%"
+            >
+              {Math.round(zoomLevel * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              disabled={zoomLevel >= 1.25}
+              aria-label="Aumentar zoom"
+              className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+              title="Aumentar zoom (+)"
+            >
+              <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            </button>
+          </div>
         </header>
 
-        {/* Área de Contenido Dinámico */}
-        <main className="flex-1 overflow-hidden p-4 sm:p-6 lg:p-8">
+        {/* Área de Contenido Dinámico con Zoom */}
+        <main
+          style={{ zoom: zoomLevel }}
+          className="flex-1 overflow-hidden p-2 sm:p-3 md:p-3.5 lg:p-4 pb-20 lg:pb-4"
+        >
           {activeTab === 'inbox' && (
-            <Card className="h-full flex overflow-hidden border border-border bg-white shadow-card">
-              {/* Columna Izquierda: Inbox */}
-              <div className="w-80 lg:w-96 h-full border-r border-border overflow-hidden shrink-0">
+            <Card className="h-full flex overflow-hidden border border-border/80 bg-white shadow-subtle">
+              {/* Columna Izquierda: Inbox (Master view en móvil, proporcional en desktop) */}
+              <div
+                className={`${
+                  mobileChatOpen ? 'hidden md:flex' : 'flex'
+                } w-full md:w-[38%] lg:w-[32%] xl:w-[28%] min-w-[260px] max-w-[380px] h-full overflow-hidden shrink-0 flex-col`}
+              >
                 <ChatInbox
                   conversations={conversations}
                   selectedId={selectedConvId}
-                  onSelect={setSelectedConvId}
+                  onSelect={(id) => {
+                    setSelectedConvId(id);
+                    setMobileChatOpen(true);
+                  }}
                 />
               </div>
 
-              {/* Columna Derecha: Hilo de Mensajes & Borrador IA */}
-              <div className="flex-1 h-full flex flex-col overflow-hidden bg-surface-soft">
-                <div className="flex-1 overflow-hidden">
+              {/* Columna Derecha: Hilo de Mensajes & Borrador IA (Detail view en móvil) */}
+              <div
+                className={`${
+                  mobileChatOpen ? 'flex' : 'hidden md:flex'
+                } flex-1 h-full flex flex-col overflow-hidden bg-surface-soft min-w-0`}
+              >
+                <div className="flex-1 overflow-hidden min-w-0">
                   <MessageThread
                     conversationId={currentConv.id}
                     senderName={currentConv.senderName}
@@ -278,12 +353,13 @@ export default function App() {
                     unidad={currentConv.unidad}
                     messages={currentMessages}
                     onSendMessage={handleSendMessage}
+                    onBack={() => setMobileChatOpen(false)}
                   />
                 </div>
 
                 {/* Panel de Borrador IA */}
                 {currentDraft && (
-                  <div className="p-4 border-t border-border bg-white shrink-0">
+                  <div className="p-2.5 sm:p-3.5 border-t border-border bg-white shrink-0">
                     <AiDraftBox
                       initialDraft={currentDraft.text}
                       onApprove={handleApproveDraft}
@@ -307,49 +383,49 @@ export default function App() {
           )}
 
           {activeTab === 'consorcios' && (
-            <div className="h-full overflow-y-auto space-y-6">
+            <div className="h-full overflow-y-auto space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader>
                   <div>
-                    <h2 className="text-base font-bold tracking-tight text-brand-ink">
+                    <h2 className="text-sm sm:text-base font-bold tracking-tight text-brand-ink">
                       Directorio de Consorcios Administrados
                     </h2>
-                    <p className="text-xs text-text-secondary mt-0.5">
+                    <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
                       Cuentas bancarias homologadas para cobranzas y teléfonos oficiales de guardia
                     </p>
                   </div>
                 </CardHeader>
 
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className="p-5 space-y-3 border border-border shadow-subtle">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
+                    <Card className="p-4 sm:p-5 space-y-3 border border-border shadow-subtle hover:border-brand-ink/40 transition-colors">
                       <div>
-                        <h3 className="text-sm font-bold text-brand-ink">
+                        <h3 className="text-xs sm:text-sm font-bold text-brand-ink">
                           Consorcio Corrientes y Lavalle
                         </h3>
-                        <p className="text-xs text-text-secondary mt-0.5">
+                        <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
                           Av. Corrientes 1240 / Lavalle 1241, CABA
                         </p>
                       </div>
 
-                      <div className="text-xs text-text-secondary space-y-1.5 pt-3 border-t border-border bg-surface-soft p-3 rounded-base">
+                      <div className="text-[11px] sm:text-xs text-text-secondary space-y-1.5 pt-3 border-t border-border bg-surface-soft p-3 rounded-base">
                         <div>CBU: <span className="font-semibold text-brand-ink">0140000000000000000001</span></div>
                         <div>Alias: <span className="font-semibold text-brand-ink">CONSORCIO.LAVALLE.OFICIAL</span></div>
                         <div>Guardia Ascensores: <span className="font-semibold text-brand-ink">+54 9 11 4444-1111</span></div>
                       </div>
                     </Card>
 
-                    <Card className="p-5 space-y-3 border border-border shadow-subtle">
+                    <Card className="p-4 sm:p-5 space-y-3 border border-border shadow-subtle hover:border-brand-ink/40 transition-colors">
                       <div>
-                        <h3 className="text-sm font-bold text-brand-ink">
+                        <h3 className="text-xs sm:text-sm font-bold text-brand-ink">
                           Consorcio Callao 2334
                         </h3>
-                        <p className="text-xs text-text-secondary mt-0.5">
+                        <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
                           Av. Callao 2334, Recoleta, CABA
                         </p>
                       </div>
 
-                      <div className="text-xs text-text-secondary space-y-1.5 pt-3 border-t border-border bg-surface-soft p-3 rounded-base">
+                      <div className="text-[11px] sm:text-xs text-text-secondary space-y-1.5 pt-3 border-t border-border bg-surface-soft p-3 rounded-base">
                         <div>CBU: <span className="font-semibold text-brand-ink">0140000000000000000002</span></div>
                         <div>Alias: <span className="font-semibold text-brand-ink">CALLAO.2334.EXPENSAS</span></div>
                         <div>Guardia Plomería: <span className="font-semibold text-brand-ink">+54 9 11 4444-4444</span></div>
@@ -368,6 +444,30 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Barra de Navegación Inferior Fija para Móviles y Tablets */}
+      <nav className="fixed bottom-0 inset-x-0 z-30 flex items-center justify-around border-t border-border bg-white/95 px-2 py-1 backdrop-blur lg:hidden pb-safe">
+        {navigationItems.map(({ id, label, icon: Icon }) => {
+          const isActive = id === activeTab;
+          return (
+            <button
+              key={id}
+              onClick={() => {
+                setActiveTab(id);
+                if (id === 'inbox') setMobileChatOpen(false);
+              }}
+              className={`flex flex-col items-center justify-center gap-1 min-h-[44px] flex-1 rounded-base px-1 py-1 text-[11px] font-semibold transition-all cursor-pointer ${
+                isActive
+                  ? 'text-brand-ink font-bold'
+                  : 'text-text-secondary hover:text-brand-ink'
+              }`}
+            >
+              <Icon size={19} className={isActive ? 'text-brand-ink stroke-[2.5]' : 'text-text-muted'} />
+              <span className="truncate max-w-[76px]">{label.split(' ')[0]}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
