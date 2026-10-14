@@ -8,7 +8,8 @@ from api.v1.consorcios import router as consorcios_router
 from api.v1.contactos import router as contactos_router
 from api.v1.tickets import router as tickets_router
 from api.v1.debug import router as debug_router
-from infrastructure.database import engine, Base
+from infrastructure.database import engine, Base, AsyncSessionLocal
+from infrastructure.seed import seed_initial_data
 
 
 @asynccontextmanager
@@ -17,6 +18,14 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("[API_STARTUP] Tablas sincronizadas correctamente.")
+
+    # Sembrado inicial automático si la base de datos está vacía
+    async with AsyncSessionLocal() as session:
+        try:
+            await seed_initial_data(session)
+        except Exception as e:
+            logger.warning(f"[API_STARTUP] Error al sembrar datos iniciales: {e}")
+
     yield
 
 

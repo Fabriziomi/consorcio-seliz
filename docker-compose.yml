@@ -69,8 +69,8 @@ services:
   # API Gateway & Backend Central (FastAPI)
   api:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
     container_name: consorcio_api
     restart: always
     environment:
@@ -84,10 +84,13 @@ services:
       - NOCODB_API_TOKEN=${NOCODB_API_TOKEN}
       - APP_HOST=0.0.0.0
       - APP_PORT=8000
+      - HTTP_CLIENT_TIMEOUT=90.0
+      - PYTHONPATH=/app/apps/api/src:/app/apps/chatbot/src
     ports:
       - "8000:8000"
     volumes:
-      - ./apps/api/src:/app/src
+      - ./apps/api/src:/app/apps/api/src
+      - ./apps/chatbot/src:/app/apps/chatbot/src
     depends_on:
       - postgres
       - redis
@@ -100,8 +103,8 @@ services:
   # Recursos asignados: 8GB RAM + 6 hilos para IA local en CPU
   chatbot-engine:
     build:
-      context: ./apps/chatbot
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/chatbot/Dockerfile
     container_name: consorcio_chatbot_engine
     restart: always
     environment:
@@ -123,13 +126,15 @@ services:
       - WHISPER_MODEL=small
       - WHISPER_COMPUTE_TYPE=int8
       - WHISPER_THREADS=6
+      - PYTHONPATH=/app/apps/chatbot/src:/app/apps/api/src
     deploy:
       resources:
         limits:
           memory: 8192M
           cpus: '6.0'
     volumes:
-      - ./apps/chatbot/src:/app/src
+      - ./apps/chatbot/src:/app/apps/chatbot/src
+      - ./apps/api/src:/app/apps/api/src
       - ./models:/app/models
     depends_on:
       - postgres
@@ -138,7 +143,7 @@ services:
     networks:
       - consorcio_net
 
-  # Frontend Customizado (Dashboard Administrativo con Chatwoot + NocoDB)
+  # Frontend Customizado (Dashboard Administrativo Dra. Ivana Seliz)
   frontend:
     build:
       context: ./apps/frontend
@@ -148,9 +153,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_CHATWOOT_URL=${CHATWOOT_API_URL:-http://localhost:3000}
-      - NEXT_PUBLIC_NOCODB_URL=http://localhost:8081
+      - VITE_API_URL=http://localhost:8000
+      - VITE_API_TIMEOUT_MS=90000
+      - VITE_CHATWOOT_URL=${CHATWOOT_API_URL:-http://localhost:3000}
+      - VITE_CHATWOOT_TIMEOUT_MS=90000
     volumes:
       - ./apps/frontend:/app
       - /app/node_modules
