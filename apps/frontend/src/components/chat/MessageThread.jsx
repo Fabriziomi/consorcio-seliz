@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, ArrowLeft, Sparkles, MessageCirclePlus } from 'lucide-react';
+import { Send, Paperclip, ArrowLeft, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 
 export function MessageThread({
@@ -10,13 +10,10 @@ export function MessageThread({
   messages = [],
   onSendMessage,
   onGenerateAiDraft,
-  onSimulateNeighborMessage,
   generatingDraft = false,
   onBack,
 }) {
   const [inputText, setInputText] = useState('');
-  const [showSimulateModal, setShowSimulateModal] = useState(false);
-  const [customNeighborMsg, setCustomNeighborMsg] = useState('');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -28,21 +25,6 @@ export function MessageThread({
     if (!inputText.trim()) return;
     onSendMessage(inputText.trim());
     setInputText('');
-  };
-
-  const quickSimulations = [
-    { label: 'CBU / Expensas', text: 'Buenas tardes, ¿me confirman el CBU y alias para pagar las expensas?' },
-    { label: 'Corte de luz', text: 'Hola, se cortó la luz en el palier de mi piso. ¿Podrán enviar electricista?' },
-    { label: 'Emergencia Ascensor', text: 'Urgente, se trabó el ascensor con dos personas adentro!' },
-    { label: 'Pautas de Mudanza', text: 'Hola, quería consultar qué días y horarios están permitidas las mudanzas.' },
-    { label: 'Saludo Simple', text: 'Hola, buenos días.' },
-  ];
-
-  const handleTriggerSimulate = (text) => {
-    if (!text.trim() || !onSimulateNeighborMessage) return;
-    onSimulateNeighborMessage(text.trim());
-    setCustomNeighborMsg('');
-    setShowSimulateModal(false);
   };
 
   return (
@@ -76,79 +58,9 @@ export function MessageThread({
           </div>
         </div>
 
-        {/* Acciones de Cabecera (Sugerir IA y Simular) */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {onSimulateNeighborMessage && (
-            <div className="relative">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowSimulateModal(!showSimulateModal)}
-                className="h-8 px-2 sm:px-2.5 text-xs text-text-secondary hover:text-brand-ink"
-                title="Simular mensaje entrante de vecino"
-              >
-                <MessageCirclePlus className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Simular Vecino</span>
-              </Button>
-
-              {showSimulateModal && (
-                <div className="absolute right-0 top-10 w-72 sm:w-80 bg-white border border-border/80 rounded-base shadow-card p-3 z-30 space-y-2">
-                  <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                    <span className="text-xs font-bold text-brand-ink">Simular WhatsApp de {senderName}</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowSimulateModal(false)}
-                      className="text-text-muted hover:text-brand-ink text-xs p-1"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <p className="text-[11px] text-text-secondary">
-                    Envía un mensaje como si proviniera del WhatsApp del vecino para probar la IA:
-                  </p>
-
-                  <div className="grid gap-1">
-                    {quickSimulations.map((qs, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleTriggerSimulate(qs.text)}
-                        className="text-left text-[11px] text-brand-ink hover:bg-surface-soft p-1.5 rounded transition-colors border border-border/40 truncate"
-                      >
-                        <span className="font-semibold block">{qs.label}:</span>
-                        <span className="text-text-muted truncate block">{qs.text}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="pt-1.5 border-t border-border/60 flex gap-1.5">
-                    <input
-                      type="text"
-                      placeholder="Mensaje personalizado..."
-                      value={customNeighborMsg}
-                      onChange={(e) => setCustomNeighborMsg(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleTriggerSimulate(customNeighborMsg);
-                      }}
-                      className="flex-1 text-[11px] bg-surface-soft border border-border rounded px-2 py-1 outline-none text-brand-ink focus:border-brand-ink"
-                    />
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleTriggerSimulate(customNeighborMsg)}
-                      disabled={!customNeighborMsg.trim()}
-                      className="h-7 px-2 text-[11px]"
-                    >
-                      Enviar
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {onGenerateAiDraft && (
+        {/* Acción de Sugerencia con IA */}
+        {onGenerateAiDraft && (
+          <div className="shrink-0">
             <Button
               variant="secondary"
               size="sm"
@@ -160,8 +72,8 @@ export function MessageThread({
               <Sparkles className={`w-3.5 h-3.5 text-brand-ink ${generatingDraft ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{generatingDraft ? 'Generando...' : 'Sugerir con IA'}</span>
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Lista de Mensajes */}

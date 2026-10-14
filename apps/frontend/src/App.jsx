@@ -668,7 +668,6 @@ export default function App() {
                     messages={currentMessages}
                     onSendMessage={handleSendMessage}
                     onGenerateAiDraft={handleGenerateAiDraft}
-                    onSimulateNeighborMessage={handleSimulateNeighborMessage}
                     generatingDraft={generatingDraft}
                     onBack={() => setMobileChatOpen(false)}
                   />
