@@ -124,7 +124,15 @@ def tev1_router_node(state: ChatState) -> dict:
 
 
 def generate_emergency_response(state: ChatState) -> dict:
-    telefono_guardia = "+54 9 11 6248-3302"
+    msg_lower = state.user_message.lower()
+    telefono_guardia = None
+    if "ascensor" in msg_lower and state.consorcio_emergencia_ascensores:
+        telefono_guardia = state.consorcio_emergencia_ascensores
+    elif any(k in msg_lower for k in ("plomero", "agua", "caño", "inund", "filtracion", "filtración")) and state.consorcio_emergencia_plomeria:
+        telefono_guardia = state.consorcio_emergencia_plomeria
+    else:
+        telefono_guardia = state.consorcio_telefono_guardia or "+54 9 11 6248-3302"
+
     response = render_template(
         "EMERGENCIA_GENERAL",
         telefono_guardia=telefono_guardia,
@@ -151,10 +159,10 @@ def generate_payment_response(state: ChatState) -> dict:
     response = render_template(
         "EXPENSAS_PAGO_INFO",
         nombre_consorcio=state.consorcio_nombre or "Administración Dra. Ivana Seliz",
-        cbu="0140000000000000000001",
-        alias="CONSORCIO.SELIZ.OFICIAL",
-        cuit="30-71122334-5",
-        email_cobranzas="cobranzas@selizadministraciones.com.ar",
+        cbu=state.consorcio_cbu or "0140000000000000000001",
+        alias=state.consorcio_alias or "CONSORCIO.SELIZ.OFICIAL",
+        cuit=state.consorcio_cuit or "30-71122334-5",
+        email_cobranzas=state.consorcio_email_cobranzas or "cobranzas@selizadministraciones.com.ar",
         user_name=state.user_name,
         unidad_funcional=state.unidad_funcional or "tu unidad",
     )
@@ -165,7 +173,71 @@ def generate_payment_response(state: ChatState) -> dict:
     }
 
 
+def generate_payment_confirmation_response(state: ChatState) -> dict:
+    response = render_template(
+        "EXPENSAS_COMPROBANTE_RECIBIDO",
+        nombre_consorcio=state.consorcio_nombre or "tu consorcio",
+        email_cobranzas=state.consorcio_email_cobranzas or "cobranzas@selizadministraciones.com.ar",
+        user_name=state.user_name,
+        unidad_funcional=state.unidad_funcional or "tu unidad",
+    )
+    return {
+        "intent": "PAGO_REALIZADO",
+        "should_respond": True,
+        "response_text": response,
+    }
+
+
+def generate_mudanza_response(state: ChatState) -> dict:
+    pautas = state.consorcio_pautas_mudanza or "Lunes a Viernes de 09:00 a 17:00 hs y Sábados de 09:00 a 13:00 hs. Presentar seguro del flete con 48 hs de antelación."
+    response = render_template(
+        "MUDANZA_INFO",
+        nombre_consorcio=state.consorcio_nombre or "tu consorcio",
+        pautas_mudanza=pautas,
+        user_name=state.user_name,
+    )
+    return {
+        "intent": "CONSULTA_MUDANZA",
+        "should_respond": True,
+        "response_text": response,
+    }
+
+
 def generate_off_hours_response(state: ChatState) -> dict:
+    # Comprobar si coincide con un atributo dinámico del consorcio
+    msg_lower = state.user_message.lower()
+    if state.atributos_dinamicos:
+        for clave, info in state.atributos_dinamicos.items():
+            etiqueta = info.get("etiqueta", clave).lower()
+            palabras = [w for w in (clave.split("_") + etiqueta.split()) if len(w) >= 4 and w not in ("para", "este", "esta", "codigo", "código", "ubicacion", "ubicación")]
+            if any(p in msg_lower for p in palabras):
+                if info.get("es_publico", False):
+                    resp = render_template(
+                        "ATRIBUTO_DINAMICO_INFO",
+                        user_name=state.user_name,
+                        nombre_consorcio=state.consorcio_nombre or "tu consorcio",
+                        etiqueta_atributo=info.get("etiqueta", clave),
+                        valor_atributo=info.get("valor", ""),
+                    )
+                    return {
+                        "intent": "CONSULTA_ATRIBUTO_PUBLICO",
+                        "should_respond": True,
+                        "response_text": resp,
+                    }
+                else:
+                    resp = render_template(
+                        "ATRIBUTO_SEGURIDAD_RESTRINGIDO",
+                        user_name=state.user_name,
+                        nombre_consorcio=state.consorcio_nombre or "tu consorcio",
+                        etiqueta_atributo=info.get("etiqueta", clave),
+                        unidad=state.unidad_funcional or "tu unidad",
+                    )
+                    return {
+                        "intent": "CONSULTA_ATRIBUTO_RESTRINGIDO",
+                        "should_respond": True,
+                        "response_text": resp,
+                    }
+
     response = render_template(
         "FUERA_HORARIO",
         user_name=state.user_name,
@@ -228,6 +300,10 @@ def route_after_tev1(state: ChatState) -> str:
         return "emergency_response"
     elif decision == Tev1Decision.B_PAYMENTS.value:
         return "payment_response"
+    elif decision == Tev1Decision.E_PAYMENT_CONFIRMATION.value:
+        return "payment_confirmation_response"
+    elif decision == Tev1Decision.F_MUDANZA.value:
+        return "mudanza_response"
     elif decision == Tev1Decision.C_CORDIAL_SILENCE.value:
         return "silent_action"
     else:
@@ -246,6 +322,8 @@ def build_decision_graph():
     builder.add_node("emergency_response", generate_emergency_response)
     builder.add_node("greeting_response", generate_greeting_response)
     builder.add_node("payment_response", generate_payment_response)
+    builder.add_node("payment_confirmation_response", generate_payment_confirmation_response)
+    builder.add_node("mudanza_response", generate_mudanza_response)
     builder.add_node("off_hours_response", generate_off_hours_response)
     builder.add_node("silent_action", generate_silent_response)
 
@@ -279,6 +357,8 @@ def build_decision_graph():
         {
             "emergency_response": "emergency_response",
             "payment_response": "payment_response",
+            "payment_confirmation_response": "payment_confirmation_response",
+            "mudanza_response": "mudanza_response",
             "silent_action": "silent_action",
             "off_hours_response": "off_hours_response",
         }
@@ -287,6 +367,8 @@ def build_decision_graph():
     builder.add_edge("emergency_response", END)
     builder.add_edge("greeting_response", END)
     builder.add_edge("payment_response", END)
+    builder.add_edge("payment_confirmation_response", END)
+    builder.add_edge("mudanza_response", END)
     builder.add_edge("off_hours_response", END)
     builder.add_edge("silent_action", END)
 

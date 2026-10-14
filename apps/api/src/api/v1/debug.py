@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from infrastructure.database import get_db
-from infrastructure.models import ContactoModel, ConsorcioModel, TicketConsultaModel
+from infrastructure.models import (
+    ContactoModel,
+    ConsorcioModel,
+    ConsorcioAtributoDinamicoModel,
+    TicketConsultaModel,
+)
 from domain.schemas import PrioridadTicket, EstadoTicket
 from engine.graph import decision_graph
 from engine.state import ChatState
@@ -73,6 +78,9 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
     consorcio_id = None
     unidad_funcional = None
 
+    consorcio_obj = None
+    atributos_dinamicos = {}
+
     if contacto:
         consorcio_id = contacto.consorcio_id
         unidad_funcional = contacto.unidad_funcional
@@ -87,6 +95,19 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
                     "direccion": consorcio_obj.direccion,
                     "cbu": consorcio_obj.cbu_bancario,
                     "alias": consorcio_obj.alias_bancario,
+                }
+                dyn_res = await db.execute(
+                    select(ConsorcioAtributoDinamicoModel).where(
+                        ConsorcioAtributoDinamicoModel.consorcio_id == consorcio_id
+                    )
+                )
+                atributos_dinamicos = {
+                    attr.clave: {
+                        "etiqueta": attr.etiqueta_visible,
+                        "valor": attr.valor,
+                        "es_publico": attr.es_publico_vecinos,
+                    }
+                    for attr in dyn_res.scalars().all()
                 }
 
     # 2. Preparar el estado inicial de LangGraph
@@ -107,6 +128,15 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
         consorcio_nombre=consorcio_nombre,
         unidad_funcional=unidad_funcional,
         schedule_status=schedule_override,
+        consorcio_cbu=consorcio_obj.cbu_bancario if consorcio_obj else None,
+        consorcio_alias=consorcio_obj.alias_bancario if consorcio_obj else None,
+        consorcio_cuit=consorcio_obj.cuit if consorcio_obj else None,
+        consorcio_email_cobranzas=consorcio_obj.email_cobranzas if consorcio_obj else None,
+        consorcio_telefono_guardia=consorcio_obj.telefono_porteria if consorcio_obj else None,
+        consorcio_emergencia_ascensores=consorcio_obj.emergencia_ascensores if consorcio_obj else None,
+        consorcio_emergencia_plomeria=consorcio_obj.emergencia_plomeria if consorcio_obj else None,
+        consorcio_pautas_mudanza=consorcio_obj.pautas_mudanza if consorcio_obj else None,
+        atributos_dinamicos=atributos_dinamicos,
     )
 
     # 3. Ejecutar el grafo de decisión
@@ -121,7 +151,7 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
     should_respond = graph_result.get("should_respond", True)
 
     should_create_ticket = (
-        (intent in ("EMERGENCIA", "FUERA_HORARIO_TICKET") or graph_result.get("tev1_decision") == "D")
+        (intent in ("EMERGENCIA", "FUERA_HORARIO_TICKET", "PAGO_REALIZADO", "CONSULTA_ATRIBUTO_RESTRINGIDO") or graph_result.get("tev1_decision") == "D")
         and not is_greeting
         and not is_noise
         and not is_close
@@ -164,7 +194,13 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
                 logger.warning(f"[DEBUG_CHAT] Error al consolidar ticket: {e}")
         else:
             ticket_id = f"tick-{str(uuid.uuid4())[:8]}"
-            prioridad = PrioridadTicket.CRITICA if graph_result.get("is_emergency") else PrioridadTicket.NORMAL
+            if graph_result.get("is_emergency"):
+                prioridad = PrioridadTicket.CRITICA
+            elif intent == "CONSULTA_ATRIBUTO_RESTRINGIDO":
+                prioridad = PrioridadTicket.ALTA
+            else:
+                prioridad = PrioridadTicket.NORMAL
+
             ticket = TicketConsultaModel(
                 id=ticket_id,
                 contacto_id=contact_id,

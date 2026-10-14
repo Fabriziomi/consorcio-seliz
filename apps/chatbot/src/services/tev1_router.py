@@ -5,10 +5,12 @@ from enum import Enum
 
 
 class Tev1Decision(str, Enum):
-    A_EMERGENCY = "A"       # Emergencia Grave 24/7
-    B_PAYMENTS = "B"        # Cobranzas y Datos de Pago por Email
-    C_CORDIAL_SILENCE = "C" # Cierre Cordial / Silencio (No responder)
-    D_TICKET_NEUTRAL = "D"  # Consulta No Catalogada (Asentar Ticket neutro para Ivana)
+    A_EMERGENCY = "A"               # Emergencia Grave 24/7
+    B_PAYMENTS = "B"                # Solicitud de CBU y Datos de Pago
+    C_CORDIAL_SILENCE = "C"         # Cierre Cordial / Silencio (No responder)
+    D_TICKET_NEUTRAL = "D"          # Consulta No Catalogada (Asentar Ticket neutro para Ivana)
+    E_PAYMENT_CONFIRMATION = "E"    # Notificación / Envío de Comprobante de Pago
+    F_MUDANZA = "F"                 # Consulta sobre Pautas y Horarios de Mudanza
 
 
 class Tev1Router:
@@ -19,7 +21,7 @@ class Tev1Router:
 
     def route(self, user_message: str, is_emergency: bool = False, is_cordial_close: bool = False) -> Tuple[Tev1Decision, float]:
         """
-        Clasifica el mensaje entrante en un conjunto cerrado (A, B, C, D).
+        Clasifica el mensaje entrante en un conjunto cerrado (A, B, C, D, E, F).
         Retorna: (Decision: Tev1Decision, latencia_ms: float)
         """
         t0 = time.time()
@@ -33,35 +35,30 @@ class Tev1Router:
             latency_ms = (time.time() - t0) * 1000
             return Tev1Decision.C_CORDIAL_SILENCE, latency_ms
 
-        # 2. Si el modelo GGUF local de Tev1 está presente en disco
-        if self._has_model:
-            try:
-                from llama_cpp import Llama
-                if self._llm is None:
-                    self._llm = Llama(model_path=self.model_path, n_ctx=512, n_threads=6, verbose=False)
-                
-                prompt = (
-                    f"Clasifica el siguiente mensaje en una sola letra:\n"
-                    f"A: Emergencia Grave 24/7\n"
-                    f"B: Cobranzas, CBU o Expensas\n"
-                    f"C: Cierre Cordial o Saludo Corto\n"
-                    f"D: Reclamo o Consulta Administrativa General\n\n"
-                    f"Mensaje: \"{user_message}\"\n"
-                    f"Respuesta (solo una letra):"
-                )
-                output = self._llm(prompt, max_tokens=2, stop=["\n", " "], temperature=0.0)
-                letter = output["choices"][0]["text"].strip().upper()
-                latency_ms = (time.time() - t0) * 1000
-
-                if letter in ["A", "B", "C", "D"]:
-                    return Tev1Decision(letter), latency_ms
-            except Exception as e:
-                # Fallback seguro
-                pass
-
-        # 3. Router de conjunto cerrado semántico rápido (Fallback sin GGUF en disco)
         msg_lower = user_message.lower()
-        if any(w in msg_lower for w in ["cbu", "alias", "transferir", "expensa", "expensas", "cuenta", "comprobante", "pagar", "pago"]):
+
+        # 2. Detección específica de comprobante / confirmación de pago realizado
+        comprobante_tokens = [
+            "ya transferi", "ya transferí", "ya pague", "ya pagué",
+            "adjunto comprobante", "paso comprobante", "te mando el comprobante",
+            "te paso el comprobante", "envio comprobante", "envío comprobante",
+            "constancia de pago", "constancia de transferencia",
+            "acabo de transferir", "acabo de pagar", "hice la transferencia",
+            "hice el pago", "comprobante de transferencia", "adjunto transferencia",
+            "te adjunto", "adjunto el ticket de pago", "adjunto el comprobante"
+        ]
+        if any(token in msg_lower for token in comprobante_tokens):
+            latency_ms = (time.time() - t0) * 1000
+            return Tev1Decision.E_PAYMENT_CONFIRMATION, latency_ms
+
+        # 3. Detección específica de mudanzas
+        mudanza_tokens = ["mudanza", "mudarme", "mudar", "flete", "fletes", "camion de mudanza", "camión de mudanza"]
+        if any(token in msg_lower for token in mudanza_tokens):
+            latency_ms = (time.time() - t0) * 1000
+            return Tev1Decision.F_MUDANZA, latency_ms
+
+        # 4. Solicitud de CBU / Datos de cobranzas
+        if any(w in msg_lower for w in ["cbu", "alias", "transferir", "expensa", "expensas", "cuenta", "pagar", "pago"]):
             latency_ms = (time.time() - t0) * 1000
             return Tev1Decision.B_PAYMENTS, latency_ms
 

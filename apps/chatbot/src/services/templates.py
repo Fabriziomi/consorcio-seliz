@@ -37,6 +37,26 @@ TEMPLATES = {
         "Una vez realizado el pago, envianos por favor el comprobante a {email_cobranzas} indicando tu unidad funcional ({unidad}). Saludos."
     ),
 
+    "EXPENSAS_COMPROBANTE_RECIBIDO": (
+        "Hola{nombre_saludo}, muchas gracias por enviarnos la constancia de pago de expensas de {nombre_consorcio} para la unidad {unidad}.\n\n"
+        "Ya lo derivamos al área contable ({email_cobranzas}) para su imputación y conciliación bancaria. En cuanto se confirme la acreditación, te enviaremos el recibo oficial correspondiente. Saludos."
+    ),
+
+    "MUDANZA_INFO": (
+        "Hola{nombre_saludo}, te compartimos las pautas oficiales de mudanza para {nombre_consorcio}:\n\n"
+        "• {pautas_mudanza}\n\n"
+        "Por favor recordá coordinar con la administración con al menos 48 hs hábiles de antelación y presentar el seguro correspondiente si contratás flete. Saludos."
+    ),
+
+    "ATRIBUTO_DINAMICO_INFO": (
+        "Hola{nombre_saludo}, respecto a tu consulta sobre {etiqueta_atributo} en {nombre_consorcio}: {valor_atributo}."
+    ),
+
+    "ATRIBUTO_SEGURIDAD_RESTRINGIDO": (
+        "Hola{nombre_saludo}, por motivos de seguridad del consorcio {nombre_consorcio}, la información sobre {etiqueta_atributo} no se divulga por este canal automático. "
+        "Dejamos registrado tu pedido para que la administración o la guardia lo valide directamente con tu unidad ({unidad})."
+    ),
+
     "ACUSE_RECIBO_NEUTRO": (
         "Hola{nombre_saludo}, recibimos tu mensaje para la administración. Lo revisamos con el equipo y te respondemos en nuestro horario habitual de atención (lunes a viernes de 10 a 18 hs | sábados de 10 a 13 hs)."
     ),
