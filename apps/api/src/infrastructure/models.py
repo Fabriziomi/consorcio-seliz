@@ -84,6 +84,18 @@ class TicketConsultaModel(Base):
     contacto = relationship("ContactoModel", back_populates="tickets")
     consorcio = relationship("ConsorcioModel", back_populates="tickets")
 
+    @property
+    def contacto_nombre(self):
+        return self.contacto.nombre_completo if self.contacto else None
+
+    @property
+    def contacto_unidad(self):
+        return self.contacto.unidad_funcional if self.contacto else None
+
+    @property
+    def consorcio_nombre(self):
+        return self.consorcio.nombre if self.consorcio else None
+
 
 class FaqAprobadaModel(Base):
     __tablename__ = "faqs_aprobadas"

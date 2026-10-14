@@ -23,7 +23,7 @@ class ChatwootClient:
         if not self.token:
             return None
         url = f"{self.base_url}/api/v1/accounts/{self.account_id}/contacts/search"
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=settings.HTTP_CLIENT_TIMEOUT) as client:
             try:
                 res = await client.get(url, params={"q": phone_number}, headers=self.headers)
                 if res.status_code == 200:
@@ -49,7 +49,7 @@ class ChatwootClient:
         if not self.token:
             return False
         url = f"{self.base_url}/api/v1/accounts/{self.account_id}/conversations/{conversation_id}/messages"
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=settings.HTTP_CLIENT_TIMEOUT) as client:
             try:
                 res = await client.post(
                     url,

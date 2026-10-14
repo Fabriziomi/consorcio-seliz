@@ -3,6 +3,7 @@ import axios from 'axios'
 const CHATWOOT_BASE_URL = import.meta.env.VITE_CHATWOOT_URL || 'http://localhost:3000'
 const CHATWOOT_API_TOKEN = import.meta.env.VITE_CHATWOOT_API_TOKEN || ''
 const ACCOUNT_ID = import.meta.env.VITE_CHATWOOT_ACCOUNT_ID || '1'
+const CHATWOOT_TIMEOUT_MS = parseInt(import.meta.env.VITE_CHATWOOT_TIMEOUT_MS || '90000', 10)
 
 export const chatwootApi = axios.create({
   baseURL: `${CHATWOOT_BASE_URL}/api/v1/accounts/${ACCOUNT_ID}`,
@@ -10,6 +11,7 @@ export const chatwootApi = axios.create({
     api_access_token: CHATWOOT_API_TOKEN,
     'Content-Type': 'application/json',
   },
+  timeout: CHATWOOT_TIMEOUT_MS,
 })
 
 export const ChatwootService = {

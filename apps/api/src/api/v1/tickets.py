@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from infrastructure.database import get_db
 from infrastructure.models import TicketConsultaModel
-from domain.schemas import TicketCreate, TicketResponse, EstadoTicket
+from domain.schemas import TicketCreate, TicketUpdate, TicketResponse, EstadoTicket
 
 router = APIRouter()
 
@@ -16,7 +17,13 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db)
 ):
     """Lista todos los tickets con filtros opcionales por estado o consorcio."""
-    query = select(TicketConsultaModel)
+    query = (
+        select(TicketConsultaModel)
+        .options(
+            selectinload(TicketConsultaModel.contacto),
+            selectinload(TicketConsultaModel.consorcio),
+        )
+    )
     if estado:
         query = query.where(TicketConsultaModel.estado == estado)
     if consorcio_id:
@@ -31,6 +38,53 @@ async def create_ticket(data: TicketCreate, db: AsyncSession = Depends(get_db)):
     """Registra una nueva consulta o reclamo de vecino."""
     ticket = TicketConsultaModel(**data.model_dump())
     db.add(ticket)
+    await db.commit()
+    await db.refresh(ticket)
+    return ticket
+
+
+@router.get("/{ticket_id}", response_model=TicketResponse)
+async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
+    """Obtiene el detalle de un ticket específico."""
+    query = (
+        select(TicketConsultaModel)
+        .options(
+            selectinload(TicketConsultaModel.contacto),
+            selectinload(TicketConsultaModel.consorcio),
+        )
+        .where(TicketConsultaModel.id == ticket_id)
+    )
+    result = await db.execute(query)
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    return ticket
+
+
+@router.patch("/{ticket_id}", response_model=TicketResponse)
+async def update_ticket(
+    ticket_id: str,
+    data: TicketUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualiza el estado, prioridad o descripción de un ticket."""
+    query = (
+        select(TicketConsultaModel)
+        .options(
+            selectinload(TicketConsultaModel.contacto),
+            selectinload(TicketConsultaModel.consorcio),
+        )
+        .where(TicketConsultaModel.id == ticket_id)
+    )
+    result = await db.execute(query)
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+
+    update_dict = data.model_dump(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(ticket, key, value)
+
     await db.commit()
     await db.refresh(ticket)
     return ticket

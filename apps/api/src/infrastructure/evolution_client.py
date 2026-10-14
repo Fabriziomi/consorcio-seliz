@@ -24,7 +24,7 @@ class EvolutionClient:
             "number": remote_jid.split("@")[0],
             "text": text,
         }
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=settings.HTTP_CLIENT_TIMEOUT) as client:
             try:
                 res = await client.post(url, json=payload, headers=self.headers)
                 if res.status_code in (200, 201):
@@ -43,7 +43,7 @@ class EvolutionClient:
             "presence": presence,
             "delay": delay_ms,
         }
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=min(settings.HTTP_CLIENT_TIMEOUT, 30.0)) as client:
             try:
                 res = await client.post(url, json=payload, headers=self.headers)
                 return res.status_code == 200

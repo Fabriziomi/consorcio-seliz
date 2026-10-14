@@ -99,10 +99,23 @@ async def seed_data():
                 telefono_wa=vecino_2_phone,
                 nombre_completo="Lucía Rossi",
                 consorcio_id=consorcio_2_id,
-                unidad_funcional="Piso 7 Depto A",
+                unidad_funcional="7° A",
                 rol=RolContacto.INQUILINO,
             )
             session.add(v2)
+
+        vecino_3_phone = "+5491133221100"
+        v3 = await session.get(ContactoModel, "cont-3")
+        if not v3:
+            v3 = ContactoModel(
+                id="cont-3",
+                telefono_wa=vecino_3_phone,
+                nombre_completo="Mariano Gómez",
+                consorcio_id=consorcio_1_id,
+                unidad_funcional="Cochera 14",
+                rol=RolContacto.PROPIETARIO,
+            )
+            session.add(v3)
 
         # 4. Tickets de Ejemplo
         t1 = await session.get(TicketConsultaModel, "tick-1042")
@@ -119,6 +132,36 @@ async def seed_data():
                 creado_fuera_de_horario=True,
             )
             session.add(t1)
+
+        t2 = await session.get(TicketConsultaModel, "tick-1041")
+        if not t2:
+            t2 = TicketConsultaModel(
+                id="tick-1041",
+                contacto_id="cont-2",
+                consorcio_id=consorcio_2_id,
+                intencion="EXPENSAS",
+                sub_intencion="CONSULTA_CBU",
+                prioridad=PrioridadTicket.NORMAL,
+                estado=EstadoTicket.NUEVO,
+                descripcion="Consulta de CBU y datos de pago de expensas.",
+                creado_fuera_de_horario=False,
+            )
+            session.add(t2)
+
+        t3 = await session.get(TicketConsultaModel, "tick-1040")
+        if not t3:
+            t3 = TicketConsultaModel(
+                id="tick-1040",
+                contacto_id="cont-3",
+                consorcio_id=consorcio_1_id,
+                intencion="EMERGENCIA",
+                sub_intencion="ASCENSOR_ATRAPADOS",
+                prioridad=PrioridadTicket.CRITICA,
+                estado=EstadoTicket.DERIVADO,
+                descripcion="Personas atrapadas en ascensor Torre Lavalle.",
+                creado_fuera_de_horario=True,
+            )
+            session.add(t3)
 
         await session.commit()
         logger.info("[SEED] Datos iniciales cargados con éxito.")

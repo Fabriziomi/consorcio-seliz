@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     QUIET_HOURS_START: str = "00:00"
     QUIET_HOURS_END: str = "07:30"
 
+    # Configuración de Timeouts para VPS / Redes con latencia
+    HTTP_CLIENT_TIMEOUT: float = 60.0
+
     # Debug Rápido
     FAST_DEBUG_MODE: bool = False
     BYPASS_DEBOUNCE_BUFFER: bool = False

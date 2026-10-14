@@ -88,11 +88,20 @@ class TicketCreate(TicketBase):
     pass
 
 
+class TicketUpdate(BaseModel):
+    estado: Optional[EstadoTicket] = None
+    prioridad: Optional[PrioridadTicket] = None
+    descripcion: Optional[str] = None
+
+
 class TicketResponse(TicketBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     creado_el: datetime
+    contacto_nombre: Optional[str] = None
+    contacto_unidad: Optional[str] = None
+    consorcio_nombre: Optional[str] = None
 
 
 # --- Esquemas de Webhooks ---

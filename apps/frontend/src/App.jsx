@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2,
   MessageSquare,
@@ -6,6 +6,7 @@ import {
   Terminal,
   Minus,
   Plus,
+  RotateCcw,
 } from 'lucide-react';
 import { ChatInbox } from './components/chat/ChatInbox.jsx';
 import { MessageThread } from './components/chat/MessageThread.jsx';
@@ -13,11 +14,91 @@ import { AiDraftBox } from './components/chat/AiDraftBox.jsx';
 import { TicketsTable } from './components/tables/TicketsTable.jsx';
 import { DebugSimulator } from './components/debug/DebugSimulator.jsx';
 import { Card, CardHeader, CardContent } from './components/ui/Card.jsx';
+import { Badge } from './components/ui/Badge.jsx';
+import { Button } from './components/ui/Button.jsx';
+import { ApiService } from './lib/api-client.js';
+
+const INITIAL_CONSORCIOS = [
+  {
+    id: 'cons-corrientes-lavalle',
+    nombre: 'Consorcio Corrientes y Lavalle (Torres, Cochera y Galería)',
+    direccion: 'Av. Corrientes 1240 / Lavalle 1241, CABA',
+    cuit: '30-71122334-5',
+    cbu_bancario: '0140000000000000000001',
+    alias_bancario: 'CONSORCIO.LAVALLE.OFICIAL',
+    email_cobranzas: 'cobranzas.lavalle@selizadministraciones.com.ar',
+    telefono_porteria: '+54 9 11 4371-0001',
+    emergencia_ascensores: '+54 9 11 4444-1111',
+    emergencia_plomeria: '+54 9 11 4444-2222',
+    pautas_mudanza: 'Lunes a Viernes de 9 a 17 hs y Sábados de 9 a 13 hs. Presentar seguro flete 48hs antes.',
+  },
+  {
+    id: 'cons-callao-2334',
+    nombre: 'Consorcio Callao 2334',
+    direccion: 'Av. Callao 2334, Recoleta, CABA',
+    cuit: '30-71998877-6',
+    cbu_bancario: '0140000000000000000002',
+    alias_bancario: 'CALLAO.2334.EXPENSAS',
+    email_cobranzas: 'callao2334@selizadministraciones.com.ar',
+    telefono_porteria: '+54 9 11 4801-9999',
+    emergencia_ascensores: '+54 9 11 4444-3333',
+    emergencia_plomeria: '+54 9 11 4444-4444',
+    pautas_mudanza: 'Lunes a Viernes de 10 a 16 hs exclusivamente.',
+  },
+];
+
+const INITIAL_TICKETS = [
+  {
+    id: 'TICK-1042',
+    rawId: 'tick-1042',
+    consorcio: 'Consorcio Corrientes y Lavalle',
+    unidad: 'Torre Corrientes 4° B',
+    contacto: 'Carlos Méndez',
+    intencion: 'RECLAMO',
+    descripcion: 'Corte de luz en palier del piso 4 Torre Corrientes.',
+    prioridad: 'ALTA',
+    estado: 'EN_REVISION',
+    creado_el: '13/10 18:42',
+  },
+  {
+    id: 'TICK-1041',
+    rawId: 'tick-1041',
+    consorcio: 'Consorcio Callao 2334',
+    unidad: '7° A',
+    contacto: 'Lucía Rossi',
+    intencion: 'EXPENSAS',
+    descripcion: 'Consulta de CBU y datos de pago de expensas.',
+    prioridad: 'NORMAL',
+    estado: 'NUEVO',
+    creado_el: '13/10 18:15',
+  },
+  {
+    id: 'TICK-1040',
+    rawId: 'tick-1040',
+    consorcio: 'Consorcio Corrientes y Lavalle',
+    unidad: 'Cochera 14',
+    contacto: 'Mariano Gómez',
+    intencion: 'EMERGENCIA',
+    descripcion: 'Personas atrapadas en ascensor Torre Lavalle.',
+    prioridad: 'CRITICA',
+    estado: 'DERIVADO',
+    creado_el: '13/10 17:50',
+  },
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('inbox');
   const [selectedConvId, setSelectedConvId] = useState('conv-1');
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [apiConnected, setApiConnected] = useState(false);
+
+  // Estados dinámicos de backend
+  const [consorcios, setConsorcios] = useState(INITIAL_CONSORCIOS);
+  const [tickets, setTickets] = useState(INITIAL_TICKETS);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+  const [loadingConsorcios, setLoadingConsorcios] = useState(false);
+
+  // Controlador de zoom con persistencia en localStorage
   const [zoomLevel, setZoomLevel] = useState(() => {
     try {
       const saved = localStorage.getItem('crm_zoom_level');
@@ -47,6 +128,70 @@ export default function App() {
     setZoomLevel(1);
     try { localStorage.setItem('crm_zoom_level', '1'); } catch {}
   };
+
+  // Carga de tickets desde la API
+  const loadTickets = useCallback(async () => {
+    setLoadingTickets(true);
+    try {
+      const data = await ApiService.getTickets();
+      if (Array.isArray(data) && data.length > 0) {
+        setTickets(data);
+      }
+      setApiConnected(true);
+    } catch (err) {
+      console.warn('[CRM] No se pudo cargar tickets del backend, usando datos locales:', err.message);
+    } finally {
+      setLoadingTickets(false);
+    }
+  }, []);
+
+  // Carga de consorcios desde la API
+  const loadConsorcios = useCallback(async () => {
+    setLoadingConsorcios(true);
+    try {
+      const data = await ApiService.getConsorcios();
+      if (Array.isArray(data) && data.length > 0) {
+        setConsorcios(data);
+      }
+      setApiConnected(true);
+    } catch (err) {
+      console.warn('[CRM] No se pudo cargar consorcios del backend, usando datos locales:', err.message);
+    } finally {
+      setLoadingConsorcios(false);
+    }
+  }, []);
+
+  // Actualización de estado de un ticket
+  const handleUpdateTicketStatus = async (ticketId, newStatus) => {
+    const originalTickets = [...tickets];
+    // Actualización optimista
+    setTickets((prev) =>
+      prev.map((t) => (t.id === ticketId || t.rawId === ticketId ? { ...t, estado: newStatus } : t))
+    );
+
+    try {
+      const updated = await ApiService.updateTicket(ticketId, { estado: newStatus });
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId || t.rawId === ticketId ? updated : t))
+      );
+    } catch (err) {
+      console.error('[CRM] Error al actualizar estado del ticket:', err);
+      // Revertir en caso de error
+      setTickets(originalTickets);
+    }
+  };
+
+  // Carga inicial al montar el componente
+  useEffect(() => {
+    async function init() {
+      const health = await ApiService.checkHealth();
+      if (health && health.status === 'ok') {
+        setApiConnected(true);
+      }
+      await Promise.allSettled([loadTickets(), loadConsorcios()]);
+    }
+    init();
+  }, [loadTickets, loadConsorcios]);
 
   const [conversations, setConversations] = useState([
     {
@@ -138,42 +283,6 @@ export default function App() {
     'conv-3': null,
   });
 
-  const tickets = [
-    {
-      id: 'TICK-1042',
-      consorcio: 'Torre Corrientes',
-      unidad: '4° B',
-      contacto: 'Carlos Méndez',
-      intencion: 'RECLAMO',
-      descripcion: 'Corte de luz en palier del piso 4',
-      prioridad: 'ALTA',
-      estado: 'EN_REVISION',
-      creado_el: '13/10 18:42',
-    },
-    {
-      id: 'TICK-1041',
-      consorcio: 'Callao 2334',
-      unidad: '7° A',
-      contacto: 'Lucía Rossi',
-      intencion: 'EXPENSAS',
-      descripcion: 'Consulta de CBU y datos de pago',
-      prioridad: 'NORMAL',
-      estado: 'NUEVO',
-      creado_el: '13/10 18:15',
-    },
-    {
-      id: 'TICK-1040',
-      consorcio: 'Torre Lavalle',
-      unidad: 'Cochera 14',
-      contacto: 'Mariano Gómez',
-      intencion: 'EMERGENCIA',
-      descripcion: 'Personas atrapadas en ascensor',
-      prioridad: 'CRITICA',
-      estado: 'DERIVADO',
-      creado_el: '13/10 17:50',
-    },
-  ];
-
   const navigationItems = [
     { id: 'inbox', label: 'Inbox Omnicanal', icon: MessageSquare },
     { id: 'tickets', label: 'Tickets & Reclamos', icon: CheckSquare },
@@ -212,10 +321,14 @@ export default function App() {
       {/* Sidebar Fijo para Desktop y Laptops Grandes */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 xl:w-72 flex-col border-r border-border bg-white shadow-card lg:flex">
         {/* Marca y Encabezado */}
-        <div className="flex min-h-16 xl:min-h-20 items-center border-b border-border px-5 xl:px-6">
+        <div className="flex min-h-16 xl:min-h-20 items-center justify-between border-b border-border px-5 xl:px-6">
           <span className="text-sm font-bold tracking-tight text-brand-ink">
             Dra. Ivana Seliz
           </span>
+          <div className="flex items-center gap-1.5" title={apiConnected ? 'Backend FastAPI Conectado' : 'Modo Datos Locales'}>
+            <span className={`size-2 rounded-full ${apiConnected ? 'bg-success animate-pulse' : 'bg-text-muted'}`} />
+            <span className="text-[10px] font-semibold text-text-muted">{apiConnected ? 'ONLINE' : 'LOCAL'}</span>
+          </div>
         </div>
 
         {/* Navegación Principal */}
@@ -281,37 +394,45 @@ export default function App() {
             </div>
           </div>
 
-          {/* Controlador de Zoom Minimalista */}
-          <div className="flex items-center gap-0.5 rounded-full border border-border/80 bg-surface-muted/60 p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={handleZoomOut}
-              disabled={zoomLevel <= 0.8}
-              aria-label="Reducir zoom"
-              className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-              title="Reducir zoom (-)"
-            >
-              <Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={handleZoomReset}
-              aria-label="Restablecer zoom al 100%"
-              className="px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-brand-ink hover:text-black transition-colors cursor-pointer select-none"
-              title="Click para restablecer zoom al 100%"
-            >
-              {Math.round(zoomLevel * 100)}%
-            </button>
-            <button
-              type="button"
-              onClick={handleZoomIn}
-              disabled={zoomLevel >= 1.25}
-              aria-label="Aumentar zoom"
-              className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-              title="Aumentar zoom (+)"
-            >
-              <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-            </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Indicador de conexión API en móvil / tablet */}
+            <div className="flex lg:hidden items-center gap-1.5 px-2 py-0.5 rounded-full border border-border/70 text-[10px] text-text-secondary bg-surface-muted/50">
+              <span className={`size-1.5 rounded-full ${apiConnected ? 'bg-success' : 'bg-text-muted'}`} />
+              <span>{apiConnected ? 'API OK' : 'Local'}</span>
+            </div>
+
+            {/* Controlador de Zoom Minimalista */}
+            <div className="flex items-center gap-0.5 rounded-full border border-border/80 bg-surface-muted/60 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={zoomLevel <= 0.8}
+                aria-label="Reducir zoom"
+                className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                title="Reducir zoom (-)"
+              >
+                <Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomReset}
+                aria-label="Restablecer zoom al 100%"
+                className="px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-brand-ink hover:text-black transition-colors cursor-pointer select-none"
+                title="Click para restablecer zoom al 100%"
+              >
+                {Math.round(zoomLevel * 100)}%
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={zoomLevel >= 1.25}
+                aria-label="Aumentar zoom"
+                className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                title="Aumentar zoom (+)"
+              >
+                <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -378,7 +499,12 @@ export default function App() {
 
           {activeTab === 'tickets' && (
             <div className="h-full overflow-y-auto">
-              <TicketsTable tickets={tickets} />
+              <TicketsTable
+                tickets={tickets}
+                loading={loadingTickets}
+                onRefresh={loadTickets}
+                onUpdateStatus={handleUpdateTicketStatus}
+              />
             </div>
           )}
 
@@ -386,51 +512,98 @@ export default function App() {
             <div className="h-full overflow-y-auto space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader>
-                  <div>
-                    <h2 className="text-sm sm:text-base font-bold tracking-tight text-brand-ink">
-                      Directorio de Consorcios Administrados
-                    </h2>
-                    <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
-                      Cuentas bancarias homologadas para cobranzas y teléfonos oficiales de guardia
-                    </p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="text-sm sm:text-base font-bold tracking-tight text-brand-ink">
+                        Directorio de Consorcios Administrados
+                      </h2>
+                      <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
+                        Cuentas bancarias homologadas para cobranzas y teléfonos oficiales de guardia
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={loadConsorcios}
+                        disabled={loadingConsorcios}
+                        className="h-7 px-2.5 text-xs text-text-secondary hover:text-brand-ink"
+                        title="Actualizar consorcios desde la base de datos"
+                      >
+                        <RotateCcw size={12} className={loadingConsorcios ? 'animate-spin' : ''} />
+                        <span>Actualizar</span>
+                      </Button>
+                      <span className="text-xs text-text-muted font-medium bg-surface-muted px-2 py-0.5 rounded-full border border-border/60">
+                        {consorcios.length} consorcios
+                      </span>
+                    </div>
                   </div>
                 </CardHeader>
 
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
-                    <Card className="p-4 sm:p-5 space-y-3 border border-border shadow-subtle hover:border-brand-ink/40 transition-colors">
-                      <div>
-                        <h3 className="text-xs sm:text-sm font-bold text-brand-ink">
-                          Consorcio Corrientes y Lavalle
-                        </h3>
-                        <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
-                          Av. Corrientes 1240 / Lavalle 1241, CABA
-                        </p>
-                      </div>
+                    {consorcios.map((c) => (
+                      <Card
+                        key={c.id}
+                        className="p-4 sm:p-5 space-y-3 border border-border shadow-subtle hover:border-brand-ink/40 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="text-xs sm:text-sm font-bold text-brand-ink leading-snug">
+                              {c.nombre}
+                            </h3>
+                            <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
+                              {c.direccion}
+                            </p>
+                          </div>
+                          {c.cuit && (
+                            <Badge variant="neutral" className="text-[10px] shrink-0">
+                              CUIT {c.cuit}
+                            </Badge>
+                          )}
+                        </div>
 
-                      <div className="text-[11px] sm:text-xs text-text-secondary space-y-1.5 pt-3 border-t border-border bg-surface-soft p-3 rounded-base">
-                        <div>CBU: <span className="font-semibold text-brand-ink">0140000000000000000001</span></div>
-                        <div>Alias: <span className="font-semibold text-brand-ink">CONSORCIO.LAVALLE.OFICIAL</span></div>
-                        <div>Guardia Ascensores: <span className="font-semibold text-brand-ink">+54 9 11 4444-1111</span></div>
-                      </div>
-                    </Card>
+                        <div className="text-[11px] sm:text-xs text-text-secondary space-y-1.5 pt-3 border-t border-border bg-surface-soft p-3 rounded-base">
+                          {c.cbu_bancario && (
+                            <div className="break-all">
+                              CBU: <span className="font-semibold text-brand-ink">{c.cbu_bancario}</span>
+                            </div>
+                          )}
+                          {c.alias_bancario && (
+                            <div>
+                              Alias: <span className="font-semibold text-brand-ink">{c.alias_bancario}</span>
+                            </div>
+                          )}
+                          {c.email_cobranzas && (
+                            <div className="truncate">
+                              Cobranzas: <span className="font-semibold text-brand-ink">{c.email_cobranzas}</span>
+                            </div>
+                          )}
+                          {c.telefono_porteria && (
+                            <div>
+                              Portería: <span className="font-semibold text-brand-ink">{c.telefono_porteria}</span>
+                            </div>
+                          )}
+                          {c.emergencia_ascensores && (
+                            <div>
+                              Guardia Ascensores: <span className="font-semibold text-brand-ink">{c.emergencia_ascensores}</span>
+                            </div>
+                          )}
+                          {c.emergencia_plomeria && (
+                            <div>
+                              Guardia Plomería: <span className="font-semibold text-brand-ink">{c.emergencia_plomeria}</span>
+                            </div>
+                          )}
+                        </div>
 
-                    <Card className="p-4 sm:p-5 space-y-3 border border-border shadow-subtle hover:border-brand-ink/40 transition-colors">
-                      <div>
-                        <h3 className="text-xs sm:text-sm font-bold text-brand-ink">
-                          Consorcio Callao 2334
-                        </h3>
-                        <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
-                          Av. Callao 2334, Recoleta, CABA
-                        </p>
-                      </div>
-
-                      <div className="text-[11px] sm:text-xs text-text-secondary space-y-1.5 pt-3 border-t border-border bg-surface-soft p-3 rounded-base">
-                        <div>CBU: <span className="font-semibold text-brand-ink">0140000000000000000002</span></div>
-                        <div>Alias: <span className="font-semibold text-brand-ink">CALLAO.2334.EXPENSAS</span></div>
-                        <div>Guardia Plomería: <span className="font-semibold text-brand-ink">+54 9 11 4444-4444</span></div>
-                      </div>
-                    </Card>
+                        {c.pautas_mudanza && (
+                          <div className="text-[11px] text-text-secondary bg-surface-muted/40 p-2.5 rounded border border-border/50">
+                            <span className="font-semibold text-brand-ink block mb-0.5">Pautas de Mudanza:</span>
+                            <span className="text-text-muted">{c.pautas_mudanza}</span>
+                          </div>
+                        )}
+                      </Card>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

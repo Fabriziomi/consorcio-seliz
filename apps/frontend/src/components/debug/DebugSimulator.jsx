@@ -15,6 +15,7 @@ import {
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Badge } from '../ui/Badge.jsx';
+import { ApiService } from '../../lib/api-client.js';
 
 export function DebugSimulator() {
   const [message, setMessage] = useState('');
@@ -93,17 +94,7 @@ export function DebugSimulator() {
     }
 
     try {
-      const res = await fetch('http://localhost:8000/api/v1/debug/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Error HTTP ${res.status}: ${res.statusText}`);
-      }
-
-      const data = await res.json();
+      const data = await ApiService.simulateChat(payload);
       const now = new Date();
       const timeStr = now.toTimeString().split(' ')[0];
 
@@ -117,7 +108,8 @@ export function DebugSimulator() {
       ]);
       setMessage('');
     } catch (err) {
-      setError(err.message || 'No se pudo conectar con la API en http://localhost:8000');
+      const msg = err.response?.data?.detail || err.message || 'No se pudo conectar con la API';
+      setError(msg);
     } finally {
       setLoading(false);
     }
