@@ -41,7 +41,7 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
         )
 
     # Actualizar fecha de último login
-    user.ultimo_login = datetime.now(timezone.utc)
+    user.ultimo_login = datetime.now(timezone.utc).replace(tzinfo=None)
     await db.commit()
     await db.refresh(user)
 
