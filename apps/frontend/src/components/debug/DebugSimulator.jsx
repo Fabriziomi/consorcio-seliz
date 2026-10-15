@@ -126,7 +126,7 @@ export function DebugSimulator() {
               <Terminal className="w-5 h-5 text-brand-ink" />
               <div>
                 <h2 className="text-base font-bold tracking-tight text-brand-ink">
-                  Simulador de Conversación HTTP Local
+                  Simulador de Atención y Respuestas
                 </h2>
               </div>
             </div>
@@ -176,17 +176,17 @@ export function DebugSimulator() {
               {/* Guardrail Horario */}
               <div className="col-span-12 sm:col-span-4">
                 <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary mb-1">
-                  Guardrail Horario (Override)
+                  Franja Horaria de Prueba
                 </label>
                 <SelectField
                   value={scheduleOverride}
                   onChange={(e) => setScheduleOverride(e.target.value)}
                   className="w-full"
                 >
-                  <option value="">Automático (Evaluar hora actual)</option>
-                  <option value="BOT_ACTIVE_OFF_HOURS">BOT_ACTIVE_OFF_HOURS (Fuera de horario - Bot Activo)</option>
-                  <option value="HUMAN_OFFICE_HOURS">HUMAN_OFFICE_HOURS (Horario Oficina - Bot Silencio)</option>
-                  <option value="QUIET_HOURS">QUIET_HOURS (Madrugada 00-07:30 - Silencio)</option>
+                  <option value="">Automático (Según hora actual)</option>
+                  <option value="BOT_ACTIVE_OFF_HOURS">Fuera de horario (Asistente activo)</option>
+                  <option value="HUMAN_OFFICE_HOURS">Horario de oficina (Atención humana - Asistente en silencio)</option>
+                  <option value="QUIET_HOURS">Horario nocturno (00:00 a 07:30 hs - En silencio)</option>
                 </SelectField>
               </div>
 
@@ -199,7 +199,7 @@ export function DebugSimulator() {
                   className="w-full"
                 >
                   <Send className="w-4 h-4" />
-                  <span>{loading ? 'Procesando…' : 'Enviar HTTP'}</span>
+                  <span>{loading ? 'Procesando…' : 'Probar Respuesta'}</span>
                 </Button>
               </div>
             </div>
@@ -330,29 +330,37 @@ export function DebugSimulator() {
                 </div>
               </div>
 
-              {/* Telemetría y Métricas del Pipeline */}
+              {/* Métricas y Estado de la Respuesta */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-border text-xs">
                 <div className="bg-surface-soft p-2.5 rounded-base border border-border">
-                  <span className="text-text-muted block text-[10px] uppercase font-semibold">Horario</span>
-                  <span className="text-brand-ink font-medium">{item.response.schedule_status}</span>
-                </div>
-
-                <div className="bg-surface-soft p-2.5 rounded-base border border-border">
-                  <span className="text-text-muted block text-[10px] uppercase font-semibold">RAG FAQs</span>
+                  <span className="text-text-muted block text-[10px] uppercase font-semibold">Franja Horaria</span>
                   <span className="text-brand-ink font-medium">
-                    {item.response.rag_matched ? `Match (${item.response.rag_score})` : 'No match'}
+                    {item.response.schedule_status === 'BOT_ACTIVE_OFF_HOURS'
+                      ? 'Fuera de horario'
+                      : item.response.schedule_status === 'HUMAN_OFFICE_HOURS'
+                      ? 'Horario de oficina'
+                      : item.response.schedule_status === 'QUIET_HOURS'
+                      ? 'Horario nocturno'
+                      : item.response.schedule_status}
                   </span>
                 </div>
 
                 <div className="bg-surface-soft p-2.5 rounded-base border border-border">
-                  <span className="text-text-muted block text-[10px] uppercase font-semibold">Tev1 Decisión</span>
+                  <span className="text-text-muted block text-[10px] uppercase font-semibold">Respuesta Automática</span>
                   <span className="text-brand-ink font-medium">
-                    {item.response.tev1_decision ? `Opción [${item.response.tev1_decision}]` : 'N/A'}
+                    {item.response.rag_matched ? 'Pregunta Frecuente' : 'Evaluación General'}
                   </span>
                 </div>
 
                 <div className="bg-surface-soft p-2.5 rounded-base border border-border">
-                  <span className="text-text-muted block text-[10px] uppercase font-semibold">Ticket Asignado</span>
+                  <span className="text-text-muted block text-[10px] uppercase font-semibold">Tipo de Solicitud</span>
+                  <span className="text-brand-ink font-medium">
+                    {item.response.intent ? item.response.intent.replace(/_/g, ' ') : 'Consulta General'}
+                  </span>
+                </div>
+
+                <div className="bg-surface-soft p-2.5 rounded-base border border-border">
+                  <span className="text-text-muted block text-[10px] uppercase font-semibold">Ticket Registrado</span>
                   <span className="text-brand-ink font-medium">
                     {item.response.ticket_created ? (
                       <span>

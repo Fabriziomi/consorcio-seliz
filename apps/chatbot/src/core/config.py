@@ -6,6 +6,7 @@ class ChatbotSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="allow")
 
     ENV: str = "development"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./consorcio.db"
     REDIS_URL: str = "redis://localhost:6379/0"
     API_URL: str = "http://localhost:8000"
     EVOLUTION_API_URL: str = "http://localhost:8080"

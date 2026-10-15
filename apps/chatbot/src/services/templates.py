@@ -65,6 +65,11 @@ TEMPLATES = {
         "Dejamos registrado tu pedido para que la administración o la guardia lo valide directamente con tu unidad ({unidad})."
     ),
 
+    "FUERA_HORARIO_CONFIRMACION_EDIFICIO": (
+        "Hola{nombre_saludo}, muchas gracias por indicarnos los datos de tu edificio y unidad ({nombre_consorcio}, {unidad}).\n\n"
+        "Dejamos registrado tu mensaje para coordinarlo a primera hora a partir de las 10:00 hs con el equipo correspondiente. Saludos."
+    ),
+
     "ACUSE_RECIBO_NEUTRO": (
         "Hola{nombre_saludo}, recibimos tu mensaje para la administración. Lo revisamos con el equipo y te respondemos en nuestro horario habitual de atención (lunes a viernes de 10 a 18 hs | sábados de 10 a 13 hs)."
     ),
@@ -87,13 +92,13 @@ def render_template(template_key: str, **kwargs) -> str:
     else:
         kwargs.setdefault("nombre_saludo", "")
 
-    # Parámetros por defecto para evitar KeyErrors
+    # Parámetros por defecto para evitar KeyErrors sin hardcodear datos de consorcios específicos
     kwargs.setdefault("unidad", kwargs.get("unidad_funcional") or "tu unidad")
     kwargs.setdefault("nombre_consorcio", "tu consorcio")
-    kwargs.setdefault("cbu", "0140000000000000000001")
-    kwargs.setdefault("alias", "CONSORCIO.SELIZ.OFICIAL")
-    kwargs.setdefault("cuit", "30-71122334-5")
-    kwargs.setdefault("email_cobranzas", "cobranzas@selizadministraciones.com.ar")
+    kwargs.setdefault("cbu", "")
+    kwargs.setdefault("alias", "")
+    kwargs.setdefault("cuit", "")
+    kwargs.setdefault("email_cobranzas", "admin@selizadministraciones.com.ar")
     kwargs.setdefault("telefono_guardia", "+54 9 11 6248-3302")
 
     return template.format(**kwargs)

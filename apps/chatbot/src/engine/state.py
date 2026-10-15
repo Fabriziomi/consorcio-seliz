@@ -36,6 +36,10 @@ class ChatState(BaseModel):
     tev1_decision: Optional[str] = None
     latency_metrics: Dict[str, float] = Field(default_factory=dict)
 
+    # Memoria conversacional multi-turno
+    pending_intent: Optional[str] = None
+    last_message_text: Optional[str] = None
+
     # Decisión y salida
     intent: Optional[str] = None
     should_respond: bool = True

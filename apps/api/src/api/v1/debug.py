@@ -13,9 +13,17 @@ from infrastructure.models import (
     ConsorcioModel,
     ConsorcioAtributoDinamicoModel,
     TicketConsultaModel,
+    FaqAprobadaModel,
+    ConversacionModel,
+    MensajeModel,
 )
-from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket
-from services.ticket_service import process_and_consolidate_ticket
+from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket, EnviadoPor
+from services.ticket_service import (
+    process_and_consolidate_ticket,
+    extract_consorcio_clue,
+    extract_unit_clue,
+)
+from services.rag_engine import rag_engine
 from engine.graph import decision_graph
 from engine.state import ChatState
 from core.logging import logger
@@ -96,31 +104,76 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
     if contacto:
         consorcio_id = contacto.consorcio_id
         unidad_funcional = contacto.unidad_funcional
-        if consorcio_id:
-            c_res = await db.execute(select(ConsorcioModel).where(ConsorcioModel.id == consorcio_id))
-            consorcio_obj = c_res.scalar_one_or_none()
-            if consorcio_obj:
-                consorcio_nombre = consorcio_obj.nombre
-                consorcio_info = {
-                    "id": consorcio_obj.id,
-                    "nombre": consorcio_obj.nombre,
-                    "direccion": consorcio_obj.direccion,
-                    "cbu": consorcio_obj.cbu_bancario,
-                    "alias": consorcio_obj.alias_bancario,
-                }
-                dyn_res = await db.execute(
-                    select(ConsorcioAtributoDinamicoModel).where(
-                        ConsorcioAtributoDinamicoModel.consorcio_id == consorcio_id
-                    )
-                )
-                atributos_dinamicos = {
-                    attr.clave: {
-                        "etiqueta": attr.etiqueta_visible,
-                        "valor": attr.valor,
-                        "es_publico": attr.es_publico_vecinos,
-                    }
-                    for attr in dyn_res.scalars().all()
-                }
+
+    # Pre-extracción: Si el contacto no tiene consorcio o unidad, extraer del mensaje actual
+    all_consorcios_res = await db.execute(select(ConsorcioModel).where(ConsorcioModel.activo == True))
+    all_consorcios = all_consorcios_res.scalars().all()
+
+    if not consorcio_id:
+        detected_c = extract_consorcio_clue(req.message, all_consorcios)
+        if detected_c:
+            consorcio_id = detected_c.id
+            consorcio_obj = detected_c
+            consorcio_nombre = detected_c.nombre
+            contacto.consorcio_id = consorcio_id
+            await db.commit()
+            await db.refresh(contacto)
+    elif not consorcio_obj:
+        c_res = await db.execute(select(ConsorcioModel).where(ConsorcioModel.id == consorcio_id))
+        consorcio_obj = c_res.scalar_one_or_none()
+        if consorcio_obj:
+            consorcio_nombre = consorcio_obj.nombre
+
+    if not unidad_funcional:
+        detected_u = extract_unit_clue(req.message)
+        if detected_u:
+            unidad_funcional = detected_u
+            contacto.unidad_funcional = detected_u
+            await db.commit()
+            await db.refresh(contacto)
+
+    if consorcio_obj:
+        consorcio_info = {
+            "id": consorcio_obj.id,
+            "nombre": consorcio_obj.nombre,
+            "direccion": consorcio_obj.direccion,
+            "cbu": consorcio_obj.cbu_bancario,
+            "alias": consorcio_obj.alias_bancario,
+        }
+        dyn_res = await db.execute(
+            select(ConsorcioAtributoDinamicoModel).where(
+                ConsorcioAtributoDinamicoModel.consorcio_id == consorcio_id
+            )
+        )
+        atributos_dinamicos = {
+            attr.clave: {
+                "etiqueta": attr.etiqueta_visible,
+                "valor": attr.valor,
+                "es_publico": attr.es_publico_vecinos,
+            }
+            for attr in dyn_res.scalars().all()
+        }
+
+    # Memoria conversacional multi-turno: buscar si el último ticket o mensaje esperaba edificio o pago
+    pending_intent = None
+    last_t_res = await db.execute(
+        select(TicketConsultaModel)
+        .where(TicketConsultaModel.contacto_id == contacto.id)
+        .order_by(TicketConsultaModel.creado_el.desc())
+        .limit(1)
+    )
+    last_ticket = last_t_res.scalar_one_or_none()
+    if last_ticket:
+        if last_ticket.intencion == "SOLICITAR_CONSORCIO_PAGO":
+            pending_intent = "SOLICITAR_CONSORCIO_PAGO"
+        elif last_ticket.estado == EstadoTicket.ESPERANDO_RESPUESTA or last_ticket.intencion == "FUERA_HORARIO_SOLICITAR_EDIFICIO":
+            pending_intent = "FUERA_HORARIO_SOLICITAR_EDIFICIO"
+
+    # Sincronizar FAQs activas de la BD con el motor RAG
+    faqs_res = await db.execute(select(FaqAprobadaModel).where(FaqAprobadaModel.activo == True))
+    db_faqs = faqs_res.scalars().all()
+    if db_faqs:
+        rag_engine.load_db_faqs(db_faqs)
 
     # 2. Preparar el estado inicial de LangGraph
     schedule_override = req.override_schedule
@@ -136,6 +189,7 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
         phone=req.phone,
         user_name=contacto.nombre_completo if contacto else req.user_name,
         user_message=req.message,
+        pending_intent=pending_intent,
         consorcio_id=consorcio_id,
         consorcio_nombre=consorcio_nombre,
         unidad_funcional=unidad_funcional,
@@ -163,7 +217,7 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
     should_respond = graph_result.get("should_respond", True)
 
     should_create_ticket = (
-        (intent in ("EMERGENCIA", "FUERA_HORARIO_TICKET", "PAGO_REALIZADO", "CONSULTA_ATRIBUTO_RESTRINGIDO") or graph_result.get("tev1_decision") == "D")
+        (intent in ("EMERGENCIA", "FUERA_HORARIO_TICKET", "FUERA_HORARIO_SOLICITAR_EDIFICIO", "FUERA_HORARIO_CONFIRMACION_EDIFICIO", "SOLICITAR_CONSORCIO_PAGO", "PAGO_REALIZADO", "CONSULTA_ATRIBUTO_RESTRINGIDO") or graph_result.get("tev1_decision") == "D")
         and not is_greeting
         and not is_noise
         and not is_close

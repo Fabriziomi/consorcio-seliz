@@ -16,6 +16,8 @@ import {
   ChevronUp,
   Sparkles,
   Layers,
+  HelpCircle,
+  Users,
 } from 'lucide-react';
 import { LoginForm } from './components/auth/LoginForm.jsx';
 import { ChatInbox } from './components/chat/ChatInbox.jsx';
@@ -24,11 +26,13 @@ import { AiDraftBox } from './components/chat/AiDraftBox.jsx';
 import { TicketsTable } from './components/tables/TicketsTable.jsx';
 import { ExpedientesTable } from './components/tables/ExpedientesTable.jsx';
 import { DebugSimulator } from './components/debug/DebugSimulator.jsx';
+import { FaqsManager } from './components/faqs/FaqsManager.jsx';
+import { ConsorciosManager } from './components/consorcios/ConsorciosManager.jsx';
+import { ContactosManager } from './components/contactos/ContactosManager.jsx';
 import { Card, CardHeader, CardContent } from './components/ui/Card.jsx';
 import { Badge } from './components/ui/Badge.jsx';
 import { Button } from './components/ui/Button.jsx';
-import { ApiService } from './lib/api-client.js';
-import { ChatwootService } from './lib/chatwoot-client.js';
+import { ApiService, formatDateTime } from './lib/api-client.js';
 
 const INITIAL_CONSORCIOS = [
   {
@@ -172,7 +176,7 @@ const INITIAL_DRAFTS = {
     text:
       'Hola Carlos, ¿cómo estás? Tomamos conocimiento del corte de luz en el palier de Torre Corrientes.\n' +
       'El reclamo quedó registrado bajo el ticket #1042 y lo evaluamos a primera hora mañana a partir de las 10:00 hs con el electricista.',
-    source: 'LangGraph Reclamos',
+    source: 'Asistente de Reclamos',
     confidence: 0.94,
   },
   'conv-2': {
@@ -182,7 +186,7 @@ const INITIAL_DRAFTS = {
       '• Alias: CALLAO.2334.EXPENSAS\n' +
       '• CUIT: 30-71998877-6\n\n' +
       'Una vez hecho el pago, envianos por favor el comprobante a callao2334@selizadministraciones.com.ar indicando tu unidad (7° A). Saludos.',
-    source: 'Tev1 Router (Cobranzas)',
+    source: 'Mesa de Cobranzas',
     confidence: 0.98,
   },
   'conv-3': null,
@@ -344,45 +348,133 @@ export default function App() {
     }
   }, []);
 
-  // Carga y sincronización de contactos desde la API
-  const loadContactos = useCallback(async () => {
+  // Carga de conversaciones desde la API
+  const loadConversaciones = useCallback(async () => {
     try {
-      const contactosList = await ApiService.getContactos();
-      if (Array.isArray(contactosList) && contactosList.length > 0) {
-        // Enriquecer conversaciones con datos oficiales de la base de datos
-        setConversations((prev) => {
-          const map = new Map(prev.map((c) => [c.phone, c]));
-          contactosList.forEach((cont) => {
-            if (map.has(cont.telefono_wa)) {
-              const existing = map.get(cont.telefono_wa);
-              map.set(cont.telefono_wa, {
-                ...existing,
-                senderName: cont.nombre_completo || existing.senderName,
-                consorcio: cont.consorcio_nombre || existing.consorcio,
-                unidad: `${cont.unidad_funcional || ''} (${cont.rol || ''})`.trim() || existing.unidad,
-              });
-            } else {
-              const newId = `conv-${cont.id}`;
-              map.set(cont.telefono_wa, {
-                id: newId,
-                senderName: cont.nombre_completo || 'Vecino',
-                phone: cont.telefono_wa,
-                consorcio: cont.consorcio_nombre || 'Consorcio General',
-                unidad: cont.unidad_funcional || 'Unidad S/E',
-                lastMessage: 'Sin mensajes recientes',
-                timestamp: 'Reciente',
-                unreadCount: 0,
-                status: 'open',
-              });
-            }
-          });
-          return Array.from(map.values());
+      const data = await ApiService.getConversaciones();
+      if (Array.isArray(data) && data.length > 0) {
+        const formatted = data.map((c) => ({
+          id: c.id,
+          senderName: c.contacto?.nombre_completo || 'Vecino',
+          phone: c.contacto?.telefono_wa || '',
+          consorcio: c.consorcio?.nombre || 'Consorcio General',
+          unidad: c.contacto?.unidad_funcional
+            ? `${c.contacto.unidad_funcional} (${c.contacto.rol || 'PROPIETARIO'})`
+            : 'Unidad S/E',
+          lastMessage: c.ultimo_mensaje || 'Sin mensajes recientes',
+          timestamp: c.ultimo_mensaje_el ? formatDateTime(c.ultimo_mensaje_el) : 'Reciente',
+          unreadCount: c.no_leidos_count || 0,
+          status: c.estado || 'open',
+          botActive: c.bot_activo,
+          etiquetas: c.etiquetas || [],
+          raw: c,
+        }));
+        setConversations(formatted);
+        setSelectedConvId((prev) => {
+          if (!prev || !formatted.some((f) => f.id === prev)) {
+            return formatted[0].id;
+          }
+          return prev;
         });
       }
     } catch (err) {
-      console.warn('[CRM] No se pudieron sincronizar contactos con backend:', err.message);
+      console.warn('[CRM] No se pudieron cargar conversaciones del backend:', err.message);
     }
   }, []);
+
+  // Carga de mensajes de la conversación seleccionada
+  const loadMessagesForConversation = useCallback(async (convId) => {
+    if (!convId) return;
+    try {
+      const msgs = await ApiService.getConversacionMessages(convId);
+      if (Array.isArray(msgs)) {
+        const formatted = msgs.map((m) => ({
+          id: m.id,
+          sender: m.enviado_por === 'agente' ? 'ivana' : m.enviado_por === 'bot' ? 'bot' : 'vecino',
+          text: m.contenido,
+          privado: m.privado,
+          isPrivateNote: m.privado,
+          tipo: m.tipo,
+          timestamp: m.creado_el ? formatDateTime(m.creado_el) : '',
+          agente_nombre: m.agente_nombre,
+        }));
+        setMessagesByConv((prev) => ({
+          ...prev,
+          [convId]: formatted,
+        }));
+      }
+    } catch (err) {
+      console.warn(`[CRM] No se pudieron cargar mensajes para ${convId}:`, err.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedConvId) {
+      loadMessagesForConversation(selectedConvId);
+    }
+  }, [selectedConvId, loadMessagesForConversation]);
+
+  // WebSocket y sincronización en tiempo real
+  useEffect(() => {
+    let ws = null;
+    let reconnectTimeout = null;
+
+    const connectWs = () => {
+      try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = import.meta.env.VITE_API_URL
+          ? import.meta.env.VITE_API_URL.replace(/^http(s)?:\/\//, '')
+          : window.location.host;
+        const wsUrl = `${protocol}//${host}/ws/conversaciones`;
+
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          setApiConnected(true);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'new_message') {
+              const { conversacion_id } = data.data || {};
+              if (conversacion_id && conversacion_id === selectedConvId) {
+                loadMessagesForConversation(selectedConvId);
+              }
+              loadConversaciones();
+            } else if (data.type === 'status_changed' || data.type === 'labels_updated') {
+              loadConversaciones();
+            }
+          } catch {}
+        };
+
+        ws.onclose = () => {
+          reconnectTimeout = setTimeout(connectWs, 5000);
+        };
+
+        ws.onerror = () => {
+          ws.close();
+        };
+      } catch {
+        reconnectTimeout = setTimeout(connectWs, 5000);
+      }
+    };
+
+    connectWs();
+
+    const pollInterval = setInterval(() => {
+      loadConversaciones();
+      if (selectedConvId) {
+        loadMessagesForConversation(selectedConvId);
+      }
+    }, 6000);
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      clearInterval(pollInterval);
+    };
+  }, [selectedConvId, loadConversaciones, loadMessagesForConversation]);
 
   // Actualización de estado de un ticket
   const handleUpdateTicketStatus = async (ticketId, newStatus) => {
@@ -409,17 +501,19 @@ export default function App() {
       if (health && health.status === 'ok') {
         setApiConnected(true);
       }
-      await Promise.allSettled([loadExpedientes(), loadTickets(), loadConsorcios(), loadContactos()]);
+      await Promise.allSettled([loadExpedientes(), loadTickets(), loadConsorcios(), loadConversaciones()]);
     }
     init();
-  }, [loadExpedientes, loadTickets, loadConsorcios, loadContactos]);
+  }, [loadExpedientes, loadTickets, loadConsorcios, loadConversaciones]);
 
   const navigationItems = [
-    { id: 'inbox', label: 'Inbox', icon: MessageSquare },
+    { id: 'inbox', label: 'Inbox Omnicanal', icon: MessageSquare },
     { id: 'expedientes', label: 'Expedientes & Incidentes', icon: Layers },
     { id: 'tickets', label: 'Tickets & Reclamos', icon: CheckSquare },
-    { id: 'consorcios', label: 'Consorcios & CBU', icon: Building2 },
-    { id: 'debug', label: 'Simulador Debug', icon: Terminal },
+    { id: 'faqs', label: 'Base de Conocimiento', icon: HelpCircle },
+    { id: 'consorcios', label: 'Consorcios & Atributos', icon: Building2 },
+    { id: 'contactos', label: 'Directorio de Contactos', icon: Users },
+    { id: 'debug', label: 'Simulador de Atención', icon: Terminal },
   ];
 
   const currentConv = conversations.find((c) => c.id === selectedConvId) || conversations[0];
@@ -427,9 +521,9 @@ export default function App() {
   const currentDraft = aiDrafts[selectedConvId];
   const activeLabel = navigationItems.find((item) => item.id === activeTab)?.label || 'Inbox';
 
-  // 1. Envío de mensaje en representación de la administración (Dra. Ivana Seliz)
-  const handleSendMessage = async (text) => {
-    if (!text.trim()) return;
+  // 1. Envío de mensaje (WhatsApp oficial o Nota Interna)
+  const handleSendMessage = async (text, isPrivate = false) => {
+    if (!text.trim() || !selectedConvId) return;
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
@@ -437,6 +531,8 @@ export default function App() {
       id: `m-${Date.now()}`,
       sender: 'ivana',
       text: text.trim(),
+      privado: isPrivate,
+      isPrivateNote: isPrivate,
       timestamp: timeStr,
     };
 
@@ -450,7 +546,7 @@ export default function App() {
         c.id === selectedConvId
           ? {
               ...c,
-              lastMessage: text.trim(),
+              lastMessage: isPrivate ? c.lastMessage : text.trim(),
               timestamp: timeStr,
               unreadCount: 0,
             }
@@ -458,29 +554,57 @@ export default function App() {
       )
     );
 
-    // Limpiar borrador de IA si estaba abierto
     setAiDrafts((prev) => ({
       ...prev,
       [selectedConvId]: null,
     }));
 
-    // Bloquear bot (Takeover humano) para este contacto automáticamente
-    if (currentConv?.phone) {
+    try {
+      await ApiService.sendConversacionMessage(selectedConvId, text.trim(), isPrivate);
+      await loadMessagesForConversation(selectedConvId);
+      await loadConversaciones();
+    } catch (err) {
+      console.warn('[CRM] Envío de mensaje a backend falló:', err.message);
+    }
+  };
+
+  // Actualización de estado de la conversación (open, pending, resolved)
+  const handleUpdateConversationStatus = async (newStatus) => {
+    if (!selectedConvId) return;
+    setConversations((prev) =>
+      prev.map((c) => (c.id === selectedConvId ? { ...c, status: newStatus } : c))
+    );
+    try {
+      await ApiService.updateConversacionStatus(selectedConvId, newStatus);
+      await loadConversaciones();
+    } catch (err) {
+      console.error('[CRM] Error al actualizar estado de conversación:', err);
+    }
+  };
+
+  // Apertura directa de chat desde el Directorio de Contactos
+  const handleOpenChatFromContacto = async (contacto) => {
+    let targetConv = conversations.find(
+      (c) => c.phone === contacto.telefono_wa || c.raw?.contacto_id === contacto.id
+    );
+
+    if (!targetConv) {
       try {
-        await ApiService.lockTakeover(currentConv.phone);
+        const created = await ApiService.createConversacion({ contacto_id: contacto.id });
+        if (created) {
+          await loadConversaciones();
+          targetConv = { id: created.id };
+        }
       } catch (err) {
-        console.warn('[CRM] No se pudo activar takeover en backend:', err.message);
+        console.warn('[CRM] No se pudo crear conversación para contacto:', err);
       }
     }
 
-    // Integración opcional con Chatwoot
-    try {
-      if (import.meta.env.VITE_CHATWOOT_API_TOKEN) {
-        await ChatwootService.sendMessage(selectedConvId, text.trim(), false);
-      }
-    } catch (err) {
-      console.warn('[CRM] Envío opcional a Chatwoot no completado:', err.message);
+    if (targetConv) {
+      setSelectedConvId(targetConv.id);
     }
+    setActiveTab('inbox');
+    setMobileChatOpen(true);
   };
 
   // 2. Aprobación y despacho de borrador sugerido por IA
@@ -507,7 +631,7 @@ export default function App() {
           ...prev,
           [selectedConvId]: {
             text: suggestion.text,
-            source: suggestion.intent || 'LangGraph IA',
+            source: suggestion.intent || 'Sugerencia Automática',
             confidence: 0.96,
           },
         }));
@@ -588,7 +712,7 @@ export default function App() {
             ...prev,
             [selectedConvId]: {
               text: suggestion.text,
-              source: suggestion.intent || 'LangGraph Engine',
+              source: suggestion.intent || 'Sugerencia Automática',
               confidence: 0.95,
             },
           }));
@@ -783,10 +907,10 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Indicador de conexión API en móvil / tablet */}
+            {/* Indicador de conexión en móvil / tablet */}
             <div className="flex lg:hidden items-center gap-1.5 px-2 py-0.5 rounded-full border border-border/70 text-[10px] text-text-secondary bg-surface-muted/50">
               <span className={`size-1.5 rounded-full ${apiConnected ? 'bg-success' : 'bg-text-muted'}`} />
-              <span>{apiConnected ? 'API OK' : 'Local'}</span>
+              <span>{apiConnected ? 'En línea' : 'Desconectado'}</span>
             </div>
 
             {/* Controlador de Zoom Minimalista */}
@@ -867,13 +991,16 @@ export default function App() {
               >
                 <div className="flex-1 overflow-hidden min-w-0">
                   <MessageThread
-                    conversationId={currentConv.id}
-                    senderName={currentConv.senderName}
-                    phone={currentConv.phone}
-                    consorcio={currentConv.consorcio}
-                    unidad={currentConv.unidad}
+                    conversationId={currentConv?.id}
+                    senderName={currentConv?.senderName}
+                    phone={currentConv?.phone}
+                    consorcio={currentConv?.consorcio}
+                    unidad={currentConv?.unidad}
+                    status={currentConv?.status || 'open'}
+                    botActive={currentConv?.botActive !== false}
                     messages={currentMessages}
                     onSendMessage={handleSendMessage}
+                    onUpdateStatus={handleUpdateConversationStatus}
                     onGenerateAiDraft={handleGenerateAiDraft}
                     generatingDraft={generatingDraft}
                     onBack={() => setMobileChatOpen(false)}
@@ -943,102 +1070,27 @@ export default function App() {
             </div>
           )}
 
+          {activeTab === 'faqs' && (
+            <div className="h-full overflow-hidden">
+              <FaqsManager consorcios={consorcios} />
+            </div>
+          )}
+
           {activeTab === 'consorcios' && (
-            <div className="h-full overflow-y-auto space-y-4 sm:space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h2 className="text-sm sm:text-base font-bold tracking-tight text-brand-ink">
-                        Directorio de Consorcios Administrados
-                      </h2>
-                    </div>
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={loadConsorcios}
-                        disabled={loadingConsorcios}
-                        className="h-7 px-2.5 text-xs text-text-secondary hover:text-brand-ink"
-                        title="Actualizar consorcios desde la base de datos"
-                      >
-                        <RotateCcw size={12} className={loadingConsorcios ? 'animate-spin' : ''} />
-                        <span>Actualizar</span>
-                      </Button>
-                      <span className="text-xs text-text-muted font-medium bg-surface-muted px-2 py-0.5 rounded-full border border-border/60">
-                        {consorcios.length} consorcios
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
+            <div className="h-full overflow-hidden">
+              <ConsorciosManager
+                consorcios={consorcios}
+                onRefreshParent={loadConsorcios}
+              />
+            </div>
+          )}
 
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
-                    {consorcios.map((c) => (
-                      <Card
-                        key={c.id}
-                        className="p-4 sm:p-5 space-y-3 border border-border shadow-subtle hover:border-brand-ink/40 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <h3 className="text-xs sm:text-sm font-bold text-brand-ink leading-snug">
-                              {c.nombre}
-                            </h3>
-                            <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5">
-                              {c.direccion}
-                            </p>
-                          </div>
-                          {c.cuit && (
-                            <Badge variant="neutral" className="text-[10px] shrink-0">
-                              CUIT {c.cuit}
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="text-[11px] sm:text-xs text-text-secondary space-y-1.5 pt-3 border-t border-border bg-surface-soft p-3 rounded-base">
-                          {c.cbu_bancario && (
-                            <div className="break-all">
-                              CBU: <span className="font-semibold text-brand-ink">{c.cbu_bancario}</span>
-                            </div>
-                          )}
-                          {c.alias_bancario && (
-                            <div>
-                              Alias: <span className="font-semibold text-brand-ink">{c.alias_bancario}</span>
-                            </div>
-                          )}
-                          {c.email_cobranzas && (
-                            <div className="truncate">
-                              Cobranzas: <span className="font-semibold text-brand-ink">{c.email_cobranzas}</span>
-                            </div>
-                          )}
-                          {c.telefono_porteria && (
-                            <div>
-                              Portería: <span className="font-semibold text-brand-ink">{c.telefono_porteria}</span>
-                            </div>
-                          )}
-                          {c.emergencia_ascensores && (
-                            <div>
-                              Guardia Ascensores: <span className="font-semibold text-brand-ink">{c.emergencia_ascensores}</span>
-                            </div>
-                          )}
-                          {c.emergencia_plomeria && (
-                            <div>
-                              Guardia Plomería: <span className="font-semibold text-brand-ink">{c.emergencia_plomeria}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {c.pautas_mudanza && (
-                          <div className="text-[11px] text-text-secondary bg-surface-muted/40 p-2.5 rounded border border-border/50">
-                            <span className="font-semibold text-brand-ink block mb-0.5">Pautas de Mudanza:</span>
-                            <span className="text-text-muted">{c.pautas_mudanza}</span>
-                          </div>
-                        )}
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+          {activeTab === 'contactos' && (
+            <div className="h-full overflow-hidden">
+              <ContactosManager
+                consorcios={consorcios}
+                onOpenChat={handleOpenChatFromContacto}
+              />
             </div>
           )}
 

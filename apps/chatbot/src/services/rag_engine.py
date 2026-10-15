@@ -11,6 +11,7 @@ class FaqItem:
     respuesta: str
     categoria: str
     consorcio: Optional[str] = None
+    consorcio_id: Optional[str] = None
 
     @property
     def pregunta_principal(self) -> str:
@@ -113,15 +114,62 @@ class RagEngine:
         self._embedding_model: Optional[TextEmbedding] = None
         self._faq_embeddings: Optional[np.ndarray] = None
         self._index_to_faq: List[FaqItem] = []
-        self.faqs = OFFICIAL_FAQS
+        self.faqs: List[FaqItem] = list(OFFICIAL_FAQS)
 
     def _get_model(self) -> TextEmbedding:
         if self._embedding_model is None:
             self._embedding_model = TextEmbedding(self.model_name)
         return self._embedding_model
 
+    def load_db_faqs(self, db_faqs: List[Any]):
+        """
+        Carga y actualiza las FAQs aprobadas en memoria desde la base de datos (FaqAprobadaModel o diccionarios).
+        Preserva las oficiales como fallback base.
+        """
+        new_faqs: List[FaqItem] = []
+        for f in db_faqs:
+            f_id = getattr(f, "id", None) or (f.get("id") if isinstance(f, dict) else None)
+            pregunta = getattr(f, "pregunta", None) or (f.get("pregunta") if isinstance(f, dict) else None)
+            respuesta = (
+                getattr(f, "respuesta_oficial", None)
+                or getattr(f, "respuesta", None)
+                or (f.get("respuesta_oficial") if isinstance(f, dict) else None)
+                or (f.get("respuesta") if isinstance(f, dict) else None)
+            )
+            activo = getattr(f, "activo", True) if hasattr(f, "activo") else (f.get("activo", True) if isinstance(f, dict) else True)
+            c_id = getattr(f, "consorcio_id", None) or (f.get("consorcio_id") if isinstance(f, dict) else None)
+
+            if not activo or not pregunta or not respuesta:
+                continue
+
+            # Mapeo de variaciones (si tiene saltos de línea)
+            variaciones = [p.strip() for p in pregunta.split("\n") if p.strip()]
+            if not variaciones:
+                variaciones = [pregunta.strip()]
+
+            new_faqs.append(
+                FaqItem(
+                    id=str(f_id or f"faq-db-{len(new_faqs)}"),
+                    preguntas=variaciones,
+                    respuesta=respuesta.strip(),
+                    categoria="BASE_CONOCIMIENTO",
+                    consorcio_id=c_id,
+                )
+            )
+
+        # Agregar FAQs oficiales que no colisionen por ID
+        existing_ids = {item.id for item in new_faqs}
+        for base_faq in OFFICIAL_FAQS:
+            if base_faq.id not in existing_ids:
+                new_faqs.append(base_faq)
+
+        self.faqs = new_faqs
+        # Invalidar embeddings para reconstrucción en caliente
+        self._faq_embeddings = None
+        self._index_to_faq = []
+
     def _initialize_index(self):
-        """Indexa y cachea los embeddings de todas las variaciones de FAQs oficiales."""
+        """Indexa y cachea los embeddings de todas las variaciones de FAQs."""
         if self._faq_embeddings is None:
             model = self._get_model()
             textos = []
@@ -132,6 +180,11 @@ class RagEngine:
                     textos.append(preg)
                     faq_mapping.append(faq)
 
+            if not textos:
+                self._faq_embeddings = np.empty((0, 384), dtype=np.float32)
+                self._index_to_faq = []
+                return
+
             embeddings = list(model.embed(textos))
             self._faq_embeddings = np.array(embeddings, dtype=np.float32)
 
@@ -140,13 +193,16 @@ class RagEngine:
             self._faq_embeddings = self._faq_embeddings / np.maximum(norms, 1e-12)
             self._index_to_faq = faq_mapping
 
-    def search(self, query: str) -> Tuple[Optional[FaqItem], float, float]:
+    def search(self, query: str, consorcio_id: Optional[str] = None) -> Tuple[Optional[FaqItem], float, float]:
         """
-        Búsqueda vectorial Nivel 1.
+        Búsqueda vectorial Nivel 1 con filtro estricto por consorcio para evitar fugas de información.
         Retorna: (FaqItem si similitud >= threshold, score_maximo, latencia_ms)
         """
         self._initialize_index()
         t0 = time.time()
+
+        if self._faq_embeddings is None or len(self._index_to_faq) == 0:
+            return None, 0.0, 0.0
 
         model = self._get_model()
         query_emb = np.array(list(model.embed([query]))[0], dtype=np.float32)
@@ -154,17 +210,27 @@ class RagEngine:
         if norm > 0:
             query_emb = query_emb / norm
 
-        # Producto punto contra todas las variaciones indexadas (~10ms)
+        # Producto punto contra todas las variaciones indexadas
         scores = np.dot(self._faq_embeddings, query_emb)
-        best_idx = int(np.argmax(scores))
-        best_score = float(scores[best_idx])
+        sorted_indices = np.argsort(scores)[::-1]
+        best_overall_score = float(scores[sorted_indices[0]]) if len(sorted_indices) > 0 else 0.0
         latency_ms = (time.time() - t0) * 1000
 
-        matched_faq = self._index_to_faq[best_idx]
-        if best_score >= self.threshold:
-            return matched_faq, best_score, latency_ms
+        for idx in sorted_indices:
+            score = float(scores[idx])
+            if score < self.threshold:
+                break
+            candidate = self._index_to_faq[idx]
+            # Si la FAQ pertenece a un consorcio específico:
+            if candidate.consorcio_id:
+                if consorcio_id and candidate.consorcio_id != consorcio_id:
+                    continue  # Es de otro consorcio, saltar
+                if not consorcio_id:
+                    continue  # Vecino sin consorcio identificado, no divulgar
+            return candidate, score, latency_ms
 
-        return None, best_score, latency_ms
+        return None, best_overall_score, latency_ms
 
 
 rag_engine = RagEngine(threshold=0.80)
+

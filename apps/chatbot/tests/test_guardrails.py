@@ -109,9 +109,47 @@ def test_decision_graph_rag_faq_resolution():
 
 def test_decision_graph_tev1_payment_routing():
     graph = build_decision_graph()
-    state = ChatState(phone="+5491100000000", user_message="Por favor me pasan el CBU para transferir?")
-    result = graph.invoke(state)
-    assert result["should_respond"] is True
-    assert result["tev1_decision"] == "B"
-    assert "CBU:" in result["response_text"]
-    assert "Alias:" in result["response_text"]
+
+    # 1. Sin consorcio identificado: solicita edificio y unidad para evitar filtración de CBU
+    state_unknown = ChatState(phone="+5491100000000", user_message="Por favor me pasan el CBU para transferir?")
+    result_unknown = graph.invoke(state_unknown)
+    assert result_unknown["should_respond"] is True
+    assert result_unknown["tev1_decision"] == "B"
+    assert result_unknown["intent"] == "SOLICITAR_CONSORCIO_PAGO"
+    assert "edificio" in result_unknown["response_text"].lower()
+
+    # 2. Con consorcio identificado: provee CBU y Alias exactos del consorcio
+    state_known = ChatState(
+        phone="+5491100000000",
+        user_message="Por favor me pasan el CBU para transferir?",
+        consorcio_id="cons-callao-2334",
+        consorcio_nombre="Consorcio Callao 2334",
+        consorcio_cbu="0140000000000000000002",
+        consorcio_alias="CALLAO.2334.EXPENSAS",
+    )
+    result_known = graph.invoke(state_known)
+    assert result_known["should_respond"] is True
+    assert result_known["tev1_decision"] == "B"
+    assert "0140000000000000000002" in result_known["response_text"]
+    assert "CALLAO.2334.EXPENSAS" in result_known["response_text"]
+
+
+def test_decision_graph_multiturn_payment_resolution():
+    graph = build_decision_graph()
+
+    # Turno 2 multi-turno: El bot esperaba edificio para pago (pending_intent) y el vecino responde "Callao 2334 7A"
+    state_turn2 = ChatState(
+        phone="+5491100000000",
+        user_message="Callao 2334 7A",
+        pending_intent="SOLICITAR_CONSORCIO_PAGO",
+        consorcio_id="cons-callao-2334",
+        consorcio_nombre="Consorcio Callao 2334",
+        consorcio_cbu="0140000000000000000002",
+        consorcio_alias="CALLAO.2334.EXPENSAS",
+        unidad_funcional="7° A",
+    )
+    result_turn2 = graph.invoke(state_turn2)
+    assert result_turn2["should_respond"] is True
+    assert result_turn2["intent"] == "EXPENSAS_DATOS_PAGO"
+    assert "0140000000000000000002" in result_turn2["response_text"]
+    assert "CALLAO.2334.EXPENSAS" in result_turn2["response_text"]

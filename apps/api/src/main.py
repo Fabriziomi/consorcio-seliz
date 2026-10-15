@@ -11,6 +11,10 @@ from api.v1.tickets import router as tickets_router
 from api.v1.expedientes import router as expedientes_router
 from api.v1.auth import router as auth_router
 from api.v1.debug import router as debug_router
+from api.v1.conversaciones import router as conversaciones_router
+from api.v1.faqs import router as faqs_router
+from api.v1.chatwoot_compat import router as chatwoot_compat_router
+from api.v1.ws import router as ws_router
 from infrastructure.database import engine, Base, AsyncSessionLocal
 from infrastructure.seed import seed_initial_data
 
@@ -58,16 +62,21 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["access-token", "uid", "client", "expiry", "token-type"],
 )
 
 # Inclusión de Routers
 app.include_router(webhook_router, prefix="/api/v1", tags=["Webhooks"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Autenticación"])
+app.include_router(chatwoot_compat_router, prefix="/api/v1", tags=["Chatwoot Mobile Compatibility"])
 app.include_router(consorcios_router, prefix="/api/v1/consorcios", tags=["Consorcios"])
 app.include_router(contactos_router, prefix="/api/v1/contactos", tags=["Contactos"])
 app.include_router(tickets_router, prefix="/api/v1/tickets", tags=["Tickets"])
 app.include_router(expedientes_router, prefix="/api/v1/expedientes", tags=["Expedientes"])
+app.include_router(conversaciones_router, prefix="/api/v1/conversaciones", tags=["Conversaciones & Inbox"])
+app.include_router(faqs_router, prefix="/api/v1/faqs", tags=["Base de Conocimiento & FAQs"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["Debug Simulator"])
+app.include_router(ws_router, tags=["WebSockets"])
 
 
 @app.get("/health", tags=["Health"])

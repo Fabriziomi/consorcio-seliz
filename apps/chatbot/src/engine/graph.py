@@ -94,7 +94,7 @@ def content_guardrails_node(state: ChatState) -> dict:
 
 # --- Nivel 1: Búsqueda Vectorial RAG en FAQs Aprobadas ---
 def rag_faq_node(state: ChatState) -> dict:
-    faq, score, latency_ms = rag_engine.search(state.user_message)
+    faq, score, latency_ms = rag_engine.search(state.user_message, consorcio_id=state.consorcio_id)
     latencies = dict(state.latency_metrics)
     latencies["rag_faq_ms"] = round(latency_ms, 2)
 
@@ -165,12 +165,24 @@ def generate_greeting_response(state: ChatState) -> dict:
 
 
 def generate_payment_response(state: ChatState) -> dict:
+    # Si no se tiene el consorcio o CBU identificado, solicitar datos para evitar enviar CBU erróneo
+    if not state.consorcio_id or not state.consorcio_cbu:
+        response = render_template(
+            "SOLICITAR_CONSORCIO_PAGO",
+            user_name=state.user_name,
+        )
+        return {
+            "intent": "SOLICITAR_CONSORCIO_PAGO",
+            "should_respond": True,
+            "response_text": response,
+        }
+
     response = render_template(
         "EXPENSAS_PAGO_INFO",
-        nombre_consorcio=state.consorcio_nombre or "Administración Dra. Ivana Seliz",
-        cbu=state.consorcio_cbu or "0140000000000000000001",
-        alias=state.consorcio_alias or "CONSORCIO.SELIZ.OFICIAL",
-        cuit=state.consorcio_cuit or "30-71122334-5",
+        nombre_consorcio=state.consorcio_nombre or "tu consorcio",
+        cbu=state.consorcio_cbu,
+        alias=state.consorcio_alias or "",
+        cuit=state.consorcio_cuit or "",
         email_cobranzas=state.consorcio_email_cobranzas or "cobranzas@selizadministraciones.com.ar",
         user_name=state.user_name,
         unidad_funcional=state.unidad_funcional or "tu unidad",
@@ -267,7 +279,7 @@ def generate_off_hours_response(state: ChatState) -> dict:
             user_name=state.user_name,
         )
         return {
-            "intent": "FUERA_HORARIO_TICKET",
+            "intent": "FUERA_HORARIO_SOLICITAR_EDIFICIO",
             "should_respond": True,
             "response_text": response,
         }
@@ -279,6 +291,20 @@ def generate_off_hours_response(state: ChatState) -> dict:
     )
     return {
         "intent": "FUERA_HORARIO_TICKET",
+        "should_respond": True,
+        "response_text": response,
+    }
+
+
+def generate_edificio_confirmed_response(state: ChatState) -> dict:
+    response = render_template(
+        "FUERA_HORARIO_CONFIRMACION_EDIFICIO",
+        user_name=state.user_name,
+        nombre_consorcio=state.consorcio_nombre or "tu consorcio",
+        unidad=state.unidad_funcional or "tu unidad",
+    )
+    return {
+        "intent": "FUERA_HORARIO_CONFIRMACION_EDIFICIO",
         "should_respond": True,
         "response_text": response,
     }
@@ -315,6 +341,15 @@ def route_after_guardrails(state: ChatState) -> str:
 
     if state.is_pure_greeting:
         return "greeting_response"
+
+    # Multi-turno: Si la administración estaba aguardando edificio o unidad
+    if state.pending_intent == "SOLICITAR_CONSORCIO_PAGO":
+        return "payment_response"
+
+    if state.pending_intent == "FUERA_HORARIO_SOLICITAR_EDIFICIO":
+        if state.consorcio_id:
+            return "edificio_confirmed_response"
+        return "off_hours_response"
 
     # Si está fuera de horario hábil y el bot está activo, pasar a RAG Nivel 1
     return "rag_faq_node"
@@ -359,6 +394,7 @@ def build_decision_graph():
     builder.add_node("payment_confirmation_response", generate_payment_confirmation_response)
     builder.add_node("mudanza_response", generate_mudanza_response)
     builder.add_node("off_hours_response", generate_off_hours_response)
+    builder.add_node("edificio_confirmed_response", generate_edificio_confirmed_response)
     builder.add_node("silent_action", generate_silent_response)
 
     builder.set_entry_point("check_schedule")
@@ -372,6 +408,9 @@ def build_decision_graph():
             "emergency_response": "emergency_response",
             "silent_action": "silent_action",
             "greeting_response": "greeting_response",
+            "payment_response": "payment_response",
+            "off_hours_response": "off_hours_response",
+            "edificio_confirmed_response": "edificio_confirmed_response",
             "rag_faq_node": "rag_faq_node",
         }
     )
@@ -404,6 +443,7 @@ def build_decision_graph():
     builder.add_edge("payment_confirmation_response", END)
     builder.add_edge("mudanza_response", END)
     builder.add_edge("off_hours_response", END)
+    builder.add_edge("edificio_confirmed_response", END)
     builder.add_edge("silent_action", END)
 
     return builder.compile()

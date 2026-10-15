@@ -54,6 +54,25 @@ class EstadoExpediente(str, Enum):
     CERRADO = "CERRADO"
 
 
+class EstadoConversacion(str, Enum):
+    OPEN = "open"
+    RESOLVED = "resolved"
+    PENDING = "pending"
+
+
+class TipoMensaje(str, Enum):
+    INCOMING = "incoming"
+    OUTGOING = "outgoing"
+    ACTIVITY = "activity"
+    TEMPLATE = "template"
+
+
+class EnviadoPor(str, Enum):
+    VECINO = "vecino"
+    BOT = "bot"
+    AGENTE = "agente"
+
+
 class ConsorcioBase(BaseModel):
     nombre: str
     direccion: str
@@ -72,11 +91,50 @@ class ConsorcioCreate(ConsorcioBase):
     pass
 
 
+class ConsorcioUpdate(BaseModel):
+    nombre: Optional[str] = None
+    direccion: Optional[str] = None
+    cuit: Optional[str] = None
+    cbu_bancario: Optional[str] = None
+    alias_bancario: Optional[str] = None
+    email_cobranzas: Optional[str] = None
+    telefono_porteria: Optional[str] = None
+    emergencia_ascensores: Optional[str] = None
+    emergencia_plomeria: Optional[str] = None
+    pautas_mudanza: Optional[str] = None
+    activo: Optional[bool] = None
+
+
 class ConsorcioResponse(ConsorcioBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     creado_el: datetime
+
+
+class ConsorcioAtributoBase(BaseModel):
+    clave: str
+    etiqueta_visible: str
+    valor: str
+    es_publico_vecinos: bool = True
+
+
+class ConsorcioAtributoCreate(ConsorcioAtributoBase):
+    pass
+
+
+class ConsorcioAtributoUpdate(BaseModel):
+    clave: Optional[str] = None
+    etiqueta_visible: Optional[str] = None
+    valor: Optional[str] = None
+    es_publico_vecinos: Optional[bool] = None
+
+
+class ConsorcioAtributoResponse(ConsorcioAtributoBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    consorcio_id: str
 
 
 class ContactoBase(BaseModel):
@@ -89,6 +147,13 @@ class ContactoBase(BaseModel):
 
 class ContactoCreate(ContactoBase):
     pass
+
+
+class ContactoUpdate(BaseModel):
+    nombre_completo: Optional[str] = None
+    consorcio_id: Optional[str] = None
+    unidad_funcional: Optional[str] = None
+    rol: Optional[RolContacto] = None
 
 
 class ContactoResponse(ContactoBase):
@@ -222,3 +287,119 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UsuarioResponse
+
+
+# --- Esquemas de FAQs y Base de Conocimiento ---
+class FaqBase(BaseModel):
+    consorcio_id: Optional[str] = None
+    pregunta: str
+    respuesta_oficial: str
+    activo: bool = True
+
+
+class FaqCreate(FaqBase):
+    pass
+
+
+class FaqUpdate(BaseModel):
+    consorcio_id: Optional[str] = None
+    pregunta: Optional[str] = None
+    respuesta_oficial: Optional[str] = None
+    activo: Optional[bool] = None
+
+
+class FaqResponse(FaqBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+
+
+# --- Esquemas de Etiquetas ---
+class EtiquetaBase(BaseModel):
+    titulo: str
+    color: str = "#475569"
+    descripcion: Optional[str] = None
+
+
+class EtiquetaCreate(EtiquetaBase):
+    pass
+
+
+class EtiquetaResponse(EtiquetaBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    creado_el: datetime
+
+
+# --- Esquemas de Mensajes ---
+class MensajeBase(BaseModel):
+    tipo: TipoMensaje = TipoMensaje.OUTGOING
+    contenido: str
+    privado: bool = False
+    enviado_por: EnviadoPor = EnviadoPor.AGENTE
+    agente_id: Optional[str] = None
+    media_url: Optional[str] = None
+    media_tipo: Optional[str] = None
+
+
+class MensajeCreate(BaseModel):
+    contenido: str
+    privado: bool = False
+    enviado_por: Optional[EnviadoPor] = EnviadoPor.AGENTE
+    media_url: Optional[str] = None
+    media_tipo: Optional[str] = None
+
+
+class MensajeResponse(MensajeBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    conversacion_id: str
+    leido: bool
+    whatsapp_message_id: Optional[str] = None
+    creado_el: datetime
+    agente_nombre: Optional[str] = None
+
+
+# --- Esquemas de Conversaciones ---
+class ConversacionBase(BaseModel):
+    contacto_id: str
+    consorcio_id: Optional[str] = None
+    estado: EstadoConversacion = EstadoConversacion.OPEN
+    bot_activo: bool = True
+    agente_id: Optional[str] = None
+    etiquetas: Optional[List[str]] = None
+
+
+class ConversacionCreate(BaseModel):
+    contacto_id: str
+    consorcio_id: Optional[str] = None
+    etiquetas: Optional[List[str]] = None
+
+
+class ConversacionUpdate(BaseModel):
+    estado: Optional[EstadoConversacion] = None
+    bot_activo: Optional[bool] = None
+    agente_id: Optional[str] = None
+    consorcio_id: Optional[str] = None
+    etiquetas: Optional[List[str]] = None
+
+
+class ConversacionResponse(ConversacionBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    ultimo_mensaje_el: datetime
+    creado_el: datetime
+    contacto_nombre: Optional[str] = None
+    contacto_telefono: Optional[str] = None
+    contacto_unidad: Optional[str] = None
+    consorcio_nombre: Optional[str] = None
+    agente_nombre: Optional[str] = None
+    ultimo_mensaje_texto: Optional[str] = None
+    mensajes_no_leidos_count: int = 0
+
+
+class ConversacionDetailResponse(ConversacionResponse):
+    mensajes: List[MensajeResponse] = []

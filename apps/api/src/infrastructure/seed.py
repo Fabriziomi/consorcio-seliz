@@ -7,8 +7,20 @@ from infrastructure.models import (
     ContactoModel,
     TicketConsultaModel,
     UsuarioModel,
+    FaqAprobadaModel,
+    EtiquetaModel,
+    ConversacionModel,
+    MensajeModel,
 )
-from domain.schemas import RolContacto, RolUsuario, PrioridadTicket, EstadoTicket
+from domain.schemas import (
+    RolContacto,
+    RolUsuario,
+    PrioridadTicket,
+    EstadoTicket,
+    EstadoConversacion,
+    TipoMensaje,
+    EnviadoPor,
+)
 from core.security import hash_password
 
 
@@ -195,5 +207,136 @@ async def seed_initial_data(db: AsyncSession):
         ),
     ]
     db.add_all(tickets)
+
+    # 5. FAQs Homologadas Iniciales
+    faqs = [
+        FaqAprobadaModel(
+            id="faq-1",
+            consorcio_id="cons-corrientes-lavalle",
+            pregunta="¿Cuáles son los horarios permitidos para mudanzas?",
+            respuesta_oficial="Lunes a viernes de 09:00 a 17:00 hs y sábados de 09:00 a 13:00 hs. Se debe presentar el seguro del flete con 48 hs de antelación en portería.",
+            activo=True,
+        ),
+        FaqAprobadaModel(
+            id="faq-2",
+            consorcio_id="cons-callao-2334",
+            pregunta="¿Cuáles son los horarios de mudanza en Callao 2334?",
+            respuesta_oficial="Lunes a viernes de 10:00 a 16:00 hs exclusivamente. Días sábados y feriados no se permiten mudanzas.",
+            activo=True,
+        ),
+        FaqAprobadaModel(
+            id="faq-3",
+            consorcio_id=None,
+            pregunta="¿En qué horario se puede sacar la basura?",
+            respuesta_oficial="De acuerdo a las normativas de CABA, los residuos deben depositarse de 19:00 a 21:00 hs de domingo a viernes en bolsas cerradas.",
+            activo=True,
+        ),
+        FaqAprobadaModel(
+            id="faq-4",
+            consorcio_id=None,
+            pregunta="¿Cómo enviar el comprobante de pago de expensas?",
+            respuesta_oficial="El comprobante de transferencia bancaria debe remitirse por email a la casilla de cobranzas correspondiente, indicando consorcio y número de unidad funcional.",
+            activo=True,
+        ),
+    ]
+    db.add_all(faqs)
+
+    # 6. Etiquetas Iniciales
+    etiquetas = [
+        EtiquetaModel(id="lbl-1", titulo="URGENTE", color="#DC2626", descripcion="Incidencias edilicias críticas o emergencias"),
+        EtiquetaModel(id="lbl-2", titulo="EXPENSAS", color="#2563EB", descripcion="Consultas de pagos y cobranzas"),
+        EtiquetaModel(id="lbl-3", titulo="MUDANZA", color="#D97706", descripcion="Coordinación y permisos de mudanza"),
+        EtiquetaModel(id="lbl-4", titulo="RECLAMO", color="#7C3AED", descripcion="Averías y mantenimiento general"),
+        EtiquetaModel(id="lbl-5", titulo="RESUELTO", color="#16A34A", descripcion="Casos resueltos satisfactoriamente"),
+    ]
+    db.add_all(etiquetas)
+
+    # 7. Conversaciones y Mensajes Iniciales
+    c_conv1 = ConversacionModel(
+        id="conv-1",
+        contacto_id="cont-1",
+        consorcio_id="cons-corrientes-lavalle",
+        estado=EstadoConversacion.OPEN,
+        bot_activo=True,
+        etiquetas=["RECLAMO"],
+    )
+    c_conv2 = ConversacionModel(
+        id="conv-2",
+        contacto_id="cont-2",
+        consorcio_id="cons-callao-2334",
+        estado=EstadoConversacion.OPEN,
+        bot_activo=True,
+        etiquetas=["EXPENSAS"],
+    )
+    c_conv3 = ConversacionModel(
+        id="conv-3",
+        contacto_id="cont-3",
+        consorcio_id="cons-corrientes-lavalle",
+        estado=EstadoConversacion.OPEN,
+        bot_activo=False,
+        etiquetas=["URGENTE"],
+    )
+    db.add_all([c_conv1, c_conv2, c_conv3])
+    await db.flush()
+
+    m1 = MensajeModel(
+        id="msg-init-1",
+        conversacion_id="conv-1",
+        tipo=TipoMensaje.INCOMING,
+        contenido="Hola, se cortó la luz en el palier del piso 4 de Torre Corrientes. ¿Podrán mandar a alguien a revisar?",
+        enviado_por=EnviadoPor.VECINO,
+        leido=True,
+    )
+    m2 = MensajeModel(
+        id="msg-init-2",
+        conversacion_id="conv-1",
+        tipo=TipoMensaje.OUTGOING,
+        contenido="Buenas tardes Carlos. Hemos registrado el aviso bajo el Ticket #TICK-1042. El electricista de guardia ya fue notificado para verificar la térmica del palier.",
+        enviado_por=EnviadoPor.BOT,
+        leido=True,
+    )
+    m3 = MensajeModel(
+        id="msg-init-3",
+        conversacion_id="conv-2",
+        tipo=TipoMensaje.INCOMING,
+        contenido="Hola buen día, ¿me podrían pasar el CBU y alias para transferir las expensas de este mes de la unidad 7A?",
+        enviado_por=EnviadoPor.VECINO,
+        leido=False,
+    )
+    m4 = MensajeModel(
+        id="msg-init-4",
+        conversacion_id="conv-2",
+        tipo=TipoMensaje.OUTGOING,
+        contenido="Hola Lucía. Para Consorcio Callao 2334 los datos bancarios son:\n\n• CBU: 0140000000000000000002\n• Alias: CALLAO.2334.EXPENSAS\n• CUIT: 30-71998877-6\n\nPor favor remití el comprobante a callao2334@selizadministraciones.com.ar indicando tu unidad (7° A).",
+        enviado_por=EnviadoPor.BOT,
+        leido=True,
+    )
+    m5 = MensajeModel(
+        id="msg-init-5",
+        conversacion_id="conv-3",
+        tipo=TipoMensaje.INCOMING,
+        contenido="Urgente, hay dos personas atrapadas en el ascensor principal de Torre Lavalle!",
+        enviado_por=EnviadoPor.VECINO,
+        leido=True,
+    )
+    m6 = MensajeModel(
+        id="msg-init-6",
+        conversacion_id="conv-3",
+        tipo=TipoMensaje.OUTGOING,
+        contenido="EMERGENCIA DETECTADA. Ya se comunicó a la guardia técnica de ascensores (+54 9 11 4444-1111). Bomberos CABA: 100. Un operador humano está monitoreando esta conversación.",
+        enviado_por=EnviadoPor.BOT,
+        leido=True,
+    )
+    m7 = MensajeModel(
+        id="msg-init-7",
+        conversacion_id="conv-3",
+        tipo=TipoMensaje.ACTIVITY,
+        contenido="📋 Ticket registrado automáticamente #tick-1040 [Expediente #EXP-2026-0001]. Escalado a prioridad CRÍTICA.",
+        enviado_por=EnviadoPor.BOT,
+        privado=True,
+        leido=True,
+    )
+    db.add_all([m1, m2, m3, m4, m5, m6, m7])
+
     await db.commit()
     logger.info("[DB_SEED] Sembrado inicial completado con éxito.")

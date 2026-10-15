@@ -257,9 +257,9 @@ class SemanticExtractor:
             # Fusión híbrida de seguridad: si el LLM omitió un dato claro, el motor determinista lo rescata
             uf_val = parsed.get("unidad_funcional")
             cons_val = parsed.get("consorcio_mencionado")
-            cat_val = parsed.get("categoria", "OTRO")
+            cat_val = parsed.get("categoria") or "OTRO"
             em_val = bool(parsed.get("es_emergencia", False))
-            int_val = parsed.get("intencion", "CONSULTA_GENERAL")
+            int_val = parsed.get("intencion") or "CONSULTA_GENERAL"
             
             if not uf_val or not cons_val or cat_val == "OTRO":
                 safety = self._fallback_rules(message, valid_consorcios)
@@ -273,7 +273,7 @@ class SemanticExtractor:
                 "PORTON_ACCESO", "LIMPIEZA_AREAS_COMUNES", "SEGURIDAD",
                 "ADMINISTRACION_CONSULTA", "OTRO"
             }
-            cat_clean = cat_val.strip().upper()
+            cat_clean = str(cat_val).strip().upper()
             if cat_clean not in VALID_CATEGORIAS:
                 if any(k in cat_clean for k in ("LÁMP", "LAMP", "LUZ", "ELEC", "FOCO")):
                     cat_val = "ELECTRICIDAD"

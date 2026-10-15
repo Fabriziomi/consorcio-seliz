@@ -55,24 +55,6 @@ services:
     networks:
       - consorcio_net
 
-  # NocoDB (Backoffice visual tipo Airtable para Ivana Seliz)
-  nocodb:
-    image: nocodb/nocodb:latest
-    container_name: consorcio_nocodb
-    restart: always
-    environment:
-      - NC_DB=pg://postgres:5432?u=${POSTGRES_USER:-consorcio_admin}&p=${POSTGRES_PASSWORD:-Secr3tP@ssw0rd}&d=${POSTGRES_DB:-consorcio_db}&s=public
-      - NC_REDIS_URL=redis://redis:6379/2
-    ports:
-      - "8081:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - consorcio_net
-
   # API Gateway & Backend Central (FastAPI)
   api:
     build:
@@ -85,10 +67,6 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - EVOLUTION_API_URL=http://evolution-api:8080
       - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-consorcio_api_token_secret}
-      - CHATWOOT_API_URL=${CHATWOOT_API_URL:-http://chatwoot:3000}
-      - CHATWOOT_API_ACCESS_TOKEN=${CHATWOOT_API_ACCESS_TOKEN}
-      - NOCODB_API_URL=http://nocodb:8080
-      - NOCODB_API_TOKEN=${NOCODB_API_TOKEN}
       - APP_HOST=0.0.0.0
       - APP_PORT=8000
       - HTTP_CLIENT_TIMEOUT=90.0
@@ -105,8 +83,6 @@ services:
       redis:
         condition: service_started
       evolution-api:
-        condition: service_started
-      nocodb:
         condition: service_started
     networks:
       - consorcio_net
@@ -125,8 +101,8 @@ services:
       - API_URL=http://api:8000
       - EVOLUTION_API_URL=http://evolution-api:8080
       - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-consorcio_api_token_secret}
-      - CHATWOOT_API_URL=${CHATWOOT_API_URL:-http://chatwoot:3000}
-      - CHATWOOT_API_ACCESS_TOKEN=${CHATWOOT_API_ACCESS_TOKEN}
+      - CHATWOOT_API_URL=${CHATWOOT_API_URL:-http://api:8000}
+      - CHATWOOT_API_ACCESS_TOKEN=${CHATWOOT_API_ACCESS_TOKEN:-internal_token}
       - DEBOUNCE_SECONDS=12
       - DEBOUNCE_JITTER_SECONDS=3
       - QUIET_HOURS_START=00:00
@@ -170,7 +146,7 @@ services:
     environment:
       - VITE_API_URL=http://localhost:8000
       - VITE_API_TIMEOUT_MS=90000
-      - VITE_CHATWOOT_URL=${CHATWOOT_API_URL:-http://localhost:3000}
+      - VITE_CHATWOOT_URL=http://localhost:8000
       - VITE_CHATWOOT_TIMEOUT_MS=90000
     volumes:
       - ./apps/frontend:/app

@@ -121,21 +121,6 @@ export const ApiService = {
     }
   },
 
-  /**
-   * Obtiene la lista de consorcios activos
-   */
-  async getConsorcios() {
-    const res = await apiClient.get('/api/v1/consorcios/');
-    return res.data || [];
-  },
-
-  /**
-   * Obtiene detalle de un consorcio
-   */
-  async getConsorcio(consorcioId) {
-    const res = await apiClient.get(`/api/v1/consorcios/${consorcioId}`);
-    return res.data;
-  },
 
   /**
    * Obtiene la lista de expedientes edilicios
@@ -322,5 +307,179 @@ export const ApiService = {
     } catch {
       return false;
     }
+  },
+
+  // ==========================================
+  // CONVERSACIONES & INBOX OMNICANAL
+  // ==========================================
+  async getConversaciones(filters = {}) {
+    const res = await apiClient.get('/api/v1/conversaciones', { params: filters });
+    return res.data || [];
+  },
+
+  async createConversacion(data) {
+    const res = await apiClient.post('/api/v1/conversaciones', data);
+    return res.data;
+  },
+
+  async getConversacion(id) {
+    const res = await apiClient.get(`/api/v1/conversaciones/${id}`);
+    return res.data;
+  },
+
+  async getConversacionMessages(id, params = {}) {
+    const res = await apiClient.get(`/api/v1/conversaciones/${id}/messages`, { params });
+    return res.data || [];
+  },
+
+  async sendConversacionMessage(id, content, isPrivate = false) {
+    const res = await apiClient.post(`/api/v1/conversaciones/${id}/messages`, {
+      contenido: content,
+      privado: isPrivate,
+    });
+    return res.data;
+  },
+
+  async updateConversacionStatus(id, nuevoEstado) {
+    const res = await apiClient.patch(`/api/v1/conversaciones/${id}/status`, null, {
+      params: { nuevo_estado: nuevoEstado },
+    });
+    return res.data;
+  },
+
+  async assignConversacion(id, agenteId = null) {
+    const res = await apiClient.patch(`/api/v1/conversaciones/${id}/assign`, null, {
+      params: { agente_id: agenteId },
+    });
+    return res.data;
+  },
+
+  async updateConversacionLabels(id, labels = []) {
+    const res = await apiClient.post(`/api/v1/conversaciones/${id}/labels`, labels);
+    return res.data;
+  },
+
+  async markConversacionRead(id) {
+    const res = await apiClient.post(`/api/v1/conversaciones/${id}/read`);
+    return res.data;
+  },
+
+  async getLabels() {
+    const res = await apiClient.get('/api/v1/conversaciones/labels/all');
+    return res.data || [];
+  },
+
+  async createLabel(data) {
+    const res = await apiClient.post('/api/v1/conversaciones/labels/create', data);
+    return res.data;
+  },
+
+  // ==========================================
+  // FAQS & BASE DE CONOCIMIENTO (NOCODB INSIDE)
+  // ==========================================
+  async getFaqs(filters = {}) {
+    const res = await apiClient.get('/api/v1/faqs', { params: filters });
+    return res.data || [];
+  },
+
+  async getFaq(id) {
+    const res = await apiClient.get(`/api/v1/faqs/${id}`);
+    return res.data;
+  },
+
+  async createFaq(data) {
+    const res = await apiClient.post('/api/v1/faqs', data);
+    return res.data;
+  },
+
+  async updateFaq(id, data) {
+    const res = await apiClient.put(`/api/v1/faqs/${id}`, data);
+    return res.data;
+  },
+
+  async toggleFaq(id) {
+    const res = await apiClient.patch(`/api/v1/faqs/${id}/toggle`);
+    return res.data;
+  },
+
+  async deleteFaq(id) {
+    await apiClient.delete(`/api/v1/faqs/${id}`);
+    return true;
+  },
+
+  // ==========================================
+  // CONSORCIOS & ATRIBUTOS DINÁMICOS
+  // ==========================================
+  async getConsorcios() {
+    const res = await apiClient.get('/api/v1/consorcios');
+    return res.data || [];
+  },
+
+  async getConsorcio(id) {
+    const res = await apiClient.get(`/api/v1/consorcios/${id}`);
+    return res.data;
+  },
+
+  async createConsorcio(data) {
+    const res = await apiClient.post('/api/v1/consorcios', data);
+    return res.data;
+  },
+
+  async updateConsorcio(id, data) {
+    const res = await apiClient.put(`/api/v1/consorcios/${id}`, data);
+    return res.data;
+  },
+
+  async deleteConsorcio(id) {
+    await apiClient.delete(`/api/v1/consorcios/${id}`);
+    return true;
+  },
+
+  async getAtributos(consorcioId) {
+    const res = await apiClient.get(`/api/v1/consorcios/${consorcioId}/atributos`);
+    return res.data || [];
+  },
+
+  async createAtributo(consorcioId, data) {
+    const res = await apiClient.post(`/api/v1/consorcios/${consorcioId}/atributos`, data);
+    return res.data;
+  },
+
+  async updateAtributo(consorcioId, attrId, data) {
+    const res = await apiClient.put(`/api/v1/consorcios/${consorcioId}/atributos/${attrId}`, data);
+    return res.data;
+  },
+
+  async deleteAtributo(consorcioId, attrId) {
+    await apiClient.delete(`/api/v1/consorcios/${consorcioId}/atributos/${attrId}`);
+    return true;
+  },
+
+  // ==========================================
+  // DIRECTORIO DE CONTACTOS
+  // ==========================================
+  async getContactos(filters = {}) {
+    const res = await apiClient.get('/api/v1/contactos', { params: filters });
+    return res.data || [];
+  },
+
+  async getContacto(id) {
+    const res = await apiClient.get(`/api/v1/contactos/${id}`);
+    return res.data;
+  },
+
+  async createContacto(data) {
+    const res = await apiClient.post('/api/v1/contactos', data);
+    return res.data;
+  },
+
+  async updateContacto(id, data) {
+    const res = await apiClient.put(`/api/v1/contactos/${id}`, data);
+    return res.data;
+  },
+
+  async deleteContacto(id) {
+    await apiClient.delete(`/api/v1/contactos/${id}`);
+    return true;
   },
 };

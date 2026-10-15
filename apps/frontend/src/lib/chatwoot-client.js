@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const CHATWOOT_BASE_URL = import.meta.env.VITE_CHATWOOT_URL || 'http://localhost:3000'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const CHATWOOT_BASE_URL = import.meta.env.VITE_CHATWOOT_URL || API_BASE_URL
 const CHATWOOT_API_TOKEN = import.meta.env.VITE_CHATWOOT_API_TOKEN || ''
 const ACCOUNT_ID = import.meta.env.VITE_CHATWOOT_ACCOUNT_ID || '1'
 const CHATWOOT_TIMEOUT_MS = parseInt(import.meta.env.VITE_CHATWOOT_TIMEOUT_MS || '90000', 10)
