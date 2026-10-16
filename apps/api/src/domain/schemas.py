@@ -143,6 +143,7 @@ class ContactoBase(BaseModel):
     consorcio_id: Optional[str] = None
     unidad_funcional: Optional[str] = None
     rol: RolContacto = RolContacto.OTRO
+    foto_url: Optional[str] = None
 
 
 class ContactoCreate(ContactoBase):
@@ -154,6 +155,7 @@ class ContactoUpdate(BaseModel):
     consorcio_id: Optional[str] = None
     unidad_funcional: Optional[str] = None
     rol: Optional[RolContacto] = None
+    foto_url: Optional[str] = None
 
 
 class ContactoResponse(ContactoBase):
@@ -395,6 +397,7 @@ class ConversacionResponse(ConversacionBase):
     contacto_nombre: Optional[str] = None
     contacto_telefono: Optional[str] = None
     contacto_unidad: Optional[str] = None
+    contacto_foto_url: Optional[str] = None
     consorcio_nombre: Optional[str] = None
     agente_nombre: Optional[str] = None
     ultimo_mensaje_texto: Optional[str] = None

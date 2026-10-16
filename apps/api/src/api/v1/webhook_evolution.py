@@ -387,6 +387,12 @@ async def process_incoming_message(payload: dict):
         return
 
     # Persistencia en BD de Contacto y Conversación
+    profile_pic = (
+        data.get("profilePicUrl")
+        or data.get("senderPhoto")
+        or (data.get("sender") or {}).get("profilePictureUrl")
+        or (data.get("contact") or {}).get("profilePicUrl")
+    )
     async with AsyncSessionLocal() as db:
         c_res = await db.execute(select(ContactoModel).where(ContactoModel.telefono_wa == phone_wa))
         contacto = c_res.scalar_one_or_none()
@@ -396,10 +402,14 @@ async def process_incoming_message(payload: dict):
                 telefono_wa=phone_wa,
                 nombre_completo=push_name,
                 rol=RolContacto.OTRO,
+                foto_url=profile_pic,
             )
             db.add(contacto)
             await db.commit()
             await db.refresh(contacto)
+        elif profile_pic and not contacto.foto_url:
+            contacto.foto_url = profile_pic
+            await db.commit()
 
         conversacion = await get_or_create_conversacion(db, contacto)
 

@@ -226,7 +226,7 @@ export function SelectField({
     ? `${badgeStyle} font-medium tracking-tight cursor-pointer hover:opacity-85 active:opacity-75 focus-visible:ring-1 focus-visible:ring-brand-ink/40`
     : 'border border-border/80 bg-white text-brand-ink font-medium transition-[border-color,background-color,box-shadow] duration-150 hover:border-brand-ink/60 hover:bg-surface-soft focus-visible:ring-1 focus-visible:ring-brand-ink disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted shadow-subtle';
 
-  const chevronSize = size === 'xs' ? 11 : size === 'sm' ? 13 : 15;
+  const chevronSize = size === 'xs' ? 14 : size === 'sm' ? 15 : 16;
 
   const trigger = (
     <div ref={containerRef} className={`relative inline-block ${size === 'default' && !isBadge ? 'w-full' : ''} ${containerClassName}`}>

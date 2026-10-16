@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
-import { RotateCcw, Send, Users, ChevronDown, ChevronUp, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import {
+  RotateCw,
+  Send,
+  Users,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+} from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
 import { ScrollableTableContainer } from '../ui/ScrollableTableContainer.jsx';
 import { SelectField } from '../ui/SelectField.jsx';
+import { useToast } from '../ui/ToastNotification.jsx';
 
 const ESTADOS_EXPEDIENTE = [
   { value: 'ABIERTO', label: 'Abierto' },
@@ -92,30 +102,38 @@ export function ExpedientesTable({
     }
   };
 
+  const toast = useToast();
+  const [refreshConfirmed, setRefreshConfirmed] = useState(false);
+
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    await onRefresh();
+    setRefreshConfirmed(true);
+    toast.success('Expedientes actualizados');
+    setTimeout(() => setRefreshConfirmed(false), 1800);
+  };
+
   return (
     <Card className="min-w-0">
       <CardHeader>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-sm sm:text-base font-bold tracking-tight text-brand-ink">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
               Expedientes &amp; Incidentes Edilicios
             </h2>
-            <p className="text-xs text-text-secondary mt-0.5">
-              Casos consolidados por edificio para evitar duplicar informes técnicos y reclamos repetitivos.
-            </p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
             {onRefresh && (
               <Button
                 variant="secondary"
-                size="sm"
-                onClick={onRefresh}
-                disabled={loading}
-                className="h-8 px-3 text-xs text-text-secondary hover:text-brand-ink"
+                size="icon-sm"
+                onClick={handleRefresh}
+                loading={loading}
+                confirmed={refreshConfirmed}
                 title="Actualizar expedientes desde el servidor"
+                aria-label="Actualizar expedientes"
               >
-                <RotateCcw size={13} className={loading ? 'animate-spin' : ''} />
-                <span>Actualizar</span>
+                <RotateCw size={18} strokeWidth={2} />
               </Button>
             )}
             <span className="text-xs text-text-muted font-medium bg-surface-muted px-2.5 py-1 rounded-full border border-border/60">
@@ -184,12 +202,12 @@ export function ExpedientesTable({
                           {expandedRows.has(exp.id) ? (
                             <>
                               <span>Ver menos</span>
-                              <ChevronUp size={12} />
+                              <ChevronUp size={14} strokeWidth={2} />
                             </>
                           ) : (
                             <>
                               <span>Ver todos los reportes</span>
-                              <ChevronDown size={12} />
+                              <ChevronDown size={14} strokeWidth={2} />
                             </>
                           )}
                         </button>
@@ -197,7 +215,7 @@ export function ExpedientesTable({
                     </td>
                     <td className="px-3.5 py-2.5 text-center">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-muted border border-border text-brand-ink">
-                        <Users size={11} />
+                        <Users size={14} strokeWidth={1.8} />
                         <span>{exp.ticketsCount} reportes</span>
                       </span>
                     </td>
@@ -228,12 +246,12 @@ export function ExpedientesTable({
                     <td className="px-3.5 py-2.5 text-center">
                       <Button
                         variant="secondary"
-                        size="xs"
+                        size="sm"
                         onClick={() => handleOpenNotifyModal(exp)}
-                        className="h-7 px-2.5 text-[11px] text-text-secondary hover:text-brand-ink whitespace-nowrap"
+                        className="whitespace-nowrap font-medium"
                         title="Enviar mensaje masivo por WhatsApp a todos los vecinos que reportaron"
                       >
-                        <Send size={11} />
+                        <Send size={16} strokeWidth={2} />
                         <span>Avisar Vecinos</span>
                       </Button>
                     </td>
@@ -252,10 +270,10 @@ export function ExpedientesTable({
             <div>
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-brand-ink flex items-center gap-2">
-                  <Send size={14} className="text-brand-burgundy" />
+                  <Send size={16} strokeWidth={2} className="text-brand-ink" />
                   <span>Notificar a Vecinos Involucrados</span>
                 </h3>
-                <span className="text-xs font-mono font-semibold bg-surface-muted px-2 py-0.5 rounded border border-border">
+                <span className="text-xs font-semibold bg-surface-muted px-2 py-0.5 rounded border border-border">
                   #{selectedExpedienteForNotify.codigo}
                 </span>
               </div>
@@ -278,7 +296,7 @@ export function ExpedientesTable({
 
             {broadcastSuccess && (
               <div className="p-2.5 bg-emerald-50 text-emerald-800 text-xs rounded-lg border border-emerald-200 flex items-center gap-1.5">
-                <CheckCircle size={14} />
+                <CheckCircle2 size={14} strokeWidth={2} />
                 <span>{broadcastSuccess}</span>
               </div>
             )}
@@ -286,22 +304,22 @@ export function ExpedientesTable({
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={() => setSelectedExpedienteForNotify(null)}
                 disabled={sendingBroadcast}
-                className="h-8 text-xs text-text-secondary"
               >
                 Cancelar
               </Button>
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 onClick={handleSendBroadcast}
                 disabled={sendingBroadcast || !broadcastMessage.trim()}
-                className="h-8 text-xs"
+                loading={sendingBroadcast}
+                className="bg-brand-ink text-white font-semibold"
               >
-                <Send size={12} className={sendingBroadcast ? 'animate-pulse' : ''} />
-                <span>{sendingBroadcast ? 'Enviando...' : 'Despachar WhatsApp'}</span>
+                <Send size={16} strokeWidth={2} />
+                <span>Despachar WhatsApp</span>
               </Button>
             </div>
           </div>

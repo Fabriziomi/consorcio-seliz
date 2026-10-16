@@ -4,10 +4,10 @@ import {
   Search,
   Plus,
   Trash2,
-  Edit3,
+  Pencil,
   CheckCircle2,
   XCircle,
-  RotateCcw,
+  RotateCw,
   Building2,
   Sparkles,
   Check,
@@ -19,10 +19,13 @@ import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
 import { ScrollableTableContainer } from '../ui/ScrollableTableContainer.jsx';
 import { ApiService } from '../../lib/api-client.js';
+import { useToast } from '../ui/ToastNotification.jsx';
 
 export function FaqsManager({ consorcios = [] }) {
+  const toast = useToast();
   const [faqs, setFaqs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshConfirmed, setRefreshConfirmed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterConsorcio, setFilterConsorcio] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -59,6 +62,13 @@ export function FaqsManager({ consorcios = [] }) {
   useEffect(() => {
     loadFaqs();
   }, [loadFaqs]);
+
+  const handleRefresh = async () => {
+    await loadFaqs();
+    setRefreshConfirmed(true);
+    toast.success('Base de conocimiento actualizada');
+    setTimeout(() => setRefreshConfirmed(false), 1800);
+  };
 
   // Filtrado reactivo en memoria
   const filteredFaqs = useMemo(() => {
@@ -122,9 +132,11 @@ export function FaqsManager({ consorcios = [] }) {
     );
     try {
       await ApiService.toggleFaq(faq.id);
+      toast.info(faq.es_activa ? 'FAQ desactivada' : 'FAQ activada');
     } catch (err) {
       console.error('[FAQS] Error al cambiar estado:', err);
       setFaqs(original);
+      toast.error('Error al actualizar estado');
     }
   };
 
@@ -148,14 +160,16 @@ export function FaqsManager({ consorcios = [] }) {
       if (editingFaq) {
         const updated = await ApiService.updateFaq(editingFaq.id, payload);
         setFaqs((prev) => prev.map((f) => (f.id === editingFaq.id ? updated : f)));
+        toast.success('FAQ actualizada correctamente');
       } else {
         const created = await ApiService.createFaq(payload);
         setFaqs((prev) => [created, ...prev]);
+        toast.success('Nueva FAQ registrada');
       }
       handleCloseModal();
     } catch (err) {
       console.error('[FAQS] Error al guardar FAQ:', err);
-      alert('Error al guardar la FAQ en el servidor.');
+      toast.error('Error al guardar la FAQ en el servidor');
     } finally {
       setSubmitting(false);
     }
@@ -167,9 +181,10 @@ export function FaqsManager({ consorcios = [] }) {
       await ApiService.deleteFaq(id);
       setFaqs((prev) => prev.filter((f) => f.id !== id));
       setDeleteConfirmId(null);
+      toast.success('FAQ eliminada correctamente');
     } catch (err) {
       console.error('[FAQS] Error al eliminar FAQ:', err);
-      alert('No se pudo eliminar la FAQ.');
+      toast.error('No se pudo eliminar la FAQ');
     }
   };
 
@@ -179,41 +194,37 @@ export function FaqsManager({ consorcios = [] }) {
         {/* Cabecera Principal */}
         <CardHeader className="border-b border-border bg-white px-4 py-3 sm:px-6 sm:py-4 shrink-0">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-bold tracking-tight text-brand-ink">
-                  Base de Conocimiento & FAQs Homologadas
-                </h2>
-                <Badge variant="neutral" className="text-[10px] uppercase font-bold tracking-wider">
-                  Respuestas Automáticas
-                </Badge>
-              </div>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Respuestas oficiales aprobadas por la Dra. Ivana Seliz que el chatbot utiliza para resolver consultas de vecinos.
-              </p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
+                Base de Conocimiento &amp; FAQs Homologadas
+              </h2>
+              <Badge variant="neutral" className="text-[10px] uppercase font-bold tracking-wider">
+                Automático
+              </Badge>
             </div>
 
             <div className="flex items-center gap-2 self-start sm:self-auto">
               <Button
                 variant="secondary"
-                size="sm"
-                onClick={loadFaqs}
-                disabled={loading}
-                className="h-8 px-2.5 text-xs text-text-secondary hover:text-brand-ink"
-                title="Recargar FAQs"
+                size="icon-sm"
+                onClick={handleRefresh}
+                loading={loading}
+                confirmed={refreshConfirmed}
+                title="Actualizar FAQs desde el servidor"
+                aria-label="Actualizar FAQs"
               >
-                <RotateCcw size={13} className={loading ? 'animate-spin' : ''} />
-                <span className="hidden sm:inline">Actualizar</span>
+                <RotateCw size={18} strokeWidth={2} />
               </Button>
 
               <Button
                 variant="primary"
-                size="sm"
+                size="icon-sm"
                 onClick={handleOpenCreateModal}
-                className="h-8 px-3 text-xs bg-brand-ink text-white font-semibold flex items-center gap-1.5"
+                className="bg-brand-ink text-white"
+                title="Nueva FAQ"
+                aria-label="Nueva FAQ"
               >
-                <Plus size={14} />
-                <span>Nueva FAQ</span>
+                <Plus size={18} strokeWidth={2} />
               </Button>
             </div>
           </div>
@@ -222,13 +233,13 @@ export function FaqsManager({ consorcios = [] }) {
           <div className="mt-3.5 pt-3 border-t border-border/70 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             {/* Buscador */}
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+              <Search size={18} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               <input
                 type="text"
                 placeholder="Buscar por pregunta, respuesta o consorcio…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-8 sm:h-9 bg-surface-soft border border-border text-brand-ink text-xs rounded-base pl-9 pr-3 outline-none transition-colors focus:border-brand-ink focus:bg-white"
+                className="w-full h-10 sm:h-11 bg-surface-soft border border-border/80 text-brand-ink text-sm rounded-xl pl-10 pr-4 outline-none transition-colors focus:border-brand-ink focus:bg-white shadow-2xs"
               />
             </div>
 
@@ -236,7 +247,7 @@ export function FaqsManager({ consorcios = [] }) {
             <select
               value={filterConsorcio}
               onChange={(e) => setFilterConsorcio(e.target.value)}
-              className="h-8 sm:h-9 bg-surface-soft border border-border text-brand-ink text-xs rounded-base px-2.5 outline-none transition-colors focus:border-brand-ink"
+              className="h-10 sm:h-11 bg-surface-soft border border-border/80 text-brand-ink text-xs sm:text-sm font-medium rounded-xl px-3 outline-none transition-colors focus:border-brand-ink shadow-2xs"
             >
               <option value="all">Todos los consorcios</option>
               <option value="general">Generales (Sin consorcio asignado)</option>
@@ -248,7 +259,7 @@ export function FaqsManager({ consorcios = [] }) {
             </select>
 
             {/* Filtro de Estado */}
-            <div className="flex items-center gap-1 bg-surface-soft p-0.5 rounded-base border border-border shrink-0">
+            <div className="flex items-center gap-1 bg-surface-soft p-0.5 rounded-lg border border-border shrink-0">
               {[
                 { id: 'all', label: 'Todas' },
                 { id: 'active', label: 'Activas' },
@@ -258,9 +269,9 @@ export function FaqsManager({ consorcios = [] }) {
                   key={f.id}
                   type="button"
                   onClick={() => setFilterStatus(f.id)}
-                  className={`text-[11px] font-semibold px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     filterStatus === f.id
-                      ? 'bg-brand-ink text-white shadow-sm'
+                      ? 'bg-brand-ink text-white shadow-sm font-bold'
                       : 'text-text-secondary hover:text-brand-ink'
                   }`}
                 >
@@ -275,7 +286,7 @@ export function FaqsManager({ consorcios = [] }) {
         <CardContent className="flex-1 p-0 overflow-hidden relative">
           {errorMsg && (
             <div className="p-3 bg-danger-soft text-danger text-xs flex items-center gap-2 border-b border-border">
-              <AlertCircle size={14} />
+              <AlertCircle size={14} strokeWidth={2} />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -320,7 +331,7 @@ export function FaqsManager({ consorcios = [] }) {
                               : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300'
                           }`}
                         >
-                          {faq.es_activa ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                          {faq.es_activa ? <CheckCircle2 size={16} strokeWidth={2} className="text-emerald-600" /> : <XCircle size={16} strokeWidth={2} className="text-zinc-400" />}
                         </button>
                       </td>
 
@@ -331,7 +342,7 @@ export function FaqsManager({ consorcios = [] }) {
 
                       {/* Respuesta Oficial */}
                       <td className="py-3 px-4 text-text-secondary whitespace-pre-line leading-relaxed align-top">
-                        <div className="bg-surface-soft p-2.5 rounded-base border border-border/70 text-brand-ink text-xs">
+                        <div className="bg-surface-soft p-2.5 rounded-lg border border-border/70 text-brand-ink text-xs">
                           {faq.respuesta}
                         </div>
                       </td>
@@ -340,7 +351,7 @@ export function FaqsManager({ consorcios = [] }) {
                       <td className="py-3 px-4 align-top">
                         {faq.consorcio_nombre ? (
                           <div className="flex items-center gap-1.5 text-brand-ink font-medium">
-                            <Building2 size={13} className="text-text-muted shrink-0" />
+                            <Building2 size={14} strokeWidth={1.8} className="text-text-muted shrink-0" />
                             <span className="truncate">{faq.consorcio_nombre}</span>
                           </div>
                         ) : (
@@ -357,9 +368,10 @@ export function FaqsManager({ consorcios = [] }) {
                             type="button"
                             onClick={() => handleOpenEditModal(faq)}
                             title="Editar FAQ"
-                            className="size-7 rounded-base flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer"
+                            aria-label="Editar FAQ"
+                            className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
                           >
-                            <Edit3 size={13} />
+                            <Pencil size={18} strokeWidth={1.8} />
                           </button>
 
                           {deleteConfirmId === faq.id ? (
@@ -368,17 +380,19 @@ export function FaqsManager({ consorcios = [] }) {
                                 type="button"
                                 onClick={() => handleDelete(faq.id)}
                                 title="Confirmar eliminación"
-                                className="size-7 rounded-base flex items-center justify-center bg-danger text-white hover:bg-rose-700 transition-colors cursor-pointer"
+                                aria-label="Confirmar eliminación"
+                                className="size-9 rounded-xl flex items-center justify-center bg-danger text-white hover:bg-rose-700 transition-colors cursor-pointer shadow-2xs"
                               >
-                                <Check size={13} />
+                                <Check size={18} strokeWidth={2.2} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setDeleteConfirmId(null)}
                                 title="Cancelar"
-                                className="size-7 rounded-base flex items-center justify-center border border-border text-text-secondary hover:text-brand-ink transition-colors cursor-pointer"
+                                aria-label="Cancelar"
+                                className="size-9 rounded-xl flex items-center justify-center border border-border/80 bg-white text-text-secondary hover:text-brand-ink transition-colors cursor-pointer shadow-2xs"
                               >
-                                <X size={13} />
+                                <X size={18} strokeWidth={2} />
                               </button>
                             </div>
                           ) : (
@@ -386,9 +400,10 @@ export function FaqsManager({ consorcios = [] }) {
                               type="button"
                               onClick={() => setDeleteConfirmId(faq.id)}
                               title="Eliminar FAQ"
-                              className="size-7 rounded-base flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
+                              aria-label="Eliminar FAQ"
+                              className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft transition-colors cursor-pointer shadow-2xs"
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={18} strokeWidth={1.8} />
                             </button>
                           )}
                         </div>
@@ -405,11 +420,11 @@ export function FaqsManager({ consorcios = [] }) {
       {/* Modal de Crear / Editar FAQ */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-brand-ink/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-base border border-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]">
+          <div className="bg-white rounded-xl border border-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]">
             {/* Cabecera del Modal */}
             <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-surface-soft">
               <div className="flex items-center gap-2">
-                <HelpCircle size={16} className="text-brand-ink" />
+                <HelpCircle size={18} strokeWidth={1.8} className="text-brand-ink" />
                 <h3 className="text-sm font-bold text-brand-ink">
                   {editingFaq ? 'Editar Pregunta Frecuente' : 'Nueva Pregunta Frecuente'}
                 </h3>
@@ -417,9 +432,11 @@ export function FaqsManager({ consorcios = [] }) {
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="size-7 rounded-base flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer"
+                title="Cerrar modal"
+                aria-label="Cerrar modal"
+                className="size-9 sm:size-10 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
               >
-                <X size={15} />
+                <X size={18} strokeWidth={2} />
               </button>
             </div>
 
@@ -435,7 +452,7 @@ export function FaqsManager({ consorcios = [] }) {
                   placeholder="Ej: ¿Cuáles son las pautas de mudanza para el edificio?"
                   value={formData.pregunta}
                   onChange={(e) => setFormData({ ...formData, pregunta: e.target.value })}
-                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
+                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-lg px-3 outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
                 />
               </div>
 
@@ -449,50 +466,48 @@ export function FaqsManager({ consorcios = [] }) {
                   placeholder="Escribí aquí la respuesta oficial aprobada. El asistente virtual utilizará este texto para responder de forma directa y fehaciente a los vecinos."
                   value={formData.respuesta}
                   onChange={(e) => setFormData({ ...formData, respuesta: e.target.value })}
-                  className="w-full bg-white border border-border text-brand-ink text-xs rounded-base p-3 outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink leading-relaxed"
+                  className="w-full bg-white border border-border text-brand-ink text-xs rounded-lg p-3 outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink leading-relaxed"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block text-xs font-bold text-brand-ink mb-1">
-                    Consorcio Vinculado
-                  </label>
-                  <select
-                    value={formData.consorcio_id}
-                    onChange={(e) => setFormData({ ...formData, consorcio_id: e.target.value })}
-                    className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-2.5 outline-none transition-colors focus:border-brand-ink"
-                  >
-                    <option value="">General (Todos los consorcios)</option>
-                    {consorcios.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col justify-end">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-brand-ink py-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.es_activa}
-                      onChange={(e) => setFormData({ ...formData, es_activa: e.target.checked })}
-                      className="size-4 rounded border-border text-brand-ink focus:ring-brand-ink cursor-pointer"
-                    />
-                    <span>FAQ Activa para el Bot</span>
-                  </label>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-brand-ink mb-1">
+                  Ámbito de Aplicación
+                </label>
+                <select
+                  value={formData.consorcio_id}
+                  onChange={(e) => setFormData({ ...formData, consorcio_id: e.target.value })}
+                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-lg px-3 outline-none transition-colors focus:border-brand-ink"
+                >
+                  <option value="">Consorcio General (Aplica a todos los edificios)</option>
+                  {consorcios.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="es_activa"
+                  checked={formData.es_activa}
+                  onChange={(e) => setFormData({ ...formData, es_activa: e.target.checked })}
+                  className="size-4 rounded border-border text-brand-ink focus:ring-brand-ink"
+                />
+                <label htmlFor="es_activa" className="text-xs font-medium text-brand-ink cursor-pointer select-none">
+                  FAQ activa para respuestas automáticas
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
-                  type="button"
                   onClick={handleCloseModal}
                   disabled={submitting}
-                  className="h-9 px-3 text-xs"
+                  className="h-8 text-xs text-text-secondary"
                 >
                   Cancelar
                 </Button>
@@ -500,10 +515,10 @@ export function FaqsManager({ consorcios = [] }) {
                   variant="primary"
                   size="sm"
                   type="submit"
-                  disabled={submitting}
-                  className="h-9 px-4 text-xs bg-brand-ink text-white font-semibold flex items-center gap-1.5"
+                  loading={submitting}
+                  className="h-8 text-xs bg-brand-ink text-white"
                 >
-                  {submitting ? 'Guardando...' : editingFaq ? 'Guardar Cambios' : 'Crear FAQ'}
+                  <span>{editingFaq ? 'Guardar Cambios' : 'Crear FAQ'}</span>
                 </Button>
               </div>
             </form>

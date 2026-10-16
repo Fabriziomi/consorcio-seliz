@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
 import { ScrollableTableContainer } from '../ui/ScrollableTableContainer.jsx';
 import { SelectField } from '../ui/SelectField.jsx';
+import { useToast } from '../ui/ToastNotification.jsx';
 
 const ESTADOS_DISPONIBLES = [
   { value: 'NUEVO', label: 'Nuevo' },
@@ -27,7 +28,17 @@ export function TicketsTable({
   onRefresh,
   loading = false,
 }) {
+  const toast = useToast();
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [refreshConfirmed, setRefreshConfirmed] = useState(false);
+
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    await onRefresh();
+    setRefreshConfirmed(true);
+    toast.success('Tickets actualizados');
+    setTimeout(() => setRefreshConfirmed(false), 1800);
+  };
 
   const toggleRow = (id) =>
     setExpandedRows((prev) => {
@@ -65,7 +76,7 @@ export function TicketsTable({
       <CardHeader>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-sm sm:text-base font-bold tracking-tight text-brand-ink">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
               Tickets &amp; Solicitudes de Vecinos
             </h2>
           </div>
@@ -73,17 +84,17 @@ export function TicketsTable({
             {onRefresh && (
               <Button
                 variant="secondary"
-                size="sm"
-                onClick={onRefresh}
-                disabled={loading}
-                className="h-7 px-2.5 text-xs text-text-secondary hover:text-brand-ink"
+                size="icon-sm"
+                onClick={handleRefresh}
+                loading={loading}
+                confirmed={refreshConfirmed}
                 title="Actualizar tickets desde la base de datos"
+                aria-label="Actualizar tickets"
               >
-                <RotateCcw size={12} className={loading ? 'animate-spin' : ''} />
-                <span>Actualizar</span>
+                <RotateCw size={18} strokeWidth={2} />
               </Button>
             )}
-            <span className="text-xs text-text-muted font-medium bg-surface-muted px-2 py-0.5 rounded-full border border-border/60">
+            <span className="text-xs text-text-muted font-medium bg-surface-muted px-2.5 py-1 rounded-full border border-border/60">
               {tickets.length} registros
             </span>
           </div>
@@ -118,7 +129,7 @@ export function TicketsTable({
                     <td className="px-3.5 py-2.5 text-xs font-semibold text-text-secondary whitespace-nowrap">
                       <div>{t.id}</div>
                       {t.expediente_codigo && (
-                        <span className="inline-block mt-0.5 text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-brand-sand/70 text-brand-navy border border-brand-sand">
+                        <span className="inline-block mt-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-brand-sand/70 text-brand-navy border border-brand-sand">
                           #{t.expediente_codigo}
                         </span>
                       )}
@@ -146,18 +157,28 @@ export function TicketsTable({
                         <button
                           type="button"
                           onClick={() => toggleRow(t.id)}
-                          className="mt-1 text-[11px] font-semibold text-brand-ink/60 hover:text-brand-ink transition-colors cursor-pointer"
+                          className="mt-1 text-[11px] font-semibold text-brand-ink/70 hover:text-brand-ink transition-colors cursor-pointer flex items-center gap-1"
                         >
-                          {expandedRows.has(t.id) ? 'Ver menos ↑' : 'Ver más ↓'}
+                          {expandedRows.has(t.id) ? (
+                            <>
+                              <span>Ver menos</span>
+                              <ChevronUp size={14} strokeWidth={2} />
+                            </>
+                          ) : (
+                            <>
+                              <span>Ver descripción completa</span>
+                              <ChevronDown size={14} strokeWidth={2} />
+                            </>
+                          )}
                         </button>
                       )}
                     </td>
-                    <td className="px-3.5 py-2.5 text-center">
+                    <td className="px-3.5 py-2.5 text-center whitespace-nowrap">
                       <Badge variant={getBadgeVariant(t.prioridad)}>
-                        {t.prioridad === 'CRITICA' ? 'Crítica' : t.prioridad === 'ALTA' ? 'Alta' : 'Normal'}
+                        {t.prioridad}
                       </Badge>
                     </td>
-                    <td className="px-3.5 py-2.5 text-center">
+                    <td className="px-3.5 py-2.5 text-center whitespace-nowrap">
                       {onUpdateStatus ? (
                         <div className="flex items-center justify-center">
                           <SelectField
@@ -165,7 +186,7 @@ export function TicketsTable({
                             size="xs"
                             value={t.estado}
                             badgeVariantMap={ESTADO_BADGE_MAP}
-                            onChange={(e) => onUpdateStatus(t.rawId || t.id, e.target.value)}
+                            onChange={(e) => onUpdateStatus(t.id, e.target.value)}
                             options={ESTADOS_DISPONIBLES}
                             aria-label="Cambiar estado del ticket"
                           />
@@ -174,7 +195,7 @@ export function TicketsTable({
                         getStatusBadge(t.estado)
                       )}
                     </td>
-                    <td className="px-3.5 py-2.5 text-[11px] text-text-muted whitespace-nowrap">
+                    <td className="px-3.5 py-2.5 text-xs text-text-muted whitespace-nowrap">
                       {t.creado_el}
                     </td>
                   </tr>

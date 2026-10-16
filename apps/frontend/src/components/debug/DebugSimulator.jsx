@@ -3,15 +3,15 @@ import {
   Send,
   Terminal,
   Clock,
-  ShieldAlert,
+  AlertCircle,
   Bot,
   User,
   CheckCircle2,
-  AlertTriangle,
-  RotateCcw,
+  RotateCw,
   Zap,
   Info,
 } from 'lucide-react';
+import { useToast } from '../ui/ToastNotification.jsx';
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Badge } from '../ui/Badge.jsx';
@@ -19,6 +19,7 @@ import { SelectField } from '../ui/SelectField.jsx';
 import { ApiService } from '../../lib/api-client.js';
 
 export function DebugSimulator() {
+  const toast = useToast();
   const [message, setMessage] = useState('');
   const [phone, setPhone] = useState('+5491144558899');
   const [userName, setUserName] = useState('Carlos Méndez');
@@ -108,6 +109,7 @@ export function DebugSimulator() {
         ...prev,
       ]);
       setMessage('');
+      toast.success("Simulación completada con éxito");
     } catch (err) {
       const msg = err.response?.data?.detail || err.message || 'No se pudo conectar con la API';
       setError(msg);
@@ -125,7 +127,7 @@ export function DebugSimulator() {
             <div className="flex items-center gap-2.5">
               <Terminal className="w-5 h-5 text-brand-ink" />
               <div>
-                <h2 className="text-base font-bold tracking-tight text-brand-ink">
+                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
                   Simulador de Atención y Respuestas
                 </h2>
               </div>
@@ -136,7 +138,7 @@ export function DebugSimulator() {
               size="sm"
               onClick={() => setHistory([])}
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCw className="w-3.5 h-3.5" />
               <span>Limpiar Historial</span>
             </Button>
           </div>
@@ -242,7 +244,7 @@ export function DebugSimulator() {
 
           {error && (
             <div className="mt-4 rounded-base border border-danger/20 bg-danger-soft p-3.5 text-xs text-danger flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}

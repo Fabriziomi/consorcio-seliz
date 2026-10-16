@@ -73,5 +73,21 @@ class EvolutionClient:
                 logger.error(f"[EVOLUTION_CLIENT] Error al solicitar base64 a Evolution API: {e}")
         return None
 
+    async def fetch_profile_picture_url(self, phone: str) -> Optional[str]:
+        """Obtiene la URL original de la foto de perfil del contacto desde Evolution API."""
+        url = f"{self.base_url}/chat/fetchProfilePictureUrl/{self.instance}"
+        clean_num = phone.split("@")[0].replace("+", "").strip()
+        payload = {"number": clean_num}
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            try:
+                res = await client.post(url, json=payload, headers=self.headers)
+                if res.status_code in (200, 201):
+                    data = res.json()
+                    return data.get("profilePictureUrl") or data.get("picture")
+            except Exception as e:
+                logger.debug(f"[EVOLUTION_CLIENT] No se pudo obtener foto de perfil para {phone}: {e}")
+        return None
+
 
 evolution_client = EvolutionClient()
+

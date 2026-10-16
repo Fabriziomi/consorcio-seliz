@@ -3,12 +3,11 @@ import {
   Building2,
   Plus,
   Trash2,
-  Edit3,
+  Pencil,
   Save,
-  RotateCcw,
+  RotateCw,
   Check,
   X,
-  ShieldAlert,
   Phone,
   CreditCard,
   Mail,
@@ -19,12 +18,14 @@ import {
   ChevronRight,
   AlertCircle,
 } from 'lucide-react';
+import { useToast } from '../ui/ToastNotification.jsx';
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
 import { ApiService } from '../../lib/api-client.js';
 
 export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefreshParent }) {
+  const toast = useToast();
   const [consorcios, setConsorcios] = useState(initialConsorcios);
   const [selectedId, setSelectedId] = useState(() => initialConsorcios[0]?.id || null);
   const [activeSubTab, setActiveSubTab] = useState('datos'); // 'datos' | 'atributos'
@@ -242,33 +243,31 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
       <div className="flex-1 flex flex-col md:flex-row gap-3.5 min-h-0">
         {/* Columna Izquierda: Lista de Consorcios */}
         <Card className="w-full md:w-72 lg:w-80 flex flex-col bg-white border border-border shadow-subtle shrink-0 overflow-hidden">
-          <CardHeader className="p-3 sm:p-4 border-b border-border bg-white flex items-center justify-between shrink-0">
+          <CardHeader className="p-3.5 sm:p-4 border-b border-border bg-white flex items-center justify-between shrink-0">
             <div>
-              <h2 className="text-xs sm:text-sm font-bold tracking-tight text-brand-ink">
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
                 Consorcios
               </h2>
-              <span className="text-[11px] text-text-muted">{consorcios.length} registrados</span>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
-                size="sm"
+                size="icon-sm"
                 onClick={loadConsorcios}
                 disabled={loading}
-                className="size-7 p-0"
                 title="Recargar consorcios"
               >
-                <RotateCcw size={12} className={loading ? 'animate-spin' : ''} />
+                <RotateCw size={18} strokeWidth={2} className={loading ? 'animate-spin' : ''} />
               </Button>
               <Button
                 variant="primary"
-                size="sm"
+                size="icon-sm"
                 onClick={() => setIsCreateModalOpen(true)}
-                className="size-7 p-0 bg-brand-ink text-white"
+                className="bg-brand-ink text-white"
                 title="Nuevo Consorcio"
               >
-                <Plus size={14} />
+                <Plus size={18} strokeWidth={2} />
               </Button>
             </div>
           </CardHeader>
@@ -280,10 +279,10 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                 <div
                   key={c.id}
                   onClick={() => setSelectedId(c.id)}
-                  className={`p-3.5 cursor-pointer transition-colors flex items-center justify-between gap-2 ${
+                  className={`p-3.5 cursor-pointer transition-colors flex items-center justify-between gap-2 border-l-4 ${
                     isSelected
-                      ? 'bg-surface-soft border-l-4 border-brand-ink'
-                      : 'hover:bg-surface-soft/60'
+                      ? 'bg-surface-soft border-brand-ink'
+                      : 'border-transparent hover:bg-surface-soft/60'
                   }`}
                 >
                   <div className="min-w-0">
@@ -299,7 +298,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                       </span>
                     )}
                   </div>
-                  <ChevronRight size={14} className={isSelected ? 'text-brand-ink' : 'text-text-muted'} />
+                  <ChevronRight size={14} strokeWidth={2} className={isSelected ? 'text-brand-ink' : 'text-text-muted'} />
                 </div>
               );
             })}
@@ -314,7 +313,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
               <div className="px-5 py-4 border-b border-border bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <Building2 size={18} className="text-brand-ink shrink-0" />
+                    <Building2 size={18} strokeWidth={1.8} className="text-brand-ink shrink-0" />
                     <h2 className="text-sm sm:text-base font-bold text-brand-ink truncate">
                       {selectedConsorcio.nombre}
                     </h2>
@@ -325,13 +324,13 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                 </div>
 
                 {/* Sub-Tabs: Datos Administrativos vs Atributos Dinámicos */}
-                <div className="flex items-center gap-1 bg-surface-soft p-0.5 rounded-base border border-border shrink-0 self-start sm:self-auto">
+                <div className="flex items-center gap-1.5 bg-surface-muted p-1 rounded-xl border border-border/80 shrink-0 self-start sm:self-auto">
                   <button
                     type="button"
                     onClick={() => setActiveSubTab('datos')}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded transition-colors cursor-pointer ${
+                    className={`text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer ${
                       activeSubTab === 'datos'
-                        ? 'bg-brand-ink text-white shadow-sm'
+                        ? 'bg-brand-ink text-white shadow-xs'
                         : 'text-text-secondary hover:text-brand-ink'
                     }`}
                   >
@@ -340,13 +339,13 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                   <button
                     type="button"
                     onClick={() => setActiveSubTab('atributos')}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded transition-colors cursor-pointer flex items-center gap-1.5 ${
+                    className={`text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer flex items-center gap-2 ${
                       activeSubTab === 'atributos'
-                        ? 'bg-brand-ink text-white shadow-sm'
+                        ? 'bg-brand-ink text-white shadow-xs'
                         : 'text-text-secondary hover:text-brand-ink'
                     }`}
                   >
-                    <Layers size={13} />
+                    <Layers size={16} strokeWidth={2} />
                     <span>Atributos Dinámicos</span>
                   </button>
                 </div>
@@ -355,7 +354,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
               {/* Mensaje de Éxito al Guardar */}
               {saveSuccessMsg && (
                 <div className="px-5 py-2.5 bg-emerald-50 border-b border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
-                  <Check size={14} />
+                  <Check size={14} strokeWidth={2.2} />
                   <span>{saveSuccessMsg}</span>
                 </div>
               )}
@@ -427,7 +426,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="0140000000000000000001"
                           value={currentForm.cbu_bancario || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, cbu_bancario: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink font-mono"
+                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
                         />
                       </div>
 
@@ -501,10 +500,11 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                       <Button
                         type="submit"
                         variant="primary"
+                        size="md"
                         disabled={savingConsorcio}
-                        className="h-9 px-4 text-xs bg-brand-ink text-white font-semibold flex items-center gap-1.5"
+                        className="bg-brand-ink text-white font-semibold flex items-center gap-2"
                       >
-                        <Save size={14} />
+                        <Save size={18} strokeWidth={2} />
                         <span>{savingConsorcio ? 'Guardando...' : 'Guardar Cambios Oficiales'}</span>
                       </Button>
                     </div>
@@ -512,12 +512,12 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                 ) : (
                   /* SubTab: Atributos Dinámicos (NocoDB Inside) */
                   <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
-                        <h3 className="text-xs sm:text-sm font-bold text-brand-ink">
+                        <h3 className="text-sm sm:text-base font-bold text-brand-ink">
                           Atributos Personalizados del Consorcio
                         </h3>
-                        <p className="text-xs text-text-secondary">
+                        <p className="text-xs text-text-secondary mt-0.5">
                           Variables y valores específicos consultables por el bot o el CRM (claves de alarma, códigos de portón, teléfonos extra).
                         </p>
                       </div>
@@ -526,9 +526,9 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                         variant="primary"
                         size="sm"
                         onClick={() => setShowNewAttrRow(true)}
-                        className="h-8 px-3 text-xs bg-brand-ink text-white font-semibold flex items-center gap-1.5 self-start sm:self-auto"
+                        className="bg-brand-ink text-white font-semibold flex items-center gap-2 self-start sm:self-auto"
                       >
-                        <Plus size={14} />
+                        <Plus size={18} strokeWidth={2} />
                         <span>Agregar Atributo</span>
                       </Button>
                     </div>
@@ -544,7 +544,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                             placeholder="Identificador (ej: codigo_alarma)"
                             value={newAttrForm.clave}
                             onChange={(e) => setNewAttrForm({ ...newAttrForm, clave: e.target.value })}
-                            className="h-8 bg-white border border-border text-brand-ink text-xs rounded px-2.5 outline-none font-mono"
+                            className="h-8 bg-white border border-border text-brand-ink text-xs rounded px-2.5 outline-none"
                           />
                           <input
                             type="text"
@@ -622,7 +622,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                         type="text"
                                         value={editAttrForm.clave}
                                         onChange={(e) => setEditAttrForm({ ...editAttrForm, clave: e.target.value })}
-                                        className="h-7 w-full bg-white border border-border text-xs rounded px-2 font-mono"
+                                        className="h-7 w-full bg-white border border-border text-xs rounded px-2"
                                       />
                                     </td>
                                     <td className="py-2 px-3">
@@ -649,28 +649,30 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                         className="size-4"
                                       />
                                     </td>
-                                    <td className="py-2 px-3 text-right">
-                                      <div className="flex items-center justify-end gap-1">
+                                    <td className="py-2.5 px-3 text-right">
+                                      <div className="flex items-center justify-end gap-1.5">
                                         <button
                                           type="button"
                                           onClick={() => handleSaveEditAttr(attr.id)}
-                                          className="size-6 rounded bg-brand-ink text-white flex items-center justify-center cursor-pointer"
+                                          title="Guardar atributo"
+                                          className="size-8 sm:size-9 rounded-xl bg-brand-ink text-white flex items-center justify-center cursor-pointer shadow-2xs hover:bg-black transition-colors"
                                         >
-                                          <Check size={12} />
+                                          <Check size={16} strokeWidth={2.2} />
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => setEditingAttrId(null)}
-                                          className="size-6 rounded border border-border flex items-center justify-center cursor-pointer"
+                                          title="Cancelar edición"
+                                          className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted flex items-center justify-center cursor-pointer shadow-2xs transition-colors"
                                         >
-                                          <X size={12} />
+                                          <X size={16} strokeWidth={2.2} />
                                         </button>
                                       </div>
                                     </td>
                                   </>
                                 ) : (
                                   <>
-                                    <td className="py-2.5 px-3 font-mono font-semibold text-brand-ink">
+                                    <td className="py-2.5 px-3 font-semibold text-brand-ink">
                                       {attr.clave}
                                     </td>
                                     <td className="py-2.5 px-3 text-text-secondary">
@@ -691,20 +693,22 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                       )}
                                     </td>
                                     <td className="py-2.5 px-3 text-right">
-                                      <div className="flex items-center justify-end gap-1">
+                                      <div className="flex items-center justify-end gap-1.5">
                                         <button
                                           type="button"
                                           onClick={() => handleStartEditAttr(attr)}
-                                          className="size-6 rounded text-text-secondary hover:text-brand-ink hover:bg-surface-muted flex items-center justify-center cursor-pointer"
+                                          title="Editar atributo"
+                                          className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted flex items-center justify-center cursor-pointer shadow-2xs transition-colors"
                                         >
-                                          <Edit3 size={12} />
+                                          <Pencil size={16} strokeWidth={1.8} />
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => handleDeleteAttr(attr.id)}
-                                          className="size-6 rounded text-text-muted hover:text-danger hover:bg-danger-soft flex items-center justify-center cursor-pointer"
+                                          title="Eliminar atributo"
+                                          className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft flex items-center justify-center cursor-pointer shadow-2xs transition-colors"
                                         >
-                                          <Trash2 size={12} />
+                                          <Trash2 size={16} strokeWidth={1.8} />
                                         </button>
                                       </div>
                                     </td>
@@ -734,15 +738,16 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
           <div className="bg-white rounded-base border border-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]">
             <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-surface-soft">
               <div className="flex items-center gap-2">
-                <Building2 size={16} className="text-brand-ink" />
+                <Building2 size={18} strokeWidth={1.8} className="text-brand-ink" />
                 <h3 className="text-sm font-bold text-brand-ink">Registrar Nuevo Consorcio</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="size-7 rounded-base flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer"
+                className="size-9 sm:size-10 rounded-xl flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer border border-border/80 shadow-2xs"
+                aria-label="Cerrar modal"
               >
-                <X size={15} />
+                <X size={18} strokeWidth={2} />
               </button>
             </div>
 
@@ -802,7 +807,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                     placeholder="0140000000000000000001"
                     value={createForm.cbu_bancario}
                     onChange={(e) => setCreateForm({ ...createForm, cbu_bancario: e.target.value })}
-                    className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink font-mono"
+                    className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
                   />
                 </div>
                 <div>
@@ -820,20 +825,19 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
               <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
                 <Button
                   variant="secondary"
-                  size="sm"
+                  size="md"
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
                   disabled={creating}
-                  className="h-9 px-3 text-xs"
                 >
                   Cancelar
                 </Button>
                 <Button
                   variant="primary"
-                  size="sm"
+                  size="md"
                   type="submit"
                   disabled={creating}
-                  className="h-9 px-4 text-xs bg-brand-ink text-white font-semibold"
+                  className="bg-brand-ink text-white font-semibold"
                 >
                   {creating ? 'Guardando...' : 'Crear Consorcio'}
                 </Button>

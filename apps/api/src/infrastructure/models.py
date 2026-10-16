@@ -71,6 +71,7 @@ class ContactoModel(Base):
     consorcio_id = Column(String(36), ForeignKey("consorcios.id"), nullable=True)
     unidad_funcional = Column(String(50), nullable=True)
     rol = Column(SQLEnum(RolContacto), default=RolContacto.OTRO)
+    foto_url = Column(String(500), nullable=True)
     creado_el = Column(DateTime, default=datetime.utcnow)
     ultimo_contacto_el = Column(DateTime, nullable=True)
 
@@ -202,6 +203,10 @@ class ConversacionModel(Base):
     @property
     def contacto_unidad(self):
         return self.contacto.unidad_funcional if self.contacto else None
+
+    @property
+    def contacto_foto_url(self):
+        return self.contacto.foto_url if self.contacto else None
 
     @property
     def consorcio_nombre(self):

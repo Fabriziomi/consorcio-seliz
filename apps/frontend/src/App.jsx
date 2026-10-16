@@ -1,28 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2,
-  MessageSquare,
+  MessagesSquare,
   CheckSquare,
   Terminal,
-  Minus,
-  Plus,
-  RotateCcw,
+  ZoomOut,
+  ZoomIn,
+  RotateCw,
   LogOut,
-  PanelLeftClose,
-  PanelLeftOpen,
   Pin,
-  PinOff,
   ChevronDown,
   ChevronUp,
   Sparkles,
-  Layers,
-  HelpCircle,
+  Archive,
+  BookOpen,
   Users,
 } from 'lucide-react';
+import { ToastProvider, useToast } from './components/ui/ToastNotification.jsx';
 import { LoginForm } from './components/auth/LoginForm.jsx';
 import { ChatInbox } from './components/chat/ChatInbox.jsx';
 import { MessageThread } from './components/chat/MessageThread.jsx';
-import { AiDraftBox } from './components/chat/AiDraftBox.jsx';
+import { WhatsAppDoodleBackground } from './components/chat/WhatsAppDoodleBackground.jsx';
 import { TicketsTable } from './components/tables/TicketsTable.jsx';
 import { ExpedientesTable } from './components/tables/ExpedientesTable.jsx';
 import { DebugSimulator } from './components/debug/DebugSimulator.jsx';
@@ -107,6 +105,7 @@ const INITIAL_CONVERSATIONS = [
     id: 'conv-1',
     senderName: 'Carlos Méndez',
     phone: '+5491144558899',
+    avatarUrl: null,
     consorcio: 'Torre Corrientes',
     unidad: '4° B (Propietario)',
     lastMessage: 'Hola, se cortó la luz en el palier del piso 4. ¿Podrán mandar al electricista?',
@@ -118,6 +117,7 @@ const INITIAL_CONVERSATIONS = [
     id: 'conv-2',
     senderName: 'Lucía Rossi',
     phone: '+5491166778899',
+    avatarUrl: null,
     consorcio: 'Callao 2334',
     unidad: '7° A (Inquilina)',
     lastMessage: 'Buenas tardes, me podrían confirmar el CBU para transferir las expensas?',
@@ -129,6 +129,7 @@ const INITIAL_CONVERSATIONS = [
     id: 'conv-3',
     senderName: 'Mariano Gómez',
     phone: '+5491133221100',
+    avatarUrl: null,
     consorcio: 'Torre Lavalle',
     unidad: 'Cochera 14 (Propietario)',
     lastMessage: 'Urgente, hay dos personas atrapadas en el ascensor!',
@@ -233,6 +234,22 @@ export default function App() {
   };
 
   const isSidebarExpanded = sidebarPinned || sidebarHovered;
+
+  // Limpieza de hover cuando la ventana pierde foco o el cursor abandona la ventana
+  useEffect(() => {
+    const handleBlur = () => setSidebarHovered(false);
+    const handleDocMouseLeave = (e) => {
+      if (!e.relatedTarget && !e.toElement) {
+        setSidebarHovered(false);
+      }
+    };
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('mouseleave', handleDocMouseLeave);
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('mouseleave', handleDocMouseLeave);
+    };
+  }, []);
 
   // Estados dinámicos de backend
   const [consorcios, setConsorcios] = useState(INITIAL_CONSORCIOS);
@@ -357,6 +374,7 @@ export default function App() {
           id: c.id,
           senderName: c.contacto?.nombre_completo || 'Vecino',
           phone: c.contacto?.telefono_wa || '',
+          avatarUrl: c.contacto?.foto_url || c.contacto_foto_url || c.avatar_url || null,
           consorcio: c.consorcio?.nombre || 'Consorcio General',
           unidad: c.contacto?.unidad_funcional
             ? `${c.contacto.unidad_funcional} (${c.contacto.rol || 'PROPIETARIO'})`
@@ -507,33 +525,43 @@ export default function App() {
   }, [loadExpedientes, loadTickets, loadConsorcios, loadConversaciones]);
 
   const navigationItems = [
-    { id: 'inbox', label: 'Inbox Omnicanal', icon: MessageSquare },
-    { id: 'expedientes', label: 'Expedientes & Incidentes', icon: Layers },
+    { id: 'inbox', label: 'Inbox', icon: MessagesSquare },
+    { id: 'expedientes', label: 'Expedientes & Incidentes', icon: Archive },
     { id: 'tickets', label: 'Tickets & Reclamos', icon: CheckSquare },
-    { id: 'faqs', label: 'Base de Conocimiento', icon: HelpCircle },
+    { id: 'faqs', label: 'Base de Conocimiento', icon: BookOpen },
     { id: 'consorcios', label: 'Consorcios & Atributos', icon: Building2 },
     { id: 'contactos', label: 'Directorio de Contactos', icon: Users },
     { id: 'debug', label: 'Simulador de Atención', icon: Terminal },
   ];
 
-  const currentConv = conversations.find((c) => c.id === selectedConvId) || conversations[0];
+  const currentConv = selectedConvId ? (conversations.find((c) => c.id === selectedConvId) || null) : null;
   const currentMessages = messagesByConv[selectedConvId] || [];
   const currentDraft = aiDrafts[selectedConvId];
   const activeLabel = navigationItems.find((item) => item.id === activeTab)?.label || 'Inbox';
 
-  // 1. Envío de mensaje (WhatsApp oficial o Nota Interna)
-  const handleSendMessage = async (text, isPrivate = false) => {
-    if (!text.trim() || !selectedConvId) return;
+  // 1. Envío de mensaje (WhatsApp oficial o Nota Interna, con soporte de adjuntos)
+  const handleSendMessage = async (text, isPrivate = false, attachedFile = null) => {
+    if ((!text || !text.trim()) && !attachedFile) return;
+    if (!selectedConvId) return;
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     const newMsg = {
       id: `m-${Date.now()}`,
       sender: 'ivana',
-      text: text.trim(),
+      text: (text || '').trim(),
       privado: isPrivate,
       isPrivateNote: isPrivate,
       timestamp: timeStr,
+      attachment: attachedFile
+        ? {
+            name: attachedFile.name,
+            size: attachedFile.size,
+            type: attachedFile.type,
+            isImage: attachedFile.isImage,
+            previewUrl: attachedFile.previewUrl,
+          }
+        : null,
     };
 
     setMessagesByConv((prev) => ({
@@ -546,7 +574,9 @@ export default function App() {
         c.id === selectedConvId
           ? {
               ...c,
-              lastMessage: isPrivate ? c.lastMessage : text.trim(),
+              lastMessage: isPrivate
+                ? c.lastMessage
+                : (text || (attachedFile ? `[Archivo: ${attachedFile.name}]` : '')).trim(),
               timestamp: timeStr,
               unreadCount: 0,
             }
@@ -554,13 +584,9 @@ export default function App() {
       )
     );
 
-    setAiDrafts((prev) => ({
-      ...prev,
-      [selectedConvId]: null,
-    }));
-
     try {
-      await ApiService.sendConversacionMessage(selectedConvId, text.trim(), isPrivate);
+      const dispatchText = (text || '').trim() || (attachedFile ? `[Adjunto: ${attachedFile.name}]` : '');
+      await ApiService.sendConversacionMessage(selectedConvId, dispatchText, isPrivate);
       await loadMessagesForConversation(selectedConvId);
       await loadConversaciones();
     } catch (err) {
@@ -614,7 +640,7 @@ export default function App() {
 
   // 3. Generación bajo demanda de sugerencia de respuesta con IA
   const handleGenerateAiDraft = async () => {
-    if (!currentConv) return;
+    if (!currentConv) return null;
     setGeneratingDraft(true);
     try {
       const lastNeighborMsg = [...currentMessages].reverse().find((m) => m.sender === 'vecino');
@@ -626,22 +652,17 @@ export default function App() {
         currentConv.senderName
       );
 
-      if (suggestion && suggestion.text) {
-        setAiDrafts((prev) => ({
-          ...prev,
-          [selectedConvId]: {
-            text: suggestion.text,
-            source: suggestion.intent || 'Sugerencia Automática',
-            confidence: 0.96,
-          },
-        }));
-      }
-
       if (suggestion?.ticketCreated) {
         await loadTickets();
       }
+
+      if (suggestion && suggestion.text) {
+        return suggestion.text;
+      }
+      return null;
     } catch (err) {
       console.error('[CRM] Error al generar propuesta IA:', err);
+      return null;
     } finally {
       setGeneratingDraft(false);
     }
@@ -745,6 +766,7 @@ export default function App() {
     : 'IS';
 
   return (
+    <ToastProvider>
     <div className="h-[100dvh] min-h-[100dvh] bg-surface-soft text-brand-ink flex flex-col lg:flex-row overflow-hidden">
       {/* Zona Sensora de Proximidad en Margen Izquierdo (Desktop) */}
       {!sidebarPinned && (
@@ -755,83 +777,72 @@ export default function App() {
         />
       )}
 
-      {/* Sidebar Desktop con Soporte de Pin y Apertura por Proximidad */}
+      {/* Sidebar Desktop con Fondo Gris Fuerte y Textos/Iconos Claros */}
       <aside
         onMouseEnter={() => !sidebarPinned && setSidebarHovered(true)}
         onMouseLeave={() => !sidebarPinned && setSidebarHovered(false)}
-        className={`fixed inset-y-0 left-0 hidden flex-col border-r border-border bg-white lg:flex transition-all duration-200 ease-in-out ${
+        className={`fixed inset-y-0 left-0 hidden flex-col border-r border-zinc-800 bg-zinc-900 lg:flex transition-[width,box-shadow] duration-200 ease-in-out ${
           sidebarPinned
             ? 'w-64 xl:w-72 z-30 shadow-card'
             : isSidebarExpanded
-            ? 'w-64 xl:w-72 z-40 shadow-2xl border-r-brand-ink/20'
+            ? 'w-64 xl:w-72 z-40 shadow-2xl border-r-zinc-700'
             : 'w-[68px] z-30 shadow-sm'
         }`}
       >
-        {/* Marca, Encabezado y Control Pin/Unpin */}
-        <div className="flex min-h-14 sm:min-h-16 items-center justify-between border-b border-border px-3.5 xl:px-4">
-          {isSidebarExpanded ? (
-            <>
-              <div className="min-w-0 flex items-center gap-2">
-                <span className="text-sm font-bold tracking-tight text-brand-ink truncate">
-                  Dra. Ivana Seliz
-                </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-brand-ink text-white shrink-0">
-                  {currentUser?.rol || 'ADMIN'}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={toggleSidebarPin}
-                title={sidebarPinned ? 'Desanclar (Apertura por proximidad)' : 'Fijar menú expandido'}
-                className="size-7 rounded-base flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shrink-0"
-              >
-                {sidebarPinned ? <Pin size={14} className="rotate-45" /> : <PinOff size={14} />}
-              </button>
-            </>
-          ) : (
-            <div className="w-full flex items-center justify-center">
-              <button
-                type="button"
-                onClick={toggleSidebarPin}
-                title="Fijar menú expandido"
-                className="size-9 rounded-base flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer"
-              >
-                <PinOff size={16} />
-              </button>
-            </div>
-          )}
+        {/* Marca, Encabezado y Control Pin/Unpin con Altura Fija y Cero Desplazamiento */}
+        <div className="h-16 flex items-center justify-between border-b border-zinc-800 px-3.5 shrink-0 overflow-hidden">
+          <div className={`min-w-0 flex items-center gap-2 transition-[opacity,transform] duration-200 ${isSidebarExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none w-0 overflow-hidden'}`}>
+            <span className="text-sm font-bold tracking-tight text-white truncate">
+              Dra. Ivana Seliz
+            </span>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 shrink-0">
+              {currentUser?.rol || 'ADMIN'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={toggleSidebarPin}
+            title={sidebarPinned ? 'Desanclar (Apertura por proximidad)' : 'Fijar menú expandido'}
+            className="size-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+          >
+            {sidebarPinned ? <Pin size={16} strokeWidth={2} className="rotate-45 text-white" /> : <Pin size={16} strokeWidth={1.8} className="text-zinc-400" />}
+          </button>
         </div>
 
-        {/* Navegación Principal */}
-        <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-4" aria-label="Secciones del CRM">
-          {isSidebarExpanded && (
-            <p className="mb-2 px-3 text-[11px] font-semibold tracking-wider uppercase text-text-muted">
+        {/* Navegación Principal Monocromática con Iconos y Textos Claros */}
+        <nav className="min-h-0 flex-1 overflow-y-auto px-2.5 py-3" aria-label="Secciones del CRM">
+          {/* Espaciador de categoría con altura constante para evitar salto vertical de botones */}
+          <div className="h-5 mb-2 px-3 flex items-center overflow-hidden">
+            <span className={`text-[11px] font-bold tracking-wider uppercase text-zinc-400 whitespace-nowrap transition-opacity duration-150 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0'}`}>
               Gestión
-            </p>
-          )}
-          <div className="grid gap-1">
+            </span>
+          </div>
+
+          <div className="grid gap-1.5">
             {navigationItems.map(({ id, label, icon: Icon }) => {
               const isActive = id === activeTab;
               return (
                 <button
                   key={id}
+                  data-nav-id={id}
                   onClick={() => {
                     setActiveTab(id);
+                    if (!sidebarPinned) {
+                      setSidebarHovered(false);
+                    }
                     if (id === 'inbox') setMobileChatOpen(false);
                   }}
                   title={!isSidebarExpanded ? label : undefined}
-                  className={`flex min-h-10 w-full items-center rounded-base text-xs font-semibold transition-all cursor-pointer ${
-                    isSidebarExpanded
-                      ? 'gap-3 px-3 xl:text-sm'
-                      : 'justify-center px-0'
-                  } ${
+                  className={`flex min-h-12 w-full items-center rounded-xl text-xs sm:text-sm font-semibold cursor-pointer px-3 gap-3 transition-[background-color,border-color,color,box-shadow] duration-150 ${
                     isActive
-                      ? 'bg-brand-ink text-white shadow-sm'
-                      : 'text-text-secondary hover:bg-surface-muted hover:text-brand-ink'
+                      ? 'bg-zinc-800 text-white font-bold shadow-sm border border-zinc-700/80'
+                      : 'border border-transparent text-zinc-400 hover:bg-zinc-800/60 hover:text-white hover:border-zinc-700/40'
                   }`}
                 >
-                  <Icon size={18} aria-hidden="true" className="shrink-0" />
-                  {isSidebarExpanded && <span className="truncate">{label}</span>}
+                  <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" className="shrink-0 text-current" />
+                  <span className={`truncate whitespace-nowrap transition-[opacity,transform] duration-200 ${isSidebarExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}>
+                    {label}
+                  </span>
                 </button>
               );
             })}
@@ -839,55 +850,39 @@ export default function App() {
         </nav>
 
         {/* Perfil en la Base con Botón de Logout */}
-        <div className="border-t border-border p-2.5 bg-surface-soft/60">
-          {isSidebarExpanded ? (
-            <div className="flex items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-ink text-white text-xs font-bold shadow-sm">
-                  {userInitials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-brand-ink truncate">
-                    {currentUser?.nombre_completo || 'Dra. Ivana Seliz'}
-                  </p>
-                  <p className="text-[10px] text-text-secondary truncate">
-                    {currentUser?.email || 'admin@selizadministraciones.com.ar'}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => ApiService.logout()}
-                title="Cerrar sesión segura"
-                className="size-8 rounded-base flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer shrink-0"
-              >
-                <LogOut size={15} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
+        <div className="border-t border-zinc-800 p-3 bg-zinc-950/70 h-[68px] flex items-center shrink-0 overflow-hidden">
+          <div className="flex items-center justify-between gap-2.5 w-full">
+            <div className="flex items-center gap-3 min-w-0">
               <div
                 title={currentUser?.nombre_completo || 'Dra. Ivana Seliz'}
-                className="grid size-8 place-items-center rounded-full bg-brand-ink text-white text-xs font-bold shadow-sm cursor-default"
+                className="grid size-10 shrink-0 place-items-center rounded-full bg-zinc-800 text-white text-xs font-bold border border-zinc-700 shadow-sm cursor-default"
               >
                 {userInitials}
               </div>
-              <button
-                type="button"
-                onClick={() => ApiService.logout()}
-                title="Cerrar sesión segura"
-                className="size-8 rounded-base flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
-              >
-                <LogOut size={15} />
-              </button>
+              <div className={`min-w-0 flex-1 transition-[opacity,transform] duration-200 ${isSidebarExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none w-0 overflow-hidden'}`}>
+                <p className="text-xs font-bold text-white truncate">
+                  {currentUser?.nombre_completo || 'Dra. Ivana Seliz'}
+                </p>
+                <p className="text-[10px] text-zinc-400 truncate">
+                  {currentUser?.email || 'admin@selizadministraciones.com.ar'}
+                </p>
+              </div>
             </div>
-          )}
+
+            <button
+              type="button"
+              onClick={() => ApiService.logout()}
+              title="Cerrar sesión segura"
+              className={`size-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none w-0 overflow-hidden'}`}
+            >
+              <LogOut size={18} strokeWidth={1.8} />
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* Contenedor Principal (con compensación de ancho según sidebarPinned) */}
-      <div className={`flex-1 min-w-0 ${sidebarPinned ? 'lg:pl-64 xl:pl-72' : 'lg:pl-[68px]'} flex flex-col h-[100dvh] overflow-hidden transition-all duration-200`}>
+      <div className={`flex-1 min-w-0 ${sidebarPinned ? 'lg:pl-64 xl:pl-72' : 'lg:pl-[68px]'} flex flex-col h-[100dvh] overflow-hidden transition-[padding] duration-200 ease-in-out`}>
         {/* Barra Superior Minimalista */}
         <header className="sticky top-0 z-20 flex min-h-12 sm:min-h-14 items-center justify-between border-b border-border/80 bg-white/95 px-3 sm:px-5 lg:px-6 backdrop-blur shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -923,7 +918,7 @@ export default function App() {
                 className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
                 title="Reducir zoom (-)"
               >
-                <Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <ZoomOut size={16} strokeWidth={1.8} />
               </button>
               <button
                 type="button"
@@ -942,7 +937,7 @@ export default function App() {
                 className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
                 title="Aumentar zoom (+)"
               >
-                <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <ZoomIn size={16} strokeWidth={1.8} />
               </button>
             </div>
 
@@ -953,7 +948,7 @@ export default function App() {
               title="Cerrar sesión"
               className="lg:hidden size-7 rounded-full flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
             >
-              <LogOut size={14} />
+              <LogOut size={16} strokeWidth={1.8} />
             </button>
           </div>
         </header>
@@ -989,58 +984,56 @@ export default function App() {
                   mobileChatOpen ? 'flex' : 'hidden md:flex'
                 } flex-1 h-full flex flex-col overflow-hidden bg-surface-soft min-w-0`}
               >
-                <div className="flex-1 overflow-hidden min-w-0">
-                  <MessageThread
-                    conversationId={currentConv?.id}
-                    senderName={currentConv?.senderName}
-                    phone={currentConv?.phone}
-                    consorcio={currentConv?.consorcio}
-                    unidad={currentConv?.unidad}
-                    status={currentConv?.status || 'open'}
-                    botActive={currentConv?.botActive !== false}
-                    messages={currentMessages}
-                    onSendMessage={handleSendMessage}
-                    onUpdateStatus={handleUpdateConversationStatus}
-                    onGenerateAiDraft={handleGenerateAiDraft}
-                    generatingDraft={generatingDraft}
-                    onBack={() => setMobileChatOpen(false)}
-                    inboxListCollapsed={inboxListCollapsed}
-                    onToggleInboxList={() => setInboxListCollapsed((prev) => !prev)}
-                  />
-                </div>
+                {currentConv ? (
+                  <div className="flex-1 overflow-hidden min-w-0">
+                    <MessageThread
+                      conversationId={currentConv.id}
+                      senderName={currentConv.senderName}
+                      phone={currentConv.phone}
+                      consorcio={currentConv.consorcio}
+                      unidad={currentConv.unidad}
+                      avatarUrl={currentConv.avatarUrl}
+                      status={currentConv.status || 'open'}
+                      botActive={currentConv.botActive !== false}
+                      messages={currentMessages}
+                      onSendMessage={handleSendMessage}
+                      onUpdateStatus={handleUpdateConversationStatus}
+                      onGenerateAiDraft={handleGenerateAiDraft}
+                      generatingDraft={generatingDraft}
+                      onBack={() => {
+                        setSelectedConvId(null);
+                        setMobileChatOpen(false);
+                        setInboxListCollapsed(false);
+                      }}
+                      onClose={() => {
+                        setSelectedConvId(null);
+                        setMobileChatOpen(false);
+                        setInboxListCollapsed(false);
+                      }}
 
-                {/* Panel de Borrador IA Minimizable */}
-                {currentDraft && (
-                  <div className="border-t border-border bg-white shrink-0 transition-all duration-200">
-                    <div
-                      onClick={() => setDraftCollapsed((prev) => !prev)}
-                      className="flex items-center justify-between px-3 sm:px-4 py-2 bg-surface-muted/70 hover:bg-surface-muted border-b border-border/60 text-xs font-semibold text-brand-ink cursor-pointer select-none transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Sparkles size={14} className="text-brand-ink shrink-0" />
-                        <span className="truncate">Sugerencia inteligente de respuesta (IA)</span>
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-hidden min-w-0 relative flex flex-col items-center justify-center p-6 text-center bg-[#efeae2]">
+                    <WhatsAppDoodleBackground />
+                    <div className="relative z-10 max-w-sm flex flex-col items-center bg-white/95 p-6 sm:p-8 rounded-2xl border border-border/80 shadow-xs">
+                      <div className="size-14 rounded-2xl bg-surface-muted border border-border flex items-center justify-center text-brand-ink mb-3 shadow-2xs">
+                        <MessagesSquare size={32} strokeWidth={1.5} className="text-zinc-400" />
                       </div>
-                      <div className="flex items-center gap-1.5 text-text-secondary text-[11px] font-medium shrink-0">
-                        <span>{draftCollapsed ? 'Desplegar borrador' : 'Minimizar'}</span>
-                        {draftCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      </div>
+                      <h3 className="text-lg sm:text-xl font-bold text-brand-ink mb-1.5">
+                        Bandeja de Conversaciones
+                      </h3>
+                      {inboxListCollapsed && (
+                        <button
+                          type="button"
+                          onClick={() => setInboxListCollapsed(false)}
+                          className="mt-4 px-3 py-1.5 rounded-xl border border-border/80 bg-white text-xs font-semibold text-brand-ink hover:bg-surface-muted flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
+                        >
+                          <PanelLeftOpen className="w-4 h-4" />
+                          <span>Mostrar lista de conversaciones</span>
+                        </button>
+                      )}
                     </div>
-
-                    {!draftCollapsed && (
-                      <div className="p-2.5 sm:p-3.5">
-                        <AiDraftBox
-                          key={currentDraft.text}
-                          initialDraft={currentDraft.text}
-                          onApprove={handleApproveDraft}
-                          onReject={() =>
-                            setAiDrafts({
-                              ...aiDrafts,
-                              [selectedConvId]: null,
-                            })
-                          }
-                        />
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1102,8 +1095,8 @@ export default function App() {
         </main>
       </div>
 
-      {/* Barra de Navegación Inferior Fija para Móviles y Tablets */}
-      <nav className="fixed bottom-0 inset-x-0 z-30 flex items-center justify-around border-t border-border bg-white/95 px-2 py-1 backdrop-blur lg:hidden pb-safe">
+      {/* Barra de Navegación Inferior Fija para Móviles y Tablets Monocromática */}
+      <nav className="fixed bottom-0 inset-x-0 z-30 flex items-center justify-around border-t border-zinc-800 bg-zinc-900/98 px-2 py-1 backdrop-blur lg:hidden pb-safe">
         {navigationItems.map(({ id, label, icon: Icon }) => {
           const isActive = id === activeTab;
           return (
@@ -1113,18 +1106,19 @@ export default function App() {
                 setActiveTab(id);
                 if (id === 'inbox') setMobileChatOpen(false);
               }}
-              className={`flex flex-col items-center justify-center gap-1 min-h-[44px] flex-1 rounded-base px-1 py-1 text-[11px] font-semibold transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center gap-1 min-h-[44px] flex-1 rounded-xl px-1 py-1 text-[11px] font-semibold transition-colors duration-150 cursor-pointer ${
                 isActive
-                  ? 'text-brand-ink font-bold'
-                  : 'text-text-secondary hover:text-brand-ink'
+                  ? 'text-white font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <Icon size={19} className={isActive ? 'text-brand-ink stroke-[2.5]' : 'text-text-muted'} />
+              <Icon size={19} className={isActive ? 'text-white stroke-[2.2]' : 'text-zinc-400'} />
               <span className="truncate max-w-[76px]">{label.split(' ')[0]}</span>
             </button>
           );
         })}
       </nav>
     </div>
+    </ToastProvider>
   );
 }

@@ -52,6 +52,7 @@ def _to_conversacion_response(c: ConversacionModel) -> ConversacionResponse:
         contacto_nombre=c.contacto.nombre_completo if c.contacto else None,
         contacto_telefono=c.contacto.telefono_wa if c.contacto else None,
         contacto_unidad=c.contacto.unidad_funcional if c.contacto else None,
+        contacto_foto_url=c.contacto.foto_url if c.contacto else None,
         consorcio_nombre=c.consorcio.nombre if c.consorcio else None,
         agente_nombre=c.agente.nombre_completo if c.agente else None,
         ultimo_mensaje_texto=c.ultimo_mensaje_texto,
