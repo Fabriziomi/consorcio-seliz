@@ -45,6 +45,15 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"[API_STARTUP] Error al sembrar datos iniciales: {e}")
 
+    # Validación preventiva de sintaxis y placeholders de plantillas oficiales
+    try:
+        from services.templates import validate_templates_on_startup
+        validate_templates_on_startup()
+        logger.info("[API_STARTUP] Plantillas FSM verificadas exitosamente.")
+    except Exception as e:
+        logger.error(f"[API_STARTUP] Error al validar plantillas: {e}")
+        raise e
+
     yield
 
 

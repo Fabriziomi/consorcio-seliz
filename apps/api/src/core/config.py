@@ -46,6 +46,25 @@ class Settings(BaseSettings):
     # Configuración de Timeouts para VPS / Redes con latencia
     HTTP_CLIENT_TIMEOUT: float = 60.0
 
+    # Modelos e Inferencia Externa (OpenRouter / Gemini / Groq)
+    OPENROUTER_KEY: Optional[str] = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai"
+    JEV_MODEL: str = "typesafe/jev-1.14"
+    GEMINI_FALLBACK_MODEL: str = "google/gemini-2.5-flash"
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_KEY: Optional[str] = None
+
+    # Parámetros FSM y Guardrails
+    CONFIDENCE_THRESHOLD: float = 0.55
+    DECISION_TIMEOUT_SECONDS: float = 5.0
+    AUDIO_TIMEOUT_SECONDS: float = 3.0
+    SESSION_TTL_MINUTES: int = 120
+    TAKEOVER_TTL_HOURS: int = 12
+    COOLDOWN_MINUTES: int = 5
+    MAX_ONBOARDING_RETRIES: int = 2
+    BOT_SHADOW_MODE: bool = False
+    BOT_GLOBAL_ENABLED: bool = True
+
     # Debug Rápido
     FAST_DEBUG_MODE: bool = False
     BYPASS_DEBOUNCE_BUFFER: bool = False

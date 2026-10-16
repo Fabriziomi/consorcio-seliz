@@ -144,6 +144,7 @@ class ContactoBase(BaseModel):
     unidad_funcional: Optional[str] = None
     rol: RolContacto = RolContacto.OTRO
     foto_url: Optional[str] = None
+    bot_desactivado: bool = False
 
 
 class ContactoCreate(ContactoBase):
@@ -156,6 +157,7 @@ class ContactoUpdate(BaseModel):
     unidad_funcional: Optional[str] = None
     rol: Optional[RolContacto] = None
     foto_url: Optional[str] = None
+    bot_desactivado: Optional[bool] = None
 
 
 class ContactoResponse(ContactoBase):
@@ -370,6 +372,10 @@ class ConversacionBase(BaseModel):
     consorcio_id: Optional[str] = None
     estado: EstadoConversacion = EstadoConversacion.OPEN
     bot_activo: bool = True
+    fsm_estado: str = "IDLE"
+    fsm_contexto: Optional[Dict[str, Any]] = None
+    needs_human_review: bool = False
+    ultimo_takeover_at: Optional[datetime] = None
     agente_id: Optional[str] = None
     etiquetas: Optional[List[str]] = None
 
@@ -383,6 +389,10 @@ class ConversacionCreate(BaseModel):
 class ConversacionUpdate(BaseModel):
     estado: Optional[EstadoConversacion] = None
     bot_activo: Optional[bool] = None
+    fsm_estado: Optional[str] = None
+    fsm_contexto: Optional[Dict[str, Any]] = None
+    needs_human_review: Optional[bool] = None
+    ultimo_takeover_at: Optional[datetime] = None
     agente_id: Optional[str] = None
     consorcio_id: Optional[str] = None
     etiquetas: Optional[List[str]] = None

@@ -346,3 +346,65 @@ async def test_webhook_chatwoot_operator_message():
         assert status_res.status_code == 200
         assert status_res.json()["takeover_active"] is True
 
+
+def test_human_typing_delay_proportionality_and_randomness():
+    """Verifica que el retardo de digitación sea proporcional, acotado y no determinista."""
+    from infrastructure.evolution_client import calculate_human_typing_delay
+
+    # 1. Texto muy corto respeta el piso mínimo
+    short_text = "Ok gracias"
+    delays_short = [
+        calculate_human_typing_delay(short_text, min_seconds=1.3, max_seconds=4.2, bypass_in_debug=False)
+        for _ in range(15)
+    ]
+    for d in delays_short:
+        assert d >= 1.3
+        assert d <= 4.2
+
+    # 2. Texto largo respeta el techo máximo
+    long_text = "Hola estimado vecino, le pasamos los datos bancarios para abonar las expensas " * 5
+    delays_long = [
+        calculate_human_typing_delay(long_text, min_seconds=1.3, max_seconds=4.2, bypass_in_debug=False)
+        for _ in range(15)
+    ]
+    for d in delays_long:
+        assert d >= 1.3
+        assert d <= 4.5
+
+    # 3. Proporcionalidad: el promedio para texto largo debe ser mayor al de texto corto
+    assert sum(delays_long) / len(delays_long) > sum(delays_short) / len(delays_short)
+
+    # 4. Aleatoriedad (Jitter anti-ban): para un mismo texto, debe haber valores distintos
+    medium_text = "Hola, recibimos tu reporte para la unidad 4B de Callao 2334. Lo revisaremos a primera hora."
+    sample_delays = [
+        calculate_human_typing_delay(medium_text, min_seconds=1.3, max_seconds=4.2, bypass_in_debug=False)
+        for _ in range(10)
+    ]
+    unique_delays = set(sample_delays)
+    assert len(unique_delays) >= 3, f"Falta entropía/aleatoriedad en los tiempos de respuesta: {unique_delays}"
+
+    # 5. Bypass en testing rápido
+    debug_delay = calculate_human_typing_delay(medium_text, bypass_in_debug=True)
+    assert debug_delay == 0.0
+
+
+@pytest.mark.asyncio
+async def test_evolution_client_send_text_with_typing_flow():
+    """Verifica que send_text_with_typing invoque set_presence y send_text adecuadamente."""
+    from infrastructure.evolution_client import evolution_client
+    from unittest.mock import AsyncMock, patch
+
+    with patch.object(evolution_client, "set_presence", new_callable=AsyncMock) as mock_presence, \
+         patch.object(evolution_client, "send_text", new_callable=AsyncMock, return_value=True) as mock_send:
+
+        # Con bypass_in_debug=False y tiempo mínimo muy bajo para test unitario rápido
+        sent = await evolution_client.send_text_with_typing(
+            "5491100000000@s.whatsapp.net",
+            "Mensaje de prueba con typing simulado",
+            min_seconds=0.01,
+            max_seconds=0.05,
+        )
+        assert sent is True
+        mock_send.assert_called_once()
+
+

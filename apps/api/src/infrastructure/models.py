@@ -72,6 +72,7 @@ class ContactoModel(Base):
     unidad_funcional = Column(String(50), nullable=True)
     rol = Column(SQLEnum(RolContacto), default=RolContacto.OTRO)
     foto_url = Column(String(500), nullable=True)
+    bot_desactivado = Column(Boolean, default=False, nullable=False)
     creado_el = Column(DateTime, default=datetime.utcnow)
     ultimo_contacto_el = Column(DateTime, nullable=True)
 
@@ -182,6 +183,10 @@ class ConversacionModel(Base):
     consorcio_id = Column(String(36), ForeignKey("consorcios.id"), nullable=True, index=True)
     estado = Column(SQLEnum(EstadoConversacion), default=EstadoConversacion.OPEN, nullable=False, index=True)
     bot_activo = Column(Boolean, default=True, nullable=False)
+    fsm_estado = Column(String(50), default="IDLE", nullable=False, index=True)
+    fsm_contexto = Column(JSON, nullable=True, default=dict)
+    needs_human_review = Column(Boolean, default=False, nullable=False, index=True)
+    ultimo_takeover_at = Column(DateTime, nullable=True)
     agente_id = Column(String(36), ForeignKey("usuarios.id"), nullable=True, index=True)
     etiquetas = Column(JSON, nullable=True, default=list)
     ultimo_mensaje_el = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)

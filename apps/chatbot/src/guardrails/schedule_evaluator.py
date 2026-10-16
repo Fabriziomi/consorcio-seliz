@@ -18,10 +18,28 @@ def _parse_time(time_str: str) -> time:
     return time(parts[0], parts[1])
 
 
+# Feriados nacionales argentinos recurrentes (mes, día)
+FERIADOS_AR = {
+    (1, 1),    # Año Nuevo
+    (3, 24),   # Día Nacional de la Memoria
+    (4, 2),    # Día del Veterano y Caídos en Malvinas
+    (5, 1),    # Día del Trabajador
+    (5, 25),   # Revolución de Mayo
+    (6, 17),   # Paso a la Inmortalidad de Güemes
+    (6, 20),   # Paso a la Inmortalidad de Belgrano
+    (7, 9),    # Día de la Independencia
+    (8, 17),   # Paso a la Inmortalidad de San Martín
+    (10, 12),  # Día del Respeto a la Diversidad Cultural
+    (11, 20),  # Día de la Soberanía Nacional
+    (12, 8),   # Inmaculada Concepción
+    (12, 25),  # Navidad
+}
+
+
 def evaluate_schedule(dt: datetime = None) -> ScheduleStatus:
     """
     Evalúa si el momento actual corresponde a:
-    1. Horario Humano (L-V 10-18hs, Sáb 10-13hs) -> Bot SILENCIOSO
+    1. Horario Humano (L-V 10-18hs, Sáb 10-13hs, salvo Feriados y Domingos) -> Bot SILENCIOSO
     2. Quiet Hours (00:00 a 07:30 hs) -> Bot posterga no-urgentes
     3. Fuera de Horario -> Bot ACTIVO
     """
@@ -32,12 +50,17 @@ def evaluate_schedule(dt: datetime = None) -> ScheduleStatus:
 
     current_time = dt.time()
     weekday = dt.weekday()  # 0 = Lunes, 5 = Sábado, 6 = Domingo
+    es_feriado = (dt.month, dt.day) in FERIADOS_AR
 
     # 1. Verificar Quiet Hours (00:00 a 07:30)
     qh_start = _parse_time(settings.QUIET_HOURS_START)
     qh_end = _parse_time(settings.QUIET_HOURS_END)
     if qh_start <= current_time < qh_end:
         return ScheduleStatus.QUIET_HOURS
+
+    # Si es feriado nacional o domingo, la administración física está cerrada y el bot opera
+    if es_feriado or weekday == 6:
+        return ScheduleStatus.BOT_ACTIVE_OFF_HOURS
 
     # 2. Verificar Horario Humano Laboral
     mf_start = _parse_time(settings.OFFICE_HOURS_MF_START)
@@ -55,5 +78,5 @@ def evaluate_schedule(dt: datetime = None) -> ScheduleStatus:
         if sat_start <= current_time < sat_end:
             return ScheduleStatus.HUMAN_OFFICE_HOURS
 
-    # Domingos (6) o fuera de horario laboral de Lunes a Sábado
+    # Fuera de horario laboral
     return ScheduleStatus.BOT_ACTIVE_OFF_HOURS

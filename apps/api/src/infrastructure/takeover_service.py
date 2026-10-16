@@ -99,5 +99,43 @@ class TakeoverService:
         logger.info(f"[TAKEOVER] Bloqueo liberado para {key}")
         return True
 
+    async def register_bot_message_id(self, message_id: str, ttl: int = 60) -> None:
+        """Registra el ID de un mensaje emitido por el bot con TTL de 60s para evitar falso Takeover."""
+        if not message_id:
+            return
+        key = f"bot_msg:{message_id}"
+        r = await self._get_redis()
+        if r:
+            try:
+                await r.setex(key, ttl, "1")
+                return
+            except Exception as e:
+                logger.warning(f"[TAKEOVER] Error en Redis setex para bot_msg: {e}")
+
+        self._memory_cache[key] = time.time() + ttl
+
+    async def is_bot_message_id(self, message_id: str) -> bool:
+        """Verifica si un ID de mensaje fue emitido por el bot en los últimos 60 segundos."""
+        if not message_id:
+            return False
+        key = f"bot_msg:{message_id}"
+        r = await self._get_redis()
+        if r:
+            try:
+                val = await r.get(key)
+                if val:
+                    return True
+            except Exception as e:
+                logger.warning(f"[TAKEOVER] Error en Redis get para bot_msg: {e}")
+
+        expire_at = self._memory_cache.get(key)
+        if expire_at:
+            if time.time() < expire_at:
+                return True
+            else:
+                del self._memory_cache[key]
+
+        return False
+
 
 takeover_service = TakeoverService()

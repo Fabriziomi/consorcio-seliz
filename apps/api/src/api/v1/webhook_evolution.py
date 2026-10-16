@@ -1,6 +1,7 @@
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+import asyncio
+from datetime import datetime, timezone, timedelta
+from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -29,18 +30,22 @@ from infrastructure.evolution_client import evolution_client
 from infrastructure.chatwoot_client import chatwoot_client
 from infrastructure.takeover_service import takeover_service
 from infrastructure.debounce_service import debounce_service
-from services.ticket_service import (
-    process_and_consolidate_ticket,
-    extract_consorcio_clue,
-    extract_unit_clue,
-)
+from services.ticket_service import process_and_consolidate_ticket
 from services.audio_transcriber import audio_transcriber
-from services.rag_engine import rag_engine
-from engine.graph import decision_graph
-from engine.state import ChatState
+from services.openrouter_client import OpenRouterClient
+from services.templates import render_template
+from engine.fsm import ConversationFSM
+from engine.state_models import (
+    FSMState,
+    FSMContext,
+    DecisionResultado,
+    Intencion,
+)
+from guardrails.schedule_evaluator import evaluate_schedule, ScheduleStatus
 from core.websocket_manager import ws_manager
 
 router = APIRouter()
+openrouter_client = OpenRouterClient()
 
 
 async def get_or_create_conversacion(db: AsyncSession, contacto: ContactoModel) -> ConversacionModel:
@@ -56,6 +61,9 @@ async def get_or_create_conversacion(db: AsyncSession, contacto: ContactoModel) 
             consorcio_id=contacto.consorcio_id,
             estado=EstadoConversacion.OPEN,
             bot_activo=True,
+            fsm_estado=FSMState.IDLE.value,
+            fsm_contexto={},
+            needs_human_review=False,
             etiquetas=[],
         )
         db.add(conv)
@@ -105,7 +113,7 @@ async def record_message(
     await db.commit()
     await db.refresh(msg)
 
-    # Notificar a los clientes WebSocket en tiempo real
+    # Notificar a clientes WebSocket en tiempo real
     try:
         await ws_manager.broadcast(
             "new_message",
@@ -133,24 +141,23 @@ async def record_message(
     return msg
 
 
-async def execute_bot_pipeline(remote_jid: str, text: str, push_name: str = "Vecino"):
+async def execute_fsm_bot_pipeline(
+    remote_jid: str,
+    text: str,
+    has_attachment: bool = False,
+    push_name: str = "Vecino",
+):
     """
-    Ejecuta el pipeline de decisión LangGraph para un mensaje consolidado.
-    Persiste tickets, respuestas y notas internas en la base de datos y despacha por WhatsApp.
+    Ejecuta el pipeline determinista ConversationFSM + OpenRouter (Jev 1.14 / Gemini).
     """
     phone_clean = remote_jid.split("@")[0].replace("+", "").strip()
     phone_wa = f"+{phone_clean}"
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
 
     async with AsyncSessionLocal() as db:
-        # 1. Buscar o registrar contacto en la base de datos
+        # 1. Buscar o registrar contacto
         res = await db.execute(select(ContactoModel).where(ContactoModel.telefono_wa == phone_wa))
         contacto = res.scalar_one_or_none()
-
-        consorcio_id = None
-        consorcio_nombre = None
-        unidad_funcional = None
-        consorcio_obj = None
-        atributos_dinamicos = {}
 
         if not contacto:
             contacto = ContactoModel(
@@ -162,150 +169,175 @@ async def execute_bot_pipeline(remote_jid: str, text: str, push_name: str = "Vec
             db.add(contacto)
             await db.commit()
             await db.refresh(contacto)
-            logger.info(f"[WEBHOOK_EVOLUTION] Nuevo contacto auto-registrado: {push_name} ({phone_wa})")
-        else:
-            consorcio_id = contacto.consorcio_id
-            unidad_funcional = contacto.unidad_funcional
-            if consorcio_id:
-                c_res = await db.execute(select(ConsorcioModel).where(ConsorcioModel.id == consorcio_id))
-                consorcio_obj = c_res.scalar_one_or_none()
-                if consorcio_obj:
-                    consorcio_nombre = consorcio_obj.nombre
-                    dyn_res = await db.execute(
-                        select(ConsorcioAtributoDinamicoModel).where(
-                            ConsorcioAtributoDinamicoModel.consorcio_id == consorcio_id
-                        )
-                    )
-                    atributos_dinamicos = {
-                        attr.clave: {
-                            "etiqueta": attr.etiqueta_visible,
-                            "valor": attr.valor,
-                            "es_publico": attr.es_publico_vecinos,
-                        }
-                        for attr in dyn_res.scalars().all()
-                    }
+            logger.info(f"[FSM_PIPELINE] Nuevo contacto auto-registrado: {push_name} ({phone_wa})")
 
-        # Obtener o crear conversación activa
+        # Exclusión por contacto desactivado
+        if contacto.bot_desactivado:
+            logger.info(f"[FSM_PIPELINE] Contacto {phone_wa} tiene bot_desactivado=True. Silencio permanente.")
+            return
+
+        # 2. Obtener conversación activa
         conversacion = await get_or_create_conversacion(db, contacto)
 
-        # 2. Extracción previa al grafo: si el contacto no tiene consorcio o unidad, extraer del mensaje
-        all_consorcios_res = await db.execute(select(ConsorcioModel).where(ConsorcioModel.activo == True))
-        all_consorcios = all_consorcios_res.scalars().all()
-
-        if not consorcio_id:
-            detected_c = extract_consorcio_clue(text, all_consorcios)
-            if detected_c:
-                consorcio_id = detected_c.id
-                consorcio_obj = detected_c
-                consorcio_nombre = detected_c.nombre
-                contacto.consorcio_id = consorcio_id
-                await db.commit()
-                await db.refresh(contacto)
-                logger.info(f"[WEBHOOK_EVOLUTION] Consorcio pre-identificado del mensaje: {consorcio_nombre}")
-
-        if not unidad_funcional:
-            detected_u = extract_unit_clue(text)
-            if detected_u:
-                unidad_funcional = detected_u
-                contacto.unidad_funcional = detected_u
-                await db.commit()
-                await db.refresh(contacto)
-                logger.info(f"[WEBHOOK_EVOLUTION] Unidad funcional pre-identificada del mensaje: {unidad_funcional}")
-
-        # Cargar atributos dinámicos del consorcio si ahora está identificado
-        if consorcio_id and not atributos_dinamicos:
-            dyn_res = await db.execute(
-                select(ConsorcioAtributoDinamicoModel).where(
-                    ConsorcioAtributoDinamicoModel.consorcio_id == consorcio_id
+        # 3. Control de Sesión (TTL 2 horas = 120 minutos)
+        if conversacion.ultimo_mensaje_el:
+            diff_minutes = (now_utc - conversacion.ultimo_mensaje_el).total_seconds() / 60.0
+            if diff_minutes > settings.SESSION_TTL_MINUTES:
+                logger.info(
+                    f"[FSM_PIPELINE] Sesión expirada ({diff_minutes:.1f} min > {settings.SESSION_TTL_MINUTES} min). Reseteando a IDLE."
                 )
-            )
-            atributos_dinamicos = {
-                attr.clave: {
-                    "etiqueta": attr.etiqueta_visible,
-                    "valor": attr.valor,
-                    "es_publico": attr.es_publico_vecinos,
+                conversacion.fsm_estado = FSMState.IDLE.value
+                conversacion.fsm_contexto = {}
+                await db.commit()
+                await db.refresh(conversacion)
+
+        # 4. Estado y Contexto actuales de la FSM
+        raw_state = conversacion.fsm_estado or FSMState.IDLE.value
+        try:
+            current_state = FSMState(raw_state)
+        except ValueError:
+            current_state = FSMState.IDLE
+
+        ctx_dict = conversacion.fsm_contexto or {}
+        current_context = FSMContext(**ctx_dict)
+        current_context.has_attachment = has_attachment
+
+        # 5. Obtener catálogo activo de consorcios
+        consorcios_res = await db.execute(select(ConsorcioModel).where(ConsorcioModel.activo == True))
+        consorcios_objs = consorcios_res.scalars().all()
+        catalog = [
+            {"id": c.id, "nombre": c.nombre, "direccion": c.direccion}
+            for c in consorcios_objs
+        ]
+
+        # 6. Clasificación con OpenRouter (Jev 1.14 / Gemini Fallback)
+        has_c = bool(contacto.consorcio_id)
+        has_u = bool(contacto.unidad_funcional)
+
+        decision = await openrouter_client.classify_intent(
+            text=text,
+            has_consorcio=has_c,
+            has_unidad=has_u,
+            consorcios_catalog=catalog,
+        )
+
+        logger.info(
+            f"[FSM_PIPELINE] Decisión {decision.model_used}: intent={decision.intencion} (conf={decision.confidence:.2f}, lat={decision.latency_ms:.0f}ms)"
+        )
+
+        # 7. Early Binding: Persistir consorcio o unidad en Contacto antes de evaluar FSM
+        contact_updated = False
+        if decision.consorcio_mencionado and decision.consorcio_mencionado not in ("OTRO_NO_ADMINISTRADO", "NINGUNO"):
+            if not contacto.consorcio_id:
+                contacto.consorcio_id = decision.consorcio_mencionado
+                contact_updated = True
+                logger.info(f"[EARLY_BINDING] Consorcio asignado a contacto {phone_wa}: {decision.consorcio_mencionado}")
+
+        if decision.contiene_unidad and decision.unidad_funcional:
+            if not contacto.unidad_funcional:
+                contacto.unidad_funcional = decision.unidad_funcional
+                contact_updated = True
+                logger.info(f"[EARLY_BINDING] Unidad asignada a contacto {phone_wa}: {decision.unidad_funcional}")
+
+        if contact_updated:
+            await db.commit()
+            await db.refresh(contacto)
+
+        # 8. Cargar datos del consorcio para inyección en plantillas
+        consorcio_data = None
+        target_consorcio_id = contacto.consorcio_id or decision.consorcio_mencionado
+        if target_consorcio_id:
+            c_obj = next((c for c in consorcios_objs if c.id == target_consorcio_id), None)
+            if c_obj:
+                consorcio_data = {
+                    "id": c_obj.id,
+                    "nombre": c_obj.nombre,
+                    "direccion": c_obj.direccion,
+                    "cbu_bancario": c_obj.cbu_bancario,
+                    "alias_bancario": c_obj.alias_bancario,
+                    "cuit": c_obj.cuit,
+                    "email_cobranzas": c_obj.email_cobranzas,
+                    "telefono_porteria": c_obj.telefono_porteria,
+                    "emergencia_ascensores": c_obj.emergencia_ascensores,
+                    "emergencia_plomeria": c_obj.emergencia_plomeria,
+                    "pautas_mudanza": c_obj.pautas_mudanza,
                 }
-                for attr in dyn_res.scalars().all()
-            }
 
-        # 3. Memoria conversacional multi-turno: buscar intención pendiente en mensajes previos
-        pending_intent = None
-        last_msgs_res = await db.execute(
-            select(MensajeModel)
-            .where(MensajeModel.conversacion_id == conversacion.id)
-            .order_by(MensajeModel.creado_el.desc())
-            .limit(3)
+        # 9. Evaluar Schedule (Horario de Oficina vs Quiet Hours)
+        schedule_status = evaluate_schedule()
+        is_quiet_hours = (schedule_status == ScheduleStatus.QUIET_HOURS)
+
+        # Cantidad de mensajes previos para selección Round-Robin len % 3
+        count_res = await db.execute(
+            select(MensajeModel.id).where(MensajeModel.conversacion_id == conversacion.id)
         )
-        recent_msgs = last_msgs_res.scalars().all()
-        for m in recent_msgs:
-            if m.enviado_por in (EnviadoPor.BOT, EnviadoPor.AGENTE):
-                if "para poder facilitarte los datos de cuenta bancaria" in m.contenido or "SOLICITAR_CONSORCIO_PAGO" in m.contenido:
-                    pending_intent = "SOLICITAR_CONSORCIO_PAGO"
-                    break
-                elif "identificar tu reclamo y coordinarlo a primera hora" in m.contenido or "FUERA_HORARIO_SOLICITAR_EDIFICIO" in m.contenido:
-                    pending_intent = "FUERA_HORARIO_SOLICITAR_EDIFICIO"
-                    break
+        historial_len = len(count_res.scalars().all())
 
-        # 4. Sincronizar FAQs activas de la BD con el motor RAG
-        faqs_res = await db.execute(select(FaqAprobadaModel).where(FaqAprobadaModel.activo == True))
-        db_faqs = faqs_res.scalars().all()
-        if db_faqs:
-            rag_engine.load_db_faqs(db_faqs)
+        contact_profile = {
+            "id": contacto.id,
+            "nombre_completo": contacto.nombre_completo or push_name,
+            "telefono_wa": contacto.telefono_wa,
+            "consorcio_id": contacto.consorcio_id,
+            "unidad_funcional": contacto.unidad_funcional,
+        }
 
-        # 5. Configurar estado de LangGraph
-        initial_state = ChatState(
-            phone=phone_wa,
-            user_name=contacto.nombre_completo or push_name,
-            user_message=text,
-            pending_intent=pending_intent,
-            consorcio_id=consorcio_id,
-            consorcio_nombre=consorcio_nombre,
-            unidad_funcional=unidad_funcional,
-            consorcio_cbu=consorcio_obj.cbu_bancario if consorcio_obj else None,
-            consorcio_alias=consorcio_obj.alias_bancario if consorcio_obj else None,
-            consorcio_cuit=consorcio_obj.cuit if consorcio_obj else None,
-            consorcio_email_cobranzas=consorcio_obj.email_cobranzas if consorcio_obj else None,
-            consorcio_telefono_guardia=consorcio_obj.telefono_porteria if consorcio_obj else None,
-            consorcio_emergencia_ascensores=consorcio_obj.emergencia_ascensores if consorcio_obj else None,
-            consorcio_emergencia_plomeria=consorcio_obj.emergencia_plomeria if consorcio_obj else None,
-            consorcio_pautas_mudanza=consorcio_obj.pautas_mudanza if consorcio_obj else None,
-            atributos_dinamicos=atributos_dinamicos,
+        # 10. Procesar paso determinista en ConversationFSM
+        resultado = ConversationFSM.process_step(
+            state=current_state,
+            context=current_context,
+            decision=decision,
+            contact_profile=contact_profile,
+            consorcio_data=consorcio_data,
+            incoming_text=text,
+            is_quiet_hours=is_quiet_hours,
+            historial_len=historial_len,
+            now=now_utc,
         )
 
-        # 6. Ejecutar el grafo de decisión
-        graph_result = decision_graph.invoke(initial_state)
-        intent = graph_result.get("intent")
-        should_respond = graph_result.get("should_respond", False)
-        response_text = graph_result.get("response_text")
+        # 11. Aplicar Early Binding si fue emitido por la FSM
+        if resultado.early_bind_consorcio_id and not contacto.consorcio_id:
+            contacto.consorcio_id = resultado.early_bind_consorcio_id
+            await db.commit()
 
-        # 7. Gestión de Tickets & Expedientes
+        if resultado.early_bind_unidad and not contacto.unidad_funcional:
+            contacto.unidad_funcional = resultado.early_bind_unidad
+            await db.commit()
+
+        # 12. Actualizar estado y contexto de la conversación
+        conversacion.fsm_estado = resultado.nuevo_estado.value
+        conversacion.fsm_contexto = resultado.nuevo_contexto.model_dump()
+        if resultado.needs_human_review:
+            conversacion.needs_human_review = True
+        if contacto.consorcio_id and not conversacion.consorcio_id:
+            conversacion.consorcio_id = contacto.consorcio_id
+
+        await db.commit()
+
+        # 13. Gestión de Tickets & Expedientes (si corresponde)
         should_create_ticket = (
-            (intent in ("EMERGENCIA", "FUERA_HORARIO_TICKET", "FUERA_HORARIO_SOLICITAR_EDIFICIO", "FUERA_HORARIO_CONFIRMACION_EDIFICIO", "PAGO_REALIZADO", "CONSULTA_ATRIBUTO_RESTRINGIDO") or graph_result.get("tev1_decision") == "D")
-            and not graph_result.get("is_pure_greeting", False)
-            and not graph_result.get("is_noise", False)
-            and not graph_result.get("is_cordial_close", False)
+            (resultado.needs_human_review or decision.is_emergency)
+            and decision.intencion not in (Intencion.CIERRE_CORDIAL.value, Intencion.CONSULTA_EXPENSAS.value)
         )
 
-        ticket_result = None
         if should_create_ticket:
-            ticket_result = await process_and_consolidate_ticket(
+            ticket_res = await process_and_consolidate_ticket(
                 db=db,
                 contacto=contacto,
                 message=text,
-                intent=intent,
-                is_emergency=graph_result.get("is_emergency", False),
+                intent=decision.intencion,
+                is_emergency=decision.is_emergency,
                 created_off_hours=True,
-                consorcio_id=consorcio_id,
-                consorcio_nombre=consorcio_nombre,
+                consorcio_id=contacto.consorcio_id,
+                consorcio_nombre=consorcio_data.get("nombre") if consorcio_data else None,
             )
-            if ticket_result:
-                t_id = ticket_result["id"]
-                exp_code = ticket_result.get("expediente_codigo")
+            if ticket_res:
+                t_id = ticket_res["id"]
+                exp_code = ticket_res.get("expediente_codigo")
                 exp_str = f" [Expediente #{exp_code}]" if exp_code else ""
                 nota_texto = (
-                    f"📋 Ticket registrado automáticamente #{t_id}{exp_str} (Intención: {intent})."
-                    if ticket_result["accion"] == "NUEVO_TICKET_CREADO"
-                    else f"🚨 ATENCIÓN: El ticket #{t_id}{exp_str} fue escalado a PRIORIDAD CRÍTICA por nuevo mensaje del vecino."
+                    f"Ticket registrado #{t_id}{exp_str} (Intención: {decision.intencion}, Estado FSM: {resultado.nuevo_estado.value})."
+                    if ticket_res["accion"] == "NUEVO_TICKET_CREADO"
+                    else f"Ticket #{t_id}{exp_str} escalado a PRIORIDAD CRÍTICA por nuevo mensaje del vecino."
                 )
                 await record_message(
                     db=db,
@@ -316,29 +348,53 @@ async def execute_bot_pipeline(remote_jid: str, text: str, push_name: str = "Vec
                     privado=True,
                 )
 
-        # 5. Despacho y registro de respuesta del bot por WhatsApp
-        if should_respond and response_text:
-            await record_message(
-                db=db,
-                conversacion_id=conversacion.id,
-                contenido=response_text,
-                tipo=TipoMensaje.OUTGOING,
-                enviado_por=EnviadoPor.BOT,
-                privado=False,
+        # 14. Despacho Anti-Ban / Modo Sombra
+        if resultado.silencio:
+            logger.info(f"[FSM_PIPELINE] Silencio aplicado para {remote_jid}. Motivo: {resultado.razon_silencio}")
+            return
+
+        if not resultado.template_rendered:
+            return
+
+        if settings.BOT_SHADOW_MODE:
+            logger.info(
+                f"[BOT_SHADOW_MODE] Respuesta proyectada no despachada a {remote_jid}: {resultado.template_rendered[:100]}..."
             )
-            try:
-                await evolution_client.set_presence(remote_jid, presence="composing", delay_ms=1500)
-                sent = await evolution_client.send_text(remote_jid, response_text)
-                if sent:
-                    logger.info(f"[WEBHOOK_EVOLUTION] Respuesta enviada exitosamente a {remote_jid}")
-                else:
-                    logger.warning(f"[WEBHOOK_EVOLUTION] Evolution API no disponible o no entregó a {remote_jid}")
-            except Exception as e:
-                logger.error(f"[WEBHOOK_EVOLUTION] Error al despachar respuesta WhatsApp: {e}")
+            return
+
+        # Registro de mensaje saliente en base de datos
+        await record_message(
+            db=db,
+            conversacion_id=conversacion.id,
+            contenido=resultado.template_rendered,
+            tipo=TipoMensaje.OUTGOING,
+            enviado_por=EnviadoPor.BOT,
+            privado=False,
+        )
+
+        # Retardo humano sigiloso anti-ban (composing dinámico tps/s + jitter + piso mínimo)
+        try:
+            sent = await evolution_client.send_text_with_typing(
+                remote_jid,
+                resultado.template_rendered,
+                min_seconds=1.3,
+                max_seconds=4.2,
+                base_chars_per_sec=35.0,
+            )
+            if sent:
+                logger.info(f"[FSM_PIPELINE] Plantilla '{resultado.template_key}' enviada exitosamente a {remote_jid}")
+            else:
+                logger.warning(f"[FSM_PIPELINE] Fallo envío a {remote_jid} vía Evolution API")
+        except Exception as e:
+            logger.error(f"[FSM_PIPELINE] Error al despachar WhatsApp a {remote_jid}: {e}")
+
+
+# Alias para mantener compatibilidad con invocaciones de prueba previas
+execute_bot_pipeline = execute_fsm_bot_pipeline
 
 
 async def process_incoming_message(payload: dict):
-    """Procesamiento asíncrono del webhook de Evolution API v2."""
+    """Procesamiento asíncrono y guardrails del webhook de Evolution API v2."""
     event = payload.get("event")
     data = payload.get("data", {})
 
@@ -350,25 +406,55 @@ async def process_incoming_message(payload: dict):
     from_me = key.get("fromMe", False)
     message_id = key.get("id")
 
-    # Ignorar mensajes de grupos o broadcasts
-    if "@g.us" in remote_jid or "status@broadcast" in remote_jid or not remote_jid:
+    # 1. Filtro Temprano (ms 0): Grupos, Estados, Difusiones y Reacciones
+    message_content = data.get("message", {})
+    if (
+        "@g.us" in remote_jid
+        or "status@broadcast" in remote_jid
+        or not remote_jid
+        or "reactionMessage" in message_content
+    ):
         return
 
     push_name = data.get("pushName") or "Vecino"
     phone_clean = remote_jid.split("@")[0].replace("+", "").strip()
     phone_wa = f"+{phone_clean}"
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
 
-    # Extracción de contenido de texto o audio (nota de voz WhatsApp)
-    message_content = data.get("message", {})
+    # 2. Extracción de contenido de texto o audio (nota de voz WhatsApp)
     text = (
         message_content.get("conversation")
         or message_content.get("extendedTextMessage", {}).get("text")
         or ""
     ).strip()
 
+    # Extraer texto citado si existe (contextInfo.quotedMessage)
+    context_info = message_content.get("extendedTextMessage", {}).get("contextInfo") or message_content.get("contextInfo") or {}
+    quoted_msg = context_info.get("quotedMessage", {})
+    quoted_text = quoted_msg.get("conversation") or quoted_msg.get("extendedTextMessage", {}).get("text")
+    if quoted_text and isinstance(quoted_text, str) and quoted_text.strip():
+        text = f'[Citando: "{quoted_text.strip()}"] {text}'.strip()
+
     is_audio = "audioMessage" in message_content
+    has_attachment = bool(
+        "imageMessage" in message_content
+        or "documentMessage" in message_content
+        or "documentWithCaptionMessage" in message_content
+    )
+
+    # Si trae imagen con caption
+    if has_attachment and not text:
+        caption = (
+            message_content.get("imageMessage", {}).get("caption")
+            or message_content.get("documentMessage", {}).get("caption")
+            or ""
+        ).strip()
+        if caption:
+            text = caption
+
+    # Transcripción de Audio con Groq Whisper API (< 90s)
     if not text and is_audio:
-        logger.info(f"[WEBHOOK_EVOLUTION] Nota de voz recibida de {push_name} ({remote_jid}). Iniciando transcripción Whisper...")
+        logger.info(f"[WEBHOOK_EVOLUTION] Nota de voz recibida de {push_name} ({remote_jid}). Iniciando transcripción...")
         audio_b64 = message_content.get("base64")
         if not audio_b64:
             audio_b64 = await evolution_client.get_media_base64(message_content)
@@ -379,20 +465,21 @@ async def process_incoming_message(payload: dict):
                 text = transcription.strip()
                 logger.info(f"[WEBHOOK_EVOLUTION] Audio transcripto exitosamente para {remote_jid}: '{text}'")
 
-    if not text:
+    if not text and not has_attachment:
         if is_audio:
             logger.info(f"[WEBHOOK_EVOLUTION] Audio inaudible de {remote_jid}. Solicitando aclaración por texto.")
-            prompt_text = "Hola, recibimos tu nota de voz pero no logramos escucharla con claridad. ¿Podrías escribirnos tu consulta brevemente por texto para que podamos ayudarte?"
-            await evolution_client.send_text(remote_jid, prompt_text)
+            prompt_text = render_template("AUDIO_INVALIDO", historial_len=0, user_name=push_name)
+            await evolution_client.send_text_with_typing(remote_jid, prompt_text)
         return
 
-    # Persistencia en BD de Contacto y Conversación
+    # 3. Persistencia en Base de Datos de Contacto y Conversación
     profile_pic = (
         data.get("profilePicUrl")
         or data.get("senderPhoto")
         or (data.get("sender") or {}).get("profilePictureUrl")
         or (data.get("contact") or {}).get("profilePicUrl")
     )
+
     async with AsyncSessionLocal() as db:
         c_res = await db.execute(select(ContactoModel).where(ContactoModel.telefono_wa == phone_wa))
         contacto = c_res.scalar_one_or_none()
@@ -403,6 +490,7 @@ async def process_incoming_message(payload: dict):
                 nombre_completo=push_name,
                 rol=RolContacto.OTRO,
                 foto_url=profile_pic,
+                bot_desactivado=False,
             )
             db.add(contacto)
             await db.commit()
@@ -413,45 +501,73 @@ async def process_incoming_message(payload: dict):
 
         conversacion = await get_or_create_conversacion(db, contacto)
 
-        # CASO 1: Mensaje saliente de la administración física o WhatsApp Web (Takeover Humano)
+        # 4. CASO 1: Mensaje Saliente (fromMe: True)
         if from_me:
-            logger.info(f"[TAKEOVER_TRIGGER] Mensaje saliente de la administración para {remote_jid}. Registrando y activando bloqueo.")
+            # Comprobar si fue emitido por el bot (TTL 60s en Redis)
+            is_bot_msg = await takeover_service.is_bot_message_id(message_id)
+            if is_bot_msg:
+                # Mensaje emitido por nuestro bot, no activar takeover
+                return
+
+            # Mensaje saliente manual emitido por Ivana desde WhatsApp
+            logger.info(f"[TAKEOVER_TRIGGER] Intervención manual de Ivana para {remote_jid}. Activando Takeover por 12h.")
             await record_message(
                 db=db,
                 conversacion_id=conversacion.id,
-                contenido=text,
+                contenido=text or "[Adjunto saliente]",
                 tipo=TipoMensaje.OUTGOING,
                 enviado_por=EnviadoPor.AGENTE,
                 whatsapp_message_id=message_id,
             )
             conversacion.bot_activo = False
+            conversacion.ultimo_takeover_at = now_utc
             await db.commit()
-            await takeover_service.set_takeover(remote_jid)
+            await takeover_service.set_takeover(remote_jid, duration_seconds=settings.TAKEOVER_TTL_HOURS * 3600)
             return
 
-        # CASO 2: Mensaje entrante del vecino -> Registrar siempre en el hilo de mensajes
+        # 5. CASO 2: Mensaje Entrante del Vecino -> Registrar siempre en el historial
         await record_message(
             db=db,
             conversacion_id=conversacion.id,
-            contenido=text,
+            contenido=text or "[Archivo adjunto sin texto]",
             tipo=TipoMensaje.INCOMING,
             enviado_por=EnviadoPor.VECINO,
             whatsapp_message_id=message_id,
         )
 
-    # Verificar si el Takeover Humano está activo para no contestar con el bot
+        # 6. Guardrails de Silencio: Bot Global y Contacto Excluido
+        if not settings.BOT_GLOBAL_ENABLED:
+            logger.info("[WEBHOOK_EVOLUTION] BOT_GLOBAL_ENABLED=False. Silencio total.")
+            return
+
+        if contacto.bot_desactivado:
+            logger.info(f"[WEBHOOK_EVOLUTION] Contacto {phone_wa} excluido (bot_desactivado=True). Silencio.")
+            return
+
+    # 7. Guardrail de Takeover Activo (< 12 horas)
     is_takeover = await takeover_service.is_takeover_active(remote_jid)
     if is_takeover:
-        logger.info(f"[TAKEOVER_ACTIVE] Mensaje entrante de {remote_jid} registrado en conversación pero ignorado por el bot (atención humana activa).")
+        logger.info(f"[TAKEOVER_ACTIVE] Mensaje de {remote_jid} registrado pero ignorado por Takeover activo.")
         return
 
-    # CASO 3: Mensaje entrante normal -> Consolidar en Debounce Buffer para ejecución del bot
-    logger.info(f"[WEBHOOK_EVOLUTION] Mensaje entrante de {push_name} ({remote_jid}): '{text}'")
-    await debounce_service.add_message(
-        remote_jid,
-        text,
-        callback=lambda r_jid, c_text: execute_bot_pipeline(r_jid, c_text, push_name)
-    )
+    # 8. Guardrail de Horario de Oficina (Ivana atiende en persona)
+    schedule_status = evaluate_schedule()
+    if schedule_status == ScheduleStatus.HUMAN_OFFICE_HOURS:
+        logger.info(f"[HORARIO_OFICINA] Mensaje de {remote_jid} recibido en horario laboral. Silencio para atención humana.")
+        return
+
+    # 9. Debounce Buffer (8-10s) o Ejecución Directa
+    logger.info(f"[WEBHOOK_EVOLUTION] Encolando mensaje de {push_name} ({remote_jid}) para ejecución FSM.")
+    if settings.BYPASS_DEBOUNCE_BUFFER or settings.FAST_DEBUG_MODE:
+        await execute_fsm_bot_pipeline(remote_jid, text, has_attachment=has_attachment, push_name=push_name)
+    else:
+        await debounce_service.add_message(
+            remote_jid,
+            text,
+            callback=lambda r_jid, c_text: execute_fsm_bot_pipeline(
+                r_jid, c_text, has_attachment=has_attachment, push_name=push_name
+            ),
+        )
 
 
 @router.post("/webhook/evolution")
@@ -468,10 +584,7 @@ async def evolution_webhook(request: Request, background_tasks: BackgroundTasks)
 
 @router.post("/webhook/chatwoot")
 async def chatwoot_webhook(request: Request, background_tasks: BackgroundTasks):
-    """
-    Receptor de webhooks heredado de Chatwoot.
-    Mantiene compatibilidad hacia atrás si hay instancias de Chatwoot enviando eventos.
-    """
+    """Receptor de webhooks para Chatwoot con activación de takeover."""
     try:
         payload = await request.json()
         event = payload.get("event")
@@ -492,8 +605,8 @@ async def chatwoot_webhook(request: Request, background_tasks: BackgroundTasks):
                 remote_jid = f"{clean_phone}@s.whatsapp.net"
 
                 async def _send_and_takeover():
-                    logger.info(f"[CHATWOOT_WEBHOOK] Operador humano respondió a {remote_jid}. Activando Takeover y enviando WhatsApp.")
-                    await takeover_service.set_takeover(remote_jid)
+                    logger.info(f"[CHATWOOT_WEBHOOK] Operador manual respondió a {remote_jid}. Activando Takeover por 12h.")
+                    await takeover_service.set_takeover(remote_jid, duration_seconds=settings.TAKEOVER_TTL_HOURS * 3600)
                     await evolution_client.send_text(remote_jid, content)
 
                 background_tasks.add_task(_send_and_takeover)
@@ -504,7 +617,6 @@ async def chatwoot_webhook(request: Request, background_tasks: BackgroundTasks):
         return {"status": "error", "message": str(e)}
 
 
-# --- Endpoints de Control de Takeover para el CRM ---
 @router.get("/takeover/{phone}/status")
 async def get_takeover_status(phone: str):
     """Consulta si el bot está silenciado para un número telefónico."""
