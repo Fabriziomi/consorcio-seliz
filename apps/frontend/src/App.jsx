@@ -832,7 +832,7 @@ export default function App() {
             type="button"
             onClick={toggleSidebarPin}
             title={sidebarPinned ? 'Desanclar (Apertura por proximidad)' : 'Fijar menú expandido'}
-            className="size-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+            className="size-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all duration-500 hover:scale-110 active:scale-95 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer shrink-0"
           >
             {sidebarPinned ? <Pin size={16} strokeWidth={2} className="rotate-45 text-white" /> : <Pin size={16} strokeWidth={1.8} className="text-zinc-400" />}
           </button>
@@ -842,7 +842,7 @@ export default function App() {
         <nav className="min-h-0 flex-1 overflow-y-auto px-2.5 py-3" aria-label="Secciones del CRM">
           {/* Espaciador de categoría con altura constante para evitar salto vertical de botones */}
           <div className="h-5 mb-2 px-3 flex items-center overflow-hidden">
-            <span className={`text-[11px] font-bold tracking-wider uppercase text-zinc-400 whitespace-nowrap transition-opacity duration-150 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0'}`}>
+            <span className={`text-[11px] font-bold tracking-wider uppercase text-zinc-400 whitespace-nowrap transition-opacity duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0'}`}>
               Gestión
             </span>
           </div>
@@ -862,14 +862,14 @@ export default function App() {
                     if (id === 'inbox') setMobileChatOpen(false);
                   }}
                   title={!isSidebarExpanded ? label : undefined}
-                  className={`flex min-h-12 w-full items-center rounded-xl text-xs sm:text-sm font-semibold cursor-pointer px-3 gap-3 transition-[background-color,border-color,color,box-shadow] duration-150 ${
+                  className={`group flex min-h-12 w-full items-center rounded-xl text-xs sm:text-sm font-semibold cursor-pointer px-3 gap-3 transition-all duration-500 ease-out active:scale-[0.98] ${
                     isActive
                       ? 'bg-zinc-800 text-white font-bold shadow-sm border border-zinc-700/80'
-                      : 'border border-transparent text-zinc-400 hover:bg-zinc-800/60 hover:text-white hover:border-zinc-700/40'
+                      : 'border border-transparent text-zinc-400 hover:bg-zinc-800/60 hover:text-white hover:border-zinc-700/40 hover:translate-x-0.5'
                   }`}
                 >
-                  <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" className="shrink-0 text-current" />
-                  <span className={`truncate whitespace-nowrap transition-[opacity,transform] duration-200 ${isSidebarExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}>
+                  <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" className="shrink-0 text-current transition-transform duration-500 ease-out group-hover:scale-115 group-active:scale-95" />
+                  <span className={`truncate whitespace-nowrap transition-[opacity,transform] duration-500 ${isSidebarExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}>
                     {label}
                   </span>
                 </button>
@@ -884,11 +884,11 @@ export default function App() {
             <div className="flex items-center gap-3 min-w-0">
               <div
                 title={currentUser?.nombre_completo || 'Dra. Ivana Seliz'}
-                className="grid size-10 shrink-0 place-items-center rounded-full bg-zinc-800 text-white text-xs font-bold border border-zinc-700 shadow-sm cursor-default"
+                className="grid size-10 shrink-0 place-items-center rounded-full bg-zinc-800 text-white text-xs font-bold border border-zinc-700 shadow-sm cursor-default transition-transform duration-500 hover:scale-105"
               >
                 {userInitials}
               </div>
-              <div className={`min-w-0 flex-1 transition-[opacity,transform] duration-200 ${isSidebarExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none w-0 overflow-hidden'}`}>
+              <div className={`min-w-0 flex-1 transition-[opacity,transform] duration-500 ${isSidebarExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none w-0 overflow-hidden'}`}>
                 <p className="text-xs font-bold text-white truncate">
                   {currentUser?.nombre_completo || 'Dra. Ivana Seliz'}
                 </p>
@@ -902,7 +902,7 @@ export default function App() {
               type="button"
               onClick={() => ApiService.logout()}
               title="Cerrar sesión segura"
-              className={`size-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none w-0 overflow-hidden'}`}
+              className={`size-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition-all duration-500 cursor-pointer shrink-0 hover:scale-110 active:scale-95 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none w-0 overflow-hidden'}`}
             >
               <LogOut size={18} strokeWidth={1.8} />
             </button>
@@ -911,9 +911,9 @@ export default function App() {
       </aside>
 
       {/* Contenedor Principal (con compensación de ancho según sidebarPinned) */}
-      <div className={`flex-1 min-w-0 ${sidebarPinned ? 'lg:pl-64 xl:pl-72' : 'lg:pl-[68px]'} flex flex-col h-[100dvh] overflow-hidden transition-[padding] duration-200 ease-in-out`}>
+      <div className={`flex-1 min-w-0 ${sidebarPinned ? 'lg:pl-64 xl:pl-72' : 'lg:pl-[68px]'} flex flex-col h-[100dvh] overflow-hidden transition-[padding] duration-500 ease-in-out`}>
         {/* Barra Superior Minimalista */}
-        <header className={`sticky top-0 z-20 ${activeTab === 'inbox' && mobileChatOpen ? 'hidden md:flex' : 'flex'} min-h-12 sm:min-h-14 items-center justify-between border-b border-border/80 bg-white/95 px-3 sm:px-5 lg:px-6 backdrop-blur shrink-0`}>
+        <header className={`sticky top-0 z-20 ${activeTab === 'inbox' && mobileChatOpen ? 'hidden md:flex' : 'flex'} min-h-12 sm:min-h-14 items-center justify-between border-b border-border/80 bg-white/95 px-3 sm:px-5 lg:px-6 backdrop-blur shrink-0 transition-colors duration-500`}>
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Branding Móvil */}
             <div className="lg:hidden flex items-center gap-1.5 shrink-0">
@@ -932,13 +932,13 @@ export default function App() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Controlador de Zoom Minimalista (visible en tablets y notebooks, oculto en celulares) */}
-            <div className="hidden sm:flex items-center gap-0.5 rounded-full border border-border/80 bg-surface-muted/60 p-0.5 text-xs">
+            <div className="hidden sm:flex items-center gap-0.5 rounded-full border border-border/80 bg-surface-muted/60 p-0.5 text-xs transition-colors duration-500">
               <button
                 type="button"
                 onClick={handleZoomOut}
                 disabled={zoomLevel <= 0.8}
                 aria-label="Reducir zoom"
-                className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-all duration-500 hover:scale-115 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
                 title="Reducir zoom (-)"
               >
                 <ZoomOut size={16} strokeWidth={1.8} />
@@ -947,7 +947,7 @@ export default function App() {
                 type="button"
                 onClick={handleZoomReset}
                 aria-label="Restablecer zoom al 100%"
-                className="px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-brand-ink hover:text-black transition-colors cursor-pointer select-none"
+                className="px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-brand-ink hover:text-black transition-all duration-500 hover:scale-105 active:scale-95 cursor-pointer select-none"
                 title="Click para restablecer zoom al 100%"
               >
                 {Math.round(zoomLevel * 100)}%
@@ -957,7 +957,7 @@ export default function App() {
                 onClick={handleZoomIn}
                 disabled={zoomLevel >= 1.25}
                 aria-label="Aumentar zoom"
-                className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                className="size-6 sm:size-7 rounded-full flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-white transition-all duration-500 hover:scale-115 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
                 title="Aumentar zoom (+)"
               >
                 <ZoomIn size={16} strokeWidth={1.8} />
@@ -969,7 +969,7 @@ export default function App() {
               type="button"
               onClick={() => ApiService.logout()}
               title="Cerrar sesión"
-              className="lg:hidden size-8 rounded-full flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
+              className="lg:hidden size-8 rounded-full flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-all duration-500 hover:scale-115 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer"
             >
               <LogOut size={16} strokeWidth={1.8} />
             </button>
@@ -984,7 +984,7 @@ export default function App() {
           } lg:pb-4`}
         >
           {activeTab === 'inbox' && (
-            <Card className="h-full flex overflow-hidden border border-border/80 bg-white shadow-subtle max-w-[1700px] mx-auto w-full">
+            <Card className="h-full flex overflow-hidden border border-border/80 bg-white shadow-subtle max-w-[1700px] mx-auto w-full motion-fade-in">
               {/* Columna Izquierda: Inbox (Master view en móvil, colapsable en desktop) */}
               <div
                 className={`${
@@ -1067,7 +1067,7 @@ export default function App() {
           )}
 
           {activeTab === 'faqs' && (
-            <div className="h-full overflow-y-auto">
+            <div className="h-full overflow-y-auto motion-fade-in">
               <div className="max-w-7xl mx-auto w-full">
                 <FaqsManager consorcios={consorcios} />
               </div>
@@ -1075,7 +1075,7 @@ export default function App() {
           )}
 
           {activeTab === 'consorcios' && (
-            <div className="h-full overflow-y-auto">
+            <div className="h-full overflow-y-auto motion-fade-in">
               <div className="max-w-7xl mx-auto w-full">
                 <ConsorciosManager
                   consorcios={consorcios}
@@ -1086,7 +1086,7 @@ export default function App() {
           )}
 
           {activeTab === 'contactos' && (
-            <div className="h-full overflow-y-auto">
+            <div className="h-full overflow-y-auto motion-fade-in">
               <div className="max-w-7xl mx-auto w-full">
                 <ContactosManager
                   consorcios={consorcios}
@@ -1097,7 +1097,7 @@ export default function App() {
           )}
 
           {activeTab === 'debug' && (
-            <div className="h-full overflow-y-auto">
+            <div className="h-full overflow-y-auto motion-fade-in">
               <div className="max-w-7xl mx-auto w-full">
                 <DebugSimulator />
               </div>
@@ -1117,13 +1117,13 @@ export default function App() {
                 setActiveTab(id);
                 if (id === 'inbox') setMobileChatOpen(false);
               }}
-              className={`flex flex-col items-center justify-center gap-1 min-h-[48px] py-1 px-1.5 flex-1 rounded-xl text-[11px] font-semibold transition-[background-color,border-color,color,box-shadow] duration-150 cursor-pointer ${
+              className={`group flex flex-col items-center justify-center gap-1 min-h-[48px] py-1 px-1.5 flex-1 rounded-xl text-[11px] font-semibold transition-all duration-500 ease-out active:scale-95 cursor-pointer ${
                 isActive
                   ? 'bg-zinc-800 text-white font-bold shadow-sm border border-zinc-700/80'
                   : 'border border-transparent text-zinc-400 hover:bg-zinc-800/60 hover:text-white hover:border-zinc-700/40'
               }`}
             >
-              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" className="shrink-0 text-current" />
+              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" className="shrink-0 text-current transition-transform duration-500 ease-out group-hover:scale-115 group-active:scale-90" />
               <span className="truncate max-w-[76px] tracking-tight">{label.split(' ')[0]}</span>
             </button>
           );

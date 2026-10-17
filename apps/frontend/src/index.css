@@ -40,6 +40,7 @@
   /* Transiciones */
   --transition-fast: 160ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-enter: 480ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-motion: 500ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html, body {
@@ -151,4 +152,49 @@ button:active:not(:disabled), a:active {
   input:not([type="checkbox"]):not([type="radio"]), select, textarea {
     font-size: 16px !important;
   }
+}
+
+/* Animaciones de entrada suave a 500ms */
+@keyframes fadeInMotion {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.motion-fade-in {
+  animation: fadeInMotion 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Micro-interacciones de zoom suave en iconos (500ms) */
+.icon-zoom {
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1), opacity 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.group:hover .group-hover-zoom,
+button:hover .hover-zoom,
+a:hover .hover-zoom,
+.hover-zoom:hover {
+  transform: scale(1.15);
+}
+
+.group:active .group-hover-zoom,
+button:active .hover-zoom,
+a:active .hover-zoom,
+.hover-zoom:active {
+  transform: scale(0.92);
+}
+
+/* Elevación interactiva suave en tarjetas y filas (500ms) */
+.motion-card-hover {
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 500ms cubic-bezier(0.16, 1, 0.3, 1), border-color 500ms cubic-bezier(0.16, 1, 0.3, 1), background-color 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.motion-card-hover:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 10px 24px -10px rgba(24, 24, 27, 0.12);
 }

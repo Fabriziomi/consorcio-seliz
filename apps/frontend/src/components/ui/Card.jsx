@@ -2,7 +2,7 @@ import React from 'react';
 
 export function Card({ className = '', children }) {
   return (
-    <section className={`rounded-base border border-border/80 bg-white shadow-subtle ${className}`}>
+    <section className={`rounded-base border border-border/80 bg-white shadow-subtle transition-all duration-500 ease-out ${className}`}>
       {children}
     </section>
   );

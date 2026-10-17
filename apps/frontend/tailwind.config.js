@@ -59,6 +59,29 @@ export default {
           soft: "#FEF2F2",
         },
       },
+      transitionDuration: {
+        '400': '400ms',
+        '500': '500ms',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.97)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        slideIn: {
+          '0%': { opacity: '0', transform: 'translateX(-8px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fadeIn 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'scale-in': 'scaleIn 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'slide-in': 'slideIn 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+      },
     },
   },
   plugins: [],

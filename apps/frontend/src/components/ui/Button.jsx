@@ -17,7 +17,7 @@ const variants = {
 };
 
 const baseClassName =
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-semibold transition-all duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-brand-ink active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none';
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-semibold transition-all duration-500 ease-out focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-brand-ink hover:shadow-sm active:scale-[0.96] [&>svg]:transition-transform [&>svg]:duration-500 [&>svg]:ease-out hover:[&>svg]:scale-115 active:[&>svg]:scale-90 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none';
 
 const sizes = {
   sm: 'h-9 px-3.5 text-xs gap-2',

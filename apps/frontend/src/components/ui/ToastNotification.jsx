@@ -39,7 +39,7 @@ export function ToastProvider({ children }) {
           <div
             key={toast.id}
             role="alert"
-            className="pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-white/90 backdrop-blur-md border border-border/80 shadow-lg text-xs sm:text-sm font-medium text-brand-ink transition-all duration-200 animate-in slide-in-from-top-2 fade-in select-none"
+            className="pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-white/90 backdrop-blur-md border border-border/80 shadow-lg text-xs sm:text-sm font-medium text-brand-ink transition-all duration-500 animate-in slide-in-from-top-2 fade-in select-none"
           >
             <div className="flex items-center gap-2.5 min-w-0">
               {toast.type === 'success' && (
@@ -57,7 +57,7 @@ export function ToastProvider({ children }) {
               type="button"
               onClick={() => removeToast(toast.id)}
               aria-label="Cerrar notificación"
-              className="size-5 rounded-md flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors shrink-0 cursor-pointer"
+              className="size-5 rounded-md flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 ease-out hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 shrink-0 cursor-pointer"
             >
               <X size={13} />
             </button>

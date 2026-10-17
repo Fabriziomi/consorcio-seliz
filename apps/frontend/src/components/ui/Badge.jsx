@@ -23,7 +23,7 @@ export const badgeSizes = {
 export function Badge({ variant = 'neutral', size = 'md', className = '', children }) {
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full border font-medium leading-none tracking-tight transition-colors ${badgeSizes[size] ?? badgeSizes.md} ${badgeVariants[variant] ?? badgeVariants.neutral} ${className}`}
+      className={`inline-flex items-center justify-center rounded-full border font-medium leading-none tracking-tight transition-all duration-500 ease-out hover:scale-105 select-none ${badgeSizes[size] ?? badgeSizes.md} ${badgeVariants[variant] ?? badgeVariants.neutral} ${className}`}
     >
       {children}
     </span>

@@ -156,7 +156,7 @@ export function DebugSimulator() {
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink shadow-2xs"
+                  className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none transition-all duration-500 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink shadow-2xs"
                   placeholder="+5491144558899"
                 />
               </div>
@@ -170,7 +170,7 @@ export function DebugSimulator() {
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink shadow-2xs"
+                  className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none transition-all duration-500 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink shadow-2xs"
                   placeholder="Carlos Méndez"
                 />
               </div>
@@ -219,7 +219,7 @@ export function DebugSimulator() {
                       key={idx}
                       type="button"
                       onClick={() => setMessage(qm.text)}
-                      className="text-xs px-2.5 py-1 rounded-full border border-border bg-surface-muted text-text-secondary hover:border-brand-ink hover:text-brand-ink transition-colors cursor-pointer shrink-0"
+                      className="text-xs px-2.5 py-1 rounded-full border border-border bg-surface-muted text-text-secondary hover:border-brand-ink hover:text-brand-ink transition-all duration-500 ease-out hover:scale-105 active:scale-95 cursor-pointer shrink-0"
                     >
                       {qm.label}
                     </button>
@@ -236,7 +236,7 @@ export function DebugSimulator() {
                     handleSend();
                   }
                 }}
-                className="w-full rounded-base border border-border bg-white p-3 text-sm text-brand-ink outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink resize-none placeholder:text-text-muted"
+                className="w-full rounded-base border border-border bg-white p-3 text-sm text-brand-ink outline-none transition-all duration-500 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink resize-none placeholder:text-text-muted"
                 placeholder="Escribe el mensaje a simular... (Presiona Enter para enviar)"
               />
             </div>
@@ -263,7 +263,7 @@ export function DebugSimulator() {
           </Card>
         ) : (
           history.map((item, idx) => (
-            <Card key={idx} className="p-4 sm:p-5 space-y-3.5">
+            <Card key={idx} className="p-4 sm:p-5 space-y-3.5 transition-all duration-500 ease-out hover:shadow-subtle hover:border-brand-ink/40 group">
               {/* Header de la interacción */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs border-b border-border pb-3">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -301,7 +301,7 @@ export function DebugSimulator() {
 
               {/* Mensaje del Vecino */}
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-surface-muted border border-border flex items-center justify-center shrink-0 mt-0.5 text-text-secondary">
+                <div className="w-8 h-8 rounded-full bg-surface-muted border border-border flex items-center justify-center shrink-0 mt-0.5 text-text-secondary transition-transform duration-500 group-hover:scale-110">
                   <User className="w-4 h-4" />
                 </div>
                 <div className="flex-1 bg-surface-soft border border-border rounded-base p-3.5 text-sm text-brand-ink leading-relaxed">
@@ -311,7 +311,7 @@ export function DebugSimulator() {
 
               {/* Respuesta del Bot o Motivo de Silencio */}
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-brand-ink text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                <div className="w-8 h-8 rounded-full bg-brand-ink text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm transition-transform duration-500 group-hover:scale-110">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div

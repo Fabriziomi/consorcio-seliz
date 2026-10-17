@@ -284,10 +284,10 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                     setSelectedId(c.id);
                     setMobileView('detail');
                   }}
-                  className={`p-3.5 cursor-pointer transition-colors flex items-center justify-between gap-2 border-l-4 ${
+                  className={`p-3.5 cursor-pointer group transition-all duration-500 ease-out flex items-center justify-between gap-2 border-l-4 hover:translate-x-0.5 ${
                     isSelected
                       ? 'bg-surface-soft border-brand-ink'
-                      : 'border-transparent hover:bg-surface-soft/60'
+                      : 'border-transparent hover:bg-surface-soft/80'
                   }`}
                 >
                   <div className="min-w-0">
@@ -303,7 +303,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                       </span>
                     )}
                   </div>
-                  <ChevronRight size={14} strokeWidth={2} className={isSelected ? 'text-brand-ink' : 'text-text-muted'} />
+                  <ChevronRight size={14} strokeWidth={2} className={`transition-all duration-500 ease-out group-hover:translate-x-1 group-hover:scale-120 ${isSelected ? 'text-brand-ink' : 'text-text-muted'}`} />
                 </div>
               );
             })}
@@ -322,7 +322,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                     onClick={() => setMobileView('list')}
                     aria-label="Volver al listado de consorcios"
                     title="Volver al listado de consorcios"
-                    className="md:hidden size-9 rounded-xl border border-border/80 flex items-center justify-center text-brand-ink hover:bg-surface-muted transition-colors shrink-0 shadow-2xs"
+                    className="md:hidden size-9 rounded-xl border border-border/80 flex items-center justify-center text-brand-ink hover:bg-surface-muted transition-all duration-500 ease-out hover:scale-105 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 shrink-0 shadow-2xs cursor-pointer"
                   >
                     <ChevronLeft size={20} strokeWidth={2} />
                   </button>
@@ -344,7 +344,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                   <button
                     type="button"
                     onClick={() => setActiveSubTab('datos')}
-                    className={`text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer ${
+                    className={`text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all duration-500 ease-out cursor-pointer hover:scale-[1.02] active:scale-95 ${
                       activeSubTab === 'datos'
                         ? 'bg-brand-ink text-white shadow-xs'
                         : 'text-text-secondary hover:text-brand-ink'
@@ -355,7 +355,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                   <button
                     type="button"
                     onClick={() => setActiveSubTab('atributos')}
-                    className={`text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer flex items-center gap-2 ${
+                    className={`text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all duration-500 ease-out cursor-pointer flex items-center gap-2 hover:scale-[1.02] active:scale-95 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 ${
                       activeSubTab === 'atributos'
                         ? 'bg-brand-ink text-white shadow-xs'
                         : 'text-text-secondary hover:text-brand-ink'
@@ -390,7 +390,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           required
                           value={currentForm.nombre || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, nombre: e.target.value })}
-                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -403,7 +403,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           required
                           value={currentForm.direccion || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, direccion: e.target.value })}
-                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -416,7 +416,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="30-71122334-5"
                           value={currentForm.cuit || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, cuit: e.target.value })}
-                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -429,7 +429,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="cobranzas@selizadministraciones.com.ar"
                           value={currentForm.email_cobranzas || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, email_cobranzas: e.target.value })}
-                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -442,7 +442,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="0140000000000000000001"
                           value={currentForm.cbu_bancario || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, cbu_bancario: e.target.value })}
-                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -455,7 +455,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="CONSORCIO.LAVALLE.OFICIAL"
                           value={currentForm.alias_bancario || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, alias_bancario: e.target.value })}
-                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink font-semibold shadow-2xs"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none transition-all duration-500 focus:border-brand-ink font-semibold shadow-2xs"
                         />
                       </div>
 
@@ -468,7 +468,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="+54 9 11 4371-0001"
                           value={currentForm.telefono_porteria || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, telefono_porteria: e.target.value })}
-                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -481,7 +481,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="+54 9 11 4444-1111"
                           value={currentForm.emergencia_ascensores || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, emergencia_ascensores: e.target.value })}
-                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -494,7 +494,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="+54 9 11 4444-2222"
                           value={currentForm.emergencia_plomeria || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, emergencia_plomeria: e.target.value })}
-                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
                         />
                       </div>
                     </div>
@@ -508,7 +508,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                         placeholder="Días y horarios permitidos, seguro de flete y requisitos..."
                         value={currentForm.pautas_mudanza || ''}
                         onChange={(e) => setCurrentForm({ ...currentForm, pautas_mudanza: e.target.value })}
-                        className="w-full bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl p-3 outline-none focus:border-brand-ink leading-relaxed shadow-2xs"
+                        className="w-full bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl p-3 outline-none transition-all duration-500 focus:border-brand-ink leading-relaxed shadow-2xs"
                       />
                     </div>
 
@@ -630,7 +630,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                             </tr>
                           ) : (
                             atributos.map((attr) => (
-                              <tr key={attr.id} className="hover:bg-surface-soft/60 transition-colors">
+                              <tr key={attr.id} className="hover:bg-surface-soft/60 transition-colors duration-500">
                                 {editingAttrId === attr.id ? (
                                   <>
                                     <td className="py-2 px-3">
@@ -638,7 +638,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                         type="text"
                                         value={editAttrForm.clave}
                                         onChange={(e) => setEditAttrForm({ ...editAttrForm, clave: e.target.value })}
-                                        className="h-7 w-full bg-white border border-border text-xs rounded px-2"
+                                        className="h-7 w-full bg-white border border-border text-xs rounded px-2 transition-all duration-500 outline-none focus:border-brand-ink"
                                       />
                                     </td>
                                     <td className="py-2 px-3">
@@ -646,7 +646,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                         type="text"
                                         value={editAttrForm.etiqueta}
                                         onChange={(e) => setEditAttrForm({ ...editAttrForm, etiqueta: e.target.value })}
-                                        className="h-7 w-full bg-white border border-border text-xs rounded px-2"
+                                        className="h-7 w-full bg-white border border-border text-xs rounded px-2 transition-all duration-500 outline-none focus:border-brand-ink"
                                       />
                                     </td>
                                     <td className="py-2 px-3">
@@ -654,7 +654,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                         type="text"
                                         value={editAttrForm.valor}
                                         onChange={(e) => setEditAttrForm({ ...editAttrForm, valor: e.target.value })}
-                                        className="h-7 w-full bg-white border border-border text-xs rounded px-2"
+                                        className="h-7 w-full bg-white border border-border text-xs rounded px-2 transition-all duration-500 outline-none focus:border-brand-ink"
                                       />
                                     </td>
                                     <td className="py-2 px-3 text-center">
@@ -671,7 +671,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                           type="button"
                                           onClick={() => handleSaveEditAttr(attr.id)}
                                           title="Guardar atributo"
-                                          className="size-8 sm:size-9 rounded-xl bg-brand-ink text-white flex items-center justify-center cursor-pointer shadow-2xs hover:bg-black transition-colors"
+                                          className="size-8 sm:size-9 rounded-xl bg-brand-ink text-white flex items-center justify-center cursor-pointer shadow-2xs hover:bg-black transition-all duration-500 ease-out hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115"
                                         >
                                           <Check size={16} strokeWidth={2.2} />
                                         </button>
@@ -679,7 +679,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                           type="button"
                                           onClick={() => setEditingAttrId(null)}
                                           title="Cancelar edición"
-                                          className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted flex items-center justify-center cursor-pointer shadow-2xs transition-colors"
+                                          className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted flex items-center justify-center cursor-pointer shadow-2xs transition-all duration-500 ease-out hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115"
                                         >
                                           <X size={16} strokeWidth={2.2} />
                                         </button>
@@ -714,7 +714,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                           type="button"
                                           onClick={() => handleStartEditAttr(attr)}
                                           title="Editar atributo"
-                                          className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted flex items-center justify-center cursor-pointer shadow-2xs transition-colors"
+                                          className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted flex items-center justify-center cursor-pointer shadow-2xs transition-all duration-500 ease-out hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115"
                                         >
                                           <Pencil size={16} strokeWidth={1.8} />
                                         </button>
@@ -722,7 +722,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                           type="button"
                                           onClick={() => handleDeleteAttr(attr.id)}
                                           title="Eliminar atributo"
-                                          className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft flex items-center justify-center cursor-pointer shadow-2xs transition-colors"
+                                          className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft flex items-center justify-center cursor-pointer shadow-2xs transition-all duration-500 ease-out hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115"
                                         >
                                           <Trash2 size={16} strokeWidth={1.8} />
                                         </button>
@@ -750,7 +750,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
 
       {/* Modal Crear Nuevo Consorcio */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-brand-ink/40 backdrop-blur-xs animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-brand-ink/40 backdrop-blur-xs animate-in fade-in duration-500">
           <div className="bg-white rounded-base border border-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]">
             <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-surface-soft">
               <div className="flex items-center gap-2">
@@ -760,7 +760,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="size-9 sm:size-10 rounded-xl flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer border border-border/80 shadow-2xs"
+                className="size-9 sm:size-10 rounded-xl flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 ease-out hover:scale-105 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer border border-border/80 shadow-2xs"
                 aria-label="Cerrar modal"
               >
                 <X size={18} strokeWidth={2} />

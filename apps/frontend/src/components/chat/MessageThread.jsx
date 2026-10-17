@@ -223,7 +223,7 @@ export function MessageThread({
             onClick={handleCloseConversation}
             aria-label="Volver a la bandeja"
             title="Volver a la bandeja"
-            className="md:hidden grid size-10 place-items-center rounded-xl border border-border/80 bg-white text-brand-ink hover:bg-surface-muted transition-colors shrink-0 cursor-pointer shadow-2xs"
+            className="md:hidden grid size-10 place-items-center rounded-xl border border-border/80 bg-white text-brand-ink hover:bg-surface-muted transition-all duration-500 hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 shrink-0 cursor-pointer shadow-2xs"
           >
             <ChevronLeft size={20} strokeWidth={2} />
           </button>
@@ -235,7 +235,7 @@ export function MessageThread({
               onClick={onToggleInboxList}
               aria-label={inboxListCollapsed ? 'Mostrar lista de chats' : 'Ocultar lista de chats'}
               title={inboxListCollapsed ? 'Mostrar lista de chats' : 'Ocultar lista de chats'}
-              className="hidden md:grid size-10 sm:size-11 place-items-center rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors shrink-0 cursor-pointer shadow-2xs"
+              className="hidden md:grid size-10 sm:size-11 place-items-center rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 hover:scale-110 active:scale-95 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 shrink-0 cursor-pointer shadow-2xs"
             >
               {inboxListCollapsed ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}
             </button>
@@ -247,7 +247,7 @@ export function MessageThread({
             onClick={handleCloseConversation}
             aria-label="Cerrar conversación activa"
             title="Cerrar conversación activa"
-            className="hidden md:grid size-10 sm:size-11 place-items-center rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors shrink-0 cursor-pointer shadow-2xs"
+            className="hidden md:grid size-10 sm:size-11 place-items-center rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 hover:scale-110 active:scale-95 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 shrink-0 cursor-pointer shadow-2xs"
           >
             <X size={18} strokeWidth={2} />
           </button>
@@ -311,18 +311,18 @@ export function MessageThread({
               aria-haspopup="menu"
               aria-label={`Estado actual: ${statusLabels[status] || status}. Cambiar estado`}
               title={`Estado: ${statusLabels[status] || status}`}
-              className="h-10 sm:h-11 px-3.5 sm:px-4 rounded-xl border border-border/80 bg-white text-brand-ink text-xs sm:text-sm font-semibold flex items-center gap-2 hover:bg-surface-muted cursor-pointer transition-colors shadow-2xs"
+              className="h-10 sm:h-11 px-3.5 sm:px-4 rounded-xl border border-border/80 bg-white text-brand-ink text-xs sm:text-sm font-semibold flex items-center gap-2 hover:bg-surface-muted cursor-pointer transition-all duration-500 hover:scale-105 active:scale-95 shadow-2xs"
             >
               <span className="capitalize">{statusLabels[status] || status}</span>
-              <ChevronDown size={14} strokeWidth={2} className={`text-text-muted transition-transform duration-150 ${statusDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} strokeWidth={2} className={`text-text-muted transition-transform duration-500 ${statusDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {statusDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-36 bg-white border border-border rounded-xl shadow-lg z-50 py-1 text-xs divide-y divide-border/60 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 mt-1.5 w-36 bg-white border border-border rounded-xl shadow-lg z-50 py-1 text-xs divide-y divide-border/60 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                 <button
                   type="button"
                   onClick={() => handleStatusSelect('open')}
-                  className="w-full text-left px-3 py-2 hover:bg-surface-soft flex items-center justify-between text-brand-ink font-medium cursor-pointer transition-colors"
+                  className="w-full text-left px-3 py-2 hover:bg-surface-soft flex items-center justify-between text-brand-ink font-medium cursor-pointer transition-colors duration-300"
                 >
                   <span>Abierto</span>
                   {status === 'open' && <CheckCircle2 size={16} strokeWidth={2} className="text-brand-ink" />}
@@ -330,7 +330,7 @@ export function MessageThread({
                 <button
                   type="button"
                   onClick={() => handleStatusSelect('pending')}
-                  className="w-full text-left px-3 py-2 hover:bg-surface-soft flex items-center justify-between text-brand-ink font-medium cursor-pointer transition-colors"
+                  className="w-full text-left px-3 py-2 hover:bg-surface-soft flex items-center justify-between text-brand-ink font-medium cursor-pointer transition-colors duration-300"
                 >
                   <span>Pendiente</span>
                   {status === 'pending' && <CheckCircle2 size={16} strokeWidth={2} className="text-brand-ink" />}
@@ -338,7 +338,7 @@ export function MessageThread({
                 <button
                   type="button"
                   onClick={() => handleStatusSelect('resolved')}
-                  className="w-full text-left px-3 py-2 hover:bg-surface-soft flex items-center justify-between text-brand-ink font-medium cursor-pointer transition-colors"
+                  className="w-full text-left px-3 py-2 hover:bg-surface-soft flex items-center justify-between text-brand-ink font-medium cursor-pointer transition-colors duration-300"
                 >
                   <span>Resuelto</span>
                   {status === 'resolved' && <CheckCircle2 size={16} strokeWidth={2} className="text-brand-ink" />}
@@ -355,12 +355,12 @@ export function MessageThread({
               disabled={generatingDraft}
               aria-label={generatingDraft ? 'Generando propuesta con IA...' : 'Sugerencia con IA'}
               title="Sugerencia con IA (Insertar respuesta sugerida)"
-              className="size-10 sm:size-11 rounded-xl border border-border/80 bg-white text-brand-ink hover:border-brand-ink hover:bg-surface-muted transition-all flex items-center justify-center cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-2xs group relative"
+              className="size-10 sm:size-11 rounded-xl border border-border/80 bg-white text-brand-ink hover:border-brand-ink hover:bg-surface-muted transition-all duration-500 hover:scale-110 active:scale-90 flex items-center justify-center cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-2xs group relative"
             >
               {generatingDraft ? (
                 <Loader2 size={20} strokeWidth={2} className="animate-spin text-brand-ink shrink-0" />
               ) : (
-                <Sparkles size={20} strokeWidth={1.8} className="text-brand-ink group-hover:scale-110 transition-transform shrink-0" />
+                <Sparkles size={20} strokeWidth={1.8} className="text-brand-ink group-hover:scale-120 group-hover:rotate-12 transition-transform duration-500 shrink-0" />
               )}
             </button>
           )}
@@ -574,7 +574,7 @@ export function MessageThread({
             onClick={() => setIsPrivateNote(false)}
             title="Respuesta oficial por WhatsApp al vecino"
             aria-label="Respuesta WhatsApp"
-            className={`p-1.5 sm:px-2 rounded-md transition-all flex items-center justify-center cursor-pointer shadow-2xs ${
+            className={`p-1.5 sm:px-2 rounded-md transition-all duration-500 hover:scale-105 active:scale-95 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 flex items-center justify-center cursor-pointer shadow-2xs ${
               !isPrivateNote
                 ? 'bg-white text-brand-ink shadow-2xs font-bold'
                 : 'text-text-secondary hover:text-brand-ink'
@@ -588,7 +588,7 @@ export function MessageThread({
             onClick={() => setIsPrivateNote(true)}
             title="Nota interna confidencial (solo visible para administración)"
             aria-label="Nota Interna Privada"
-            className={`p-1.5 sm:px-2 rounded-md transition-all flex items-center justify-center cursor-pointer shadow-2xs ${
+            className={`p-1.5 sm:px-2 rounded-md transition-all duration-500 hover:scale-105 active:scale-95 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 flex items-center justify-center cursor-pointer shadow-2xs ${
               isPrivateNote
                 ? 'bg-white text-brand-ink shadow-2xs font-bold'
                 : 'text-text-secondary hover:text-brand-ink'
@@ -613,7 +613,7 @@ export function MessageThread({
               }}
               title="Limpiar sugerencia"
               aria-label="Limpiar sugerencia"
-              className="p-1 rounded text-text-muted hover:text-brand-ink hover:bg-surface-soft transition-colors cursor-pointer shrink-0"
+              className="p-1 rounded text-text-muted hover:text-brand-ink hover:bg-surface-soft transition-all duration-500 hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer shrink-0"
             >
               <X size={14} strokeWidth={2} />
             </button>
@@ -628,7 +628,7 @@ export function MessageThread({
                 <img
                   src={selectedFile.previewUrl}
                   alt={selectedFile.name}
-                  className="size-8 rounded object-cover border border-border/80 shrink-0"
+                  className="size-8 rounded object-cover border border-border/80 shrink-0 transition-transform duration-500 hover:scale-105"
                 />
               ) : (
                 <FileText size={18} strokeWidth={1.8} className="text-brand-ink shrink-0" />
@@ -645,7 +645,7 @@ export function MessageThread({
               onClick={handleRemoveFile}
               aria-label="Quitar archivo adjunto"
               title="Quitar archivo adjunto"
-              className="p-1 text-text-muted hover:text-brand-ink rounded cursor-pointer transition-colors"
+              className="p-1 text-text-muted hover:text-brand-ink rounded cursor-pointer transition-all duration-500 hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115"
             >
               <X size={14} strokeWidth={2} />
             </button>
@@ -667,7 +667,7 @@ export function MessageThread({
             onClick={() => fileInputRef.current?.click()}
             aria-label="Adjuntar archivo o comprobante"
             title="Adjuntar archivo o comprobante"
-            className="grid size-10 sm:size-11 place-items-center rounded-xl border border-border/80 text-text-secondary hover:bg-surface-muted hover:text-brand-ink transition-colors cursor-pointer shrink-0 shadow-2xs"
+            className="grid size-10 sm:size-11 place-items-center rounded-xl border border-border/80 text-text-secondary hover:bg-surface-muted hover:text-brand-ink transition-all duration-500 hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer shrink-0 shadow-2xs"
           >
             <Paperclip size={20} strokeWidth={1.8} />
           </button>
@@ -685,7 +685,7 @@ export function MessageThread({
               setInputText(e.target.value);
               if (aiNotice) setAiNotice(false);
             }}
-            className={`flex-1 min-w-0 h-10 sm:h-11 border text-brand-ink text-xs sm:text-sm rounded-xl px-3.5 sm:px-4 outline-none transition-all shadow-2xs ${
+            className={`flex-1 min-w-0 h-10 sm:h-11 border text-brand-ink text-xs sm:text-sm rounded-xl px-3.5 sm:px-4 outline-none transition-all duration-500 shadow-2xs ${
               isPrivateNote
                 ? 'bg-amber-50/50 border-amber-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30'
                 : 'bg-surface-soft border-border/80 focus:bg-white focus:border-brand-ink focus:ring-1 focus:ring-brand-ink/20'
@@ -698,7 +698,7 @@ export function MessageThread({
             disabled={!inputText.trim() && !selectedFile}
             aria-label={isPrivateNote ? 'Guardar nota interna' : 'Enviar mensaje por WhatsApp'}
             title={isPrivateNote ? 'Guardar nota interna (Enter)' : 'Enviar mensaje (Enter)'}
-            className="grid size-10 sm:size-11 place-items-center rounded-xl bg-brand-ink text-white hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-colors shrink-0 cursor-pointer"
+            className="grid size-10 sm:size-11 place-items-center rounded-xl bg-brand-ink text-white hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-all duration-500 hover:scale-108 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 shrink-0 cursor-pointer"
           >
             <SendHorizontal size={20} strokeWidth={2} />
           </button>

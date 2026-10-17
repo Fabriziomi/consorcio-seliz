@@ -224,7 +224,7 @@ export function SelectField({
 
   const defaultTheme = isBadge
     ? `${badgeStyle} font-medium tracking-tight cursor-pointer hover:opacity-85 active:opacity-75 focus-visible:ring-1 focus-visible:ring-brand-ink/40`
-    : 'border border-border/80 bg-white text-brand-ink font-medium transition-[border-color,background-color,box-shadow] duration-150 hover:border-brand-ink/60 hover:bg-surface-soft focus-visible:ring-1 focus-visible:ring-brand-ink disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted shadow-subtle';
+    : 'border border-border/80 bg-white text-brand-ink font-medium transition-[border-color,background-color,box-shadow] duration-500 hover:border-brand-ink/60 hover:bg-surface-soft focus-visible:ring-1 focus-visible:ring-brand-ink disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted shadow-subtle';
 
   const chevronSize = size === 'xs' ? 14 : size === 'sm' ? 15 : 16;
 
@@ -235,7 +235,7 @@ export function SelectField({
         ref={triggerRef}
         type="button"
         disabled={disabled || loading}
-        className={`inline-flex items-center justify-between gap-1.5 text-left outline-none transition-all duration-150 ${sizeStyles} ${defaultTheme} ${className}`}
+        className={`inline-flex items-center justify-between gap-1.5 text-left outline-none transition-all duration-500 ease-out active:scale-[0.98] ${sizeStyles} ${defaultTheme} ${className}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}
@@ -248,7 +248,7 @@ export function SelectField({
         {...props}
       >
         <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
-          {Icon ? <Icon size={chevronSize} className="shrink-0 text-current opacity-70" aria-hidden="true" /> : null}
+          {Icon ? <Icon size={chevronSize} className="shrink-0 text-current opacity-70 transition-transform duration-500" aria-hidden="true" /> : null}
           <span className="truncate">
             {triggerLabel}
           </span>
@@ -260,7 +260,7 @@ export function SelectField({
             <ChevronDown
               size={chevronSize}
               aria-hidden="true"
-              className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+              className={`transition-transform duration-500 ease-out ${open ? 'rotate-180' : ''}`}
             />
           )}
         </span>
@@ -274,7 +274,7 @@ export function SelectField({
       id={listboxId}
       role="listbox"
       aria-label={ariaLabel ?? name}
-      className={`fixed z-[9999] max-h-60 overflow-y-auto rounded-base border border-border/90 bg-white p-1 shadow-card ${popupClassName} min-w-[135px] max-w-[calc(100vw-16px)]`}
+      className={`fixed z-[9999] max-h-60 overflow-y-auto rounded-base border border-border/90 bg-white p-1 shadow-card animate-in fade-in duration-300 ${popupClassName} min-w-[135px] max-w-[calc(100vw-16px)]`}
       style={{ top: position.top, left: position.left, minWidth: minWidth || undefined }}
       onKeyDown={handleKeyDown}
     >
@@ -294,7 +294,7 @@ export function SelectField({
             aria-selected={isSelected}
             disabled={option.disabled}
             tabIndex={index === activeIndex ? 0 : -1}
-            className={`flex w-full items-center justify-between gap-2 rounded-sm px-2.5 py-1.5 text-left text-xs transition-colors duration-150 disabled:cursor-not-allowed disabled:text-text-muted focus-visible:bg-surface-soft ${
+            className={`flex w-full items-center justify-between gap-2 rounded-sm px-2.5 py-1.5 text-left text-xs transition-colors duration-300 disabled:cursor-not-allowed disabled:text-text-muted focus-visible:bg-surface-soft ${
               size === 'default' && !isBadge ? 'min-h-9 text-sm px-3' : 'min-h-7.5'
             } ${
               isSelected

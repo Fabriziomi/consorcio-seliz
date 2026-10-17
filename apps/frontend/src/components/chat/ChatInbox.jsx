@@ -85,13 +85,13 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
 
         {/* Buscador con Phosphor MagnifyingGlass */}
         <div className="relative">
-          <Search size={18} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+          <Search size={18} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none transition-transform duration-500" />
           <input
             type="text"
             placeholder="Buscar por vecino, teléfono o unidad…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 sm:h-11 bg-surface-soft border border-border/80 text-brand-ink text-sm rounded-xl pl-10 pr-4 outline-none transition-all focus:border-brand-ink focus:bg-white focus:ring-1 focus:ring-brand-ink/20 shadow-2xs"
+            className="w-full h-10 sm:h-11 bg-surface-soft border border-border/80 text-brand-ink text-sm rounded-xl pl-10 pr-4 outline-none transition-all duration-500 focus:border-brand-ink focus:bg-white focus:ring-1 focus:ring-brand-ink/20 shadow-2xs"
           />
         </div>
 
@@ -106,7 +106,7 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
             <button
               key={f.id}
               onClick={() => setFilterStatus(f.id)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors duration-150 whitespace-nowrap cursor-pointer touch-manipulation shadow-2xs border ${
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-500 whitespace-nowrap cursor-pointer touch-manipulation shadow-2xs border hover:scale-105 active:scale-95 ${
                 filterStatus === f.id
                   ? 'bg-brand-ink text-white font-bold shadow-xs border-brand-ink'
                   : 'bg-surface-muted text-text-secondary hover:bg-surface-soft hover:text-brand-ink border-border/70'
@@ -143,20 +143,20 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
               <div
                 key={c.id}
                 onClick={() => onSelect(c.id)}
-                className={`p-3 sm:px-3.5 sm:py-3 cursor-pointer transition-colors duration-150 flex items-start gap-3 touch-manipulation border-l-2 ${
+                className={`group p-3 sm:px-3.5 sm:py-3 cursor-pointer transition-all duration-500 flex items-start gap-3 touch-manipulation border-l-2 active:scale-[0.99] ${
                   isSelected
-                    ? 'bg-surface-soft border-brand-ink'
-                    : 'border-transparent hover:bg-surface-soft/60'
+                    ? 'bg-surface-soft border-brand-ink shadow-2xs'
+                    : 'border-transparent hover:bg-surface-soft/80 hover:translate-x-0.5'
                 }`}
               >
-                {/* Avatar con prioridad a imagen original */}
-                <div className="size-10 sm:size-11 rounded-full shrink-0 overflow-hidden bg-brand-ink text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-2xs relative border border-border/60">
+                {/* Avatar con prioridad a imagen original y zoom en hover */}
+                <div className="size-10 sm:size-11 rounded-full shrink-0 overflow-hidden bg-brand-ink text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-2xs relative border border-border/60 transition-transform duration-500 group-hover:scale-108">
                   {avatar && !hasBrokenImg ? (
                     <img
                       src={avatar}
                       alt={name}
                       onError={() => handleImageError(c.id)}
-                      className="size-full object-cover rounded-full"
+                      className="size-full object-cover rounded-full transition-transform duration-500 group-hover:scale-110"
                       loading="lazy"
                     />
                   ) : name ? (
@@ -169,7 +169,7 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
                 <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                   {/* Fila 1: Remitente y Hora/Fecha */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`text-xs sm:text-sm truncate ${unread > 0 ? 'font-bold text-brand-ink' : 'font-semibold text-brand-ink'}`}>
+                    <span className={`text-xs sm:text-sm truncate transition-colors duration-300 ${unread > 0 ? 'font-bold text-brand-ink' : 'font-semibold text-brand-ink'}`}>
                       {name}
                     </span>
                     <span className={`text-[10px] sm:text-[11px] shrink-0 ${unread > 0 ? 'text-brand-ink font-semibold' : 'text-text-muted font-normal'}`}>
@@ -188,7 +188,7 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       {getStatusBadge(status)}
                       {unread > 0 && (
-                        <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-brand-ink text-white text-[10px] font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                        <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-brand-ink text-white text-[10px] font-bold flex items-center justify-center shrink-0 shadow-2xs transition-transform duration-500 group-hover:scale-110">
                           {unread}
                         </span>
                       )}
