@@ -21,6 +21,7 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 import { WhatsAppDoodleBackground } from './WhatsAppDoodleBackground.jsx';
+import { Modal } from '../ui/Modal.jsx';
 
 /**
  * Normaliza el objeto adjunto de un mensaje a partir de m.attachment o m.media_url
@@ -707,18 +708,14 @@ export function MessageThread({
       </div>
 
       {/* Modal de Previsualización de Imagen / Lightbox */}
-      {previewModalMedia && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Previsualización de imagen adjunta"
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150"
-          onClick={() => setPreviewModalMedia(null)}
-        >
-          <div
-            className="relative max-w-4xl w-full max-h-[90vh] flex flex-col bg-brand-ink border border-zinc-700 rounded-2xl overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        isOpen={Boolean(previewModalMedia)}
+        onClose={() => setPreviewModalMedia(null)}
+        containerClassName="bg-black/85"
+        className="relative max-w-4xl w-full max-h-[90vh] flex flex-col bg-brand-ink border border-zinc-700 rounded-2xl overflow-hidden shadow-2xl"
+      >
+        {previewModalMedia && (
+          <>
             {/* Header del Lightbox */}
             <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-white gap-3">
               <span className="text-xs sm:text-sm font-semibold truncate text-zinc-100">
@@ -754,9 +751,9 @@ export function MessageThread({
                 className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-md"
               />
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

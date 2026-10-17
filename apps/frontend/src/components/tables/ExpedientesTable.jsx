@@ -12,6 +12,7 @@ import {
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
+import { Modal } from '../ui/Modal.jsx';
 import { ScrollableTableContainer } from '../ui/ScrollableTableContainer.jsx';
 import { SelectField } from '../ui/SelectField.jsx';
 import { useToast } from '../ui/ToastNotification.jsx';
@@ -264,9 +265,13 @@ export function ExpedientesTable({
       </CardContent>
 
       {/* Modal de Notificación a Vecinos */}
-      {selectedExpedienteForNotify && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-surface rounded-xl shadow-xl border border-border max-w-lg w-full p-5 flex flex-col gap-4 animate-in fade-in duration-150">
+      <Modal
+        isOpen={Boolean(selectedExpedienteForNotify)}
+        onClose={() => setSelectedExpedienteForNotify(null)}
+        className="bg-surface rounded-xl shadow-xl border border-border max-w-lg w-full p-5 flex flex-col gap-4 animate-in fade-in duration-150"
+      >
+        {selectedExpedienteForNotify && (
+          <>
             <div>
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-brand-ink flex items-center gap-2">
@@ -322,9 +327,9 @@ export function ExpedientesTable({
                 <span>Despachar WhatsApp</span>
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </Card>
   );
 }

@@ -17,6 +17,7 @@ import {
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
+import { Modal } from '../ui/Modal.jsx';
 import { ScrollableTableContainer } from '../ui/ScrollableTableContainer.jsx';
 import { ApiService } from '../../lib/api-client.js';
 import { useToast } from '../ui/ToastNotification.jsx';
@@ -526,113 +527,113 @@ export function FaqsManager({ consorcios = [] }) {
       </Card>
 
       {/* Modal de Crear / Editar FAQ */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-brand-ink/40 backdrop-blur-xs animate-in fade-in duration-500">
-          <div className="bg-white rounded-xl border border-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]">
-            {/* Cabecera del Modal */}
-            <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-surface-soft">
-              <div className="flex items-center gap-2">
-                <HelpCircle size={18} strokeWidth={1.8} className="text-brand-ink" />
-                <h3 className="text-sm font-bold text-brand-ink">
-                  {editingFaq ? 'Editar Pregunta Frecuente' : 'Nueva Pregunta Frecuente'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                title="Cerrar modal"
-                aria-label="Cerrar modal"
-                className="size-9 sm:size-10 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 ease-out hover:scale-105 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer shadow-2xs"
-              >
-                <X size={18} strokeWidth={2} />
-              </button>
-            </div>
-
-            {/* Formulario */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
-              <div>
-                <label className="block text-xs font-bold text-brand-ink mb-1">
-                  Pregunta o Consulta Frecuente *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: ¿Cuáles son las pautas de mudanza para el edificio?"
-                  value={formData.pregunta}
-                  onChange={(e) => setFormData({ ...formData, pregunta: e.target.value })}
-                  className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-brand-ink mb-1">
-                  Respuesta Oficial Homologada (Dra. Ivana Seliz) *
-                </label>
-                <textarea
-                  required
-                  rows={5}
-                  placeholder="Escribí aquí la respuesta oficial aprobada. El asistente virtual utilizará este texto para responder de forma directa y fehaciente a los vecinos."
-                  value={formData.respuesta}
-                  onChange={(e) => setFormData({ ...formData, respuesta: e.target.value })}
-                  className="w-full bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl p-3 outline-none transition-all duration-500 focus:border-brand-ink leading-relaxed shadow-2xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-brand-ink mb-1">
-                  Ámbito de Aplicación
-                </label>
-                <select
-                  value={formData.consorcio_id}
-                  onChange={(e) => setFormData({ ...formData, consorcio_id: e.target.value })}
-                  className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
-                >
-                  <option value="">Consorcio General (Aplica a todos los edificios)</option>
-                  {consorcios.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="es_activa"
-                  checked={formData.es_activa}
-                  onChange={(e) => setFormData({ ...formData, es_activa: e.target.checked })}
-                  className="size-4 rounded border-border text-brand-ink focus:ring-brand-ink"
-                />
-                <label htmlFor="es_activa" className="text-xs font-medium text-brand-ink cursor-pointer select-none">
-                  FAQ activa para respuestas automáticas
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCloseModal}
-                  disabled={submitting}
-                  className="h-8 text-xs text-text-secondary"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  type="submit"
-                  loading={submitting}
-                  className="h-8 text-xs bg-brand-ink text-white"
-                >
-                  <span>{editingFaq ? 'Guardar Cambios' : 'Crear FAQ'}</span>
-                </Button>
-              </div>
-            </form>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        className="bg-white rounded-xl border border-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]"
+      >
+        {/* Cabecera del Modal */}
+        <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-surface-soft">
+          <div className="flex items-center gap-2">
+            <HelpCircle size={18} strokeWidth={1.8} className="text-brand-ink" />
+            <h3 className="text-sm font-bold text-brand-ink">
+              {editingFaq ? 'Editar Pregunta Frecuente' : 'Nueva Pregunta Frecuente'}
+            </h3>
           </div>
+          <button
+            type="button"
+            onClick={handleCloseModal}
+            title="Cerrar modal"
+            aria-label="Cerrar modal"
+            className="size-9 sm:size-10 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 ease-out hover:scale-105 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer shadow-2xs"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
         </div>
-      )}
+
+        {/* Formulario */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
+          <div>
+            <label className="block text-xs font-bold text-brand-ink mb-1">
+              Pregunta o Consulta Frecuente *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ej: ¿Cuáles son las pautas de mudanza para el edificio?"
+              value={formData.pregunta}
+              onChange={(e) => setFormData({ ...formData, pregunta: e.target.value })}
+              className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-ink mb-1">
+              Respuesta Oficial Homologada (Dra. Ivana Seliz) *
+            </label>
+            <textarea
+              required
+              rows={5}
+              placeholder="Escribí aquí la respuesta oficial aprobada. El asistente virtual utilizará este texto para responder de forma directa y fehaciente a los vecinos."
+              value={formData.respuesta}
+              onChange={(e) => setFormData({ ...formData, respuesta: e.target.value })}
+              className="w-full bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl p-3 outline-none transition-all duration-500 focus:border-brand-ink leading-relaxed shadow-2xs"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-ink mb-1">
+              Ámbito de Aplicación
+            </label>
+            <select
+              value={formData.consorcio_id}
+              onChange={(e) => setFormData({ ...formData, consorcio_id: e.target.value })}
+              className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none transition-all duration-500 focus:border-brand-ink shadow-2xs"
+            >
+              <option value="">Consorcio General (Aplica a todos los edificios)</option>
+              {consorcios.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="es_activa"
+              checked={formData.es_activa}
+              onChange={(e) => setFormData({ ...formData, es_activa: e.target.checked })}
+              className="size-4 rounded border-border text-brand-ink focus:ring-brand-ink"
+            />
+            <label htmlFor="es_activa" className="text-xs font-medium text-brand-ink cursor-pointer select-none">
+              FAQ activa para respuestas automáticas
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCloseModal}
+              disabled={submitting}
+              className="h-8 text-xs text-text-secondary"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              loading={submitting}
+              className="h-8 text-xs bg-brand-ink text-white"
+            >
+              <span>{editingFaq ? 'Guardar Cambios' : 'Crear FAQ'}</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

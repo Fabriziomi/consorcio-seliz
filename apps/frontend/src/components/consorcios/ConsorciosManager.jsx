@@ -23,6 +23,7 @@ import { useToast } from '../ui/ToastNotification.jsx';
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
+import { Modal } from '../ui/Modal.jsx';
 import { ApiService } from '../../lib/api-client.js';
 
 export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefreshParent }) {
@@ -749,119 +750,119 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
       </div>
 
       {/* Modal Crear Nuevo Consorcio */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-brand-ink/40 backdrop-blur-xs animate-in fade-in duration-500">
-          <div className="bg-white rounded-base border border-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]">
-            <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-surface-soft">
-              <div className="flex items-center gap-2">
-                <Building2 size={18} strokeWidth={1.8} className="text-brand-ink" />
-                <h3 className="text-sm font-bold text-brand-ink">Registrar Nuevo Consorcio</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="size-9 sm:size-10 rounded-xl flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 ease-out hover:scale-105 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer border border-border/80 shadow-2xs"
-                aria-label="Cerrar modal"
-              >
-                <X size={18} strokeWidth={2} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateConsorcio} className="p-5 space-y-4 overflow-y-auto">
-              <div>
-                <label className="block text-xs font-bold text-brand-ink mb-1">Nombre Oficial del Consorcio *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: Consorcio Corrientes 1240"
-                  value={createForm.nombre}
-                  onChange={(e) => setCreateForm({ ...createForm, nombre: e.target.value })}
-                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-brand-ink mb-1">Dirección Completa *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: Av. Corrientes 1240, CABA"
-                  value={createForm.direccion}
-                  onChange={(e) => setCreateForm({ ...createForm, direccion: e.target.value })}
-                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-brand-ink mb-1">CUIT</label>
-                  <input
-                    type="text"
-                    placeholder="30-71122334-5"
-                    value={createForm.cuit}
-                    onChange={(e) => setCreateForm({ ...createForm, cuit: e.target.value })}
-                    className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-brand-ink mb-1">Email Cobranzas</label>
-                  <input
-                    type="email"
-                    placeholder="cobranzas@seliz.com.ar"
-                    value={createForm.email_cobranzas}
-                    onChange={(e) => setCreateForm({ ...createForm, email_cobranzas: e.target.value })}
-                    className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-brand-ink mb-1">CBU Oficial</label>
-                  <input
-                    type="text"
-                    placeholder="0140000000000000000001"
-                    value={createForm.cbu_bancario}
-                    onChange={(e) => setCreateForm({ ...createForm, cbu_bancario: e.target.value })}
-                    className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-brand-ink mb-1">Alias Bancario</label>
-                  <input
-                    type="text"
-                    placeholder="CONSORCIO.EXPENSAS"
-                    value={createForm.alias_bancario}
-                    onChange={(e) => setCreateForm({ ...createForm, alias_bancario: e.target.value })}
-                    className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
-                <Button
-                  variant="secondary"
-                  size="md"
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  disabled={creating}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="primary"
-                  size="md"
-                  type="submit"
-                  disabled={creating}
-                  className="bg-brand-ink text-white font-semibold"
-                >
-                  {creating ? 'Guardando...' : 'Crear Consorcio'}
-                </Button>
-              </div>
-            </form>
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        className="bg-white rounded-base border border-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]"
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-surface-soft">
+          <div className="flex items-center gap-2">
+            <Building2 size={18} strokeWidth={1.8} className="text-brand-ink" />
+            <h3 className="text-sm font-bold text-brand-ink">Registrar Nuevo Consorcio</h3>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(false)}
+            className="size-9 sm:size-10 rounded-xl flex items-center justify-center text-text-muted hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 ease-out hover:scale-105 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer border border-border/80 shadow-2xs"
+            aria-label="Cerrar modal"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
         </div>
-      )}
+
+        <form onSubmit={handleCreateConsorcio} className="p-5 space-y-4 overflow-y-auto">
+          <div>
+            <label className="block text-xs font-bold text-brand-ink mb-1">Nombre Oficial del Consorcio *</label>
+            <input
+              type="text"
+              required
+              placeholder="Ej: Consorcio Corrientes 1240"
+              value={createForm.nombre}
+              onChange={(e) => setCreateForm({ ...createForm, nombre: e.target.value })}
+              className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-ink mb-1">Dirección Completa *</label>
+            <input
+              type="text"
+              required
+              placeholder="Ej: Av. Corrientes 1240, CABA"
+              value={createForm.direccion}
+              onChange={(e) => setCreateForm({ ...createForm, direccion: e.target.value })}
+              className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-brand-ink mb-1">CUIT</label>
+              <input
+                type="text"
+                placeholder="30-71122334-5"
+                value={createForm.cuit}
+                onChange={(e) => setCreateForm({ ...createForm, cuit: e.target.value })}
+                className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-brand-ink mb-1">Email Cobranzas</label>
+              <input
+                type="email"
+                placeholder="cobranzas@seliz.com.ar"
+                value={createForm.email_cobranzas}
+                onChange={(e) => setCreateForm({ ...createForm, email_cobranzas: e.target.value })}
+                className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-brand-ink mb-1">CBU Oficial</label>
+              <input
+                type="text"
+                placeholder="0140000000000000000001"
+                value={createForm.cbu_bancario}
+                onChange={(e) => setCreateForm({ ...createForm, cbu_bancario: e.target.value })}
+                className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-brand-ink mb-1">Alias Bancario</label>
+              <input
+                type="text"
+                placeholder="CONSORCIO.EXPENSAS"
+                value={createForm.alias_bancario}
+                onChange={(e) => setCreateForm({ ...createForm, alias_bancario: e.target.value })}
+                className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="md"
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              disabled={creating}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              type="submit"
+              disabled={creating}
+              className="bg-brand-ink text-white font-semibold"
+            >
+              {creating ? 'Guardando...' : 'Crear Consorcio'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
