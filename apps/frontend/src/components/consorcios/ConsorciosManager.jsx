@@ -295,16 +295,23 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                       setMobileView('detail');
                     }
                   }}
-                  className={`p-3.5 cursor-pointer group transition-all duration-150 ease-out flex items-center justify-between gap-2 border-l-4 hover:translate-x-0.5 active:scale-[0.99] outline-none ${
+                  className={`p-3.5 cursor-pointer group transition-all duration-500 ease-out flex items-center justify-between gap-2 border-l-4 hover:translate-x-1 active:scale-[0.99] outline-none ${
                     isSelected
-                      ? 'bg-zinc-100 border-brand-ink shadow-2xs'
-                      : 'border-transparent hover:bg-zinc-100/70 focus-visible:bg-zinc-100/70'
+                      ? 'bg-zinc-200/90 hover:bg-zinc-300/80 border-brand-ink shadow-sm'
+                      : 'bg-white hover:bg-zinc-100/90 border-transparent hover:border-zinc-300 focus-visible:bg-zinc-100/90'
                   }`}
                 >
                   <div className="min-w-0">
-                    <p className={`text-xs sm:text-sm truncate ${isSelected ? 'font-bold text-brand-ink' : 'font-semibold text-brand-ink'}`}>
-                      {c.nombre}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className={`text-xs sm:text-sm truncate ${isSelected ? 'font-bold text-brand-ink' : 'font-semibold text-brand-ink'}`}>
+                        {c.nombre}
+                      </p>
+                      {isSelected && (
+                        <span className="text-[9px] font-bold tracking-wider uppercase bg-brand-ink text-white px-1.5 py-0.5 rounded shadow-2xs shrink-0 transition-all duration-500">
+                          Activo
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-text-muted truncate mt-0.5">
                       {c.direccion}
                     </p>
@@ -314,7 +321,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                       </span>
                     )}
                   </div>
-                  <ChevronRight size={14} strokeWidth={2} className={`transition-all duration-200 ease-out group-hover:translate-x-1 group-hover:scale-120 ${isSelected ? 'text-brand-ink' : 'text-text-muted'}`} />
+                  <ChevronRight size={14} strokeWidth={2} className={`transition-all duration-500 ease-out group-hover:translate-x-1.5 group-hover:scale-125 ${isSelected ? 'text-brand-ink' : 'text-text-muted'}`} />
                 </div>
               );
             })}
