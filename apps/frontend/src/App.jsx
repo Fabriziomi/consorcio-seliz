@@ -406,20 +406,55 @@ export default function App() {
     try {
       const msgs = await ApiService.getConversacionMessages(convId);
       if (Array.isArray(msgs)) {
-        const formatted = msgs.map((m) => ({
-          id: m.id,
-          sender: m.enviado_por === 'agente' ? 'ivana' : m.enviado_por === 'bot' ? 'bot' : 'vecino',
-          text: m.contenido,
-          privado: m.privado,
-          isPrivateNote: m.privado,
-          tipo: m.tipo,
-          timestamp: m.creado_el ? formatDateTime(m.creado_el) : '',
-          agente_nombre: m.agente_nombre,
-        }));
-        setMessagesByConv((prev) => ({
-          ...prev,
-          [convId]: formatted,
-        }));
+        setMessagesByConv((prev) => {
+          const currentList = prev[convId] || [];
+          const localMap = new Map();
+          currentList.forEach((lm) => {
+            if (lm.attachment) {
+              localMap.set(lm.id, lm.attachment);
+              if (lm.text) localMap.set(lm.text, lm.attachment);
+            }
+          });
+
+          const formatted = msgs.map((m) => {
+            let attachment = m.attachment || null;
+            if (!attachment && m.media_url) {
+              const isImg = (m.media_tipo && m.media_tipo.startsWith('image/')) ||
+                /\.(png|jpe?g|webp|gif|svg|bmp)(\?.*)?$/i.test(m.media_url);
+              attachment = {
+                name: m.media_url.split('/').pop() || 'Archivo adjunto',
+                previewUrl: m.media_url,
+                isImage: isImg,
+                type: m.media_tipo || (isImg ? 'image/jpeg' : 'application/octet-stream'),
+              };
+            }
+            if (!attachment && localMap.has(m.id)) {
+              attachment = localMap.get(m.id);
+            }
+            if (!attachment && m.contenido && localMap.has(m.contenido)) {
+              attachment = localMap.get(m.contenido);
+            }
+
+            return {
+              id: m.id,
+              sender: m.enviado_por === 'agente' ? 'ivana' : m.enviado_por === 'bot' ? 'bot' : 'vecino',
+              text: m.contenido,
+              privado: m.privado,
+              isPrivateNote: m.privado,
+              tipo: m.tipo,
+              timestamp: m.creado_el ? formatDateTime(m.creado_el) : '',
+              agente_nombre: m.agente_nombre,
+              media_url: m.media_url,
+              media_tipo: m.media_tipo,
+              attachment,
+            };
+          });
+
+          return {
+            ...prev,
+            [convId]: formatted,
+          };
+        });
       }
     } catch (err) {
       console.warn(`[CRM] No se pudieron cargar mensajes para ${convId}:`, err.message);
@@ -585,7 +620,7 @@ export default function App() {
     );
 
     try {
-      const dispatchText = (text || '').trim() || (attachedFile ? `[Adjunto: ${attachedFile.name}]` : '');
+      const dispatchText = (text || '').trim() || (attachedFile ? `[Archivo: ${attachedFile.name}]` : '');
       await ApiService.sendConversacionMessage(selectedConvId, dispatchText, isPrivate);
       await loadMessagesForConversation(selectedConvId);
       await loadConversaciones();

@@ -15,8 +15,29 @@ import {
   User,
   X,
   FileText,
+  Eye,
+  Download,
 } from 'lucide-react';
 import { WhatsAppDoodleBackground } from './WhatsAppDoodleBackground.jsx';
+
+/**
+ * Normaliza el objeto adjunto de un mensaje a partir de m.attachment o m.media_url
+ */
+function getMessageAttachment(m) {
+  if (m.attachment) return m.attachment;
+  if (m.media_url) {
+    const isImage = (m.media_tipo && m.media_tipo.startsWith('image/')) ||
+      /\.(png|jpe?g|webp|gif|svg|bmp)(\?.*)?$/i.test(m.media_url);
+    const fileName = m.media_url.split('/').pop() || 'Archivo adjunto';
+    return {
+      name: fileName,
+      type: m.media_tipo || (isImage ? 'image/jpeg' : 'application/octet-stream'),
+      isImage,
+      previewUrl: m.media_url,
+    };
+  }
+  return null;
+}
 
 export function MessageThread({
   conversationId,
@@ -41,16 +62,34 @@ export function MessageThread({
   const [imageError, setImageError] = useState(false);
   const [aiNotice, setAiNotice] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [previewModalMedia, setPreviewModalMedia] = useState(null);
+  const [brokenMediaIds, setBrokenMediaIds] = useState({});
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const statusDropdownRef = useRef(null);
 
+  const handleMediaError = (id) => {
+    setBrokenMediaIds((prev) => ({ ...prev, [id]: true }));
+  };
+
   // Auto-scroll al final con cada mensaje nuevo
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, selectedFile]);
+
+  // Cerrar modal de vista previa de imagen al presionar Escape
+  useEffect(() => {
+    if (!previewModalMedia) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setPreviewModalMedia(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [previewModalMedia]);
 
   // Cerrar el menú desplegable al hacer clic fuera o presionar Escape
   useEffect(() => {
@@ -77,7 +116,7 @@ export function MessageThread({
     };
   }, [statusDropdownOpen]);
 
-  // Manejo de selección de archivo nativo
+  // Manejo de selección de archivo nativo con FileReader para previsualización inmediata y duradera
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -89,23 +128,38 @@ export function MessageThread({
       return;
     }
 
-    const isImage = file.type.startsWith('image/');
-    const previewUrl = URL.createObjectURL(file);
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name);
+    const sizeStr = (file.size / 1024).toFixed(1) + ' KB';
 
-    setSelectedFile({
-      file,
-      name: file.name,
-      size: (file.size / 1024).toFixed(1) + ' KB',
-      type: file.type,
-      isImage,
-      previewUrl,
-    });
+    if (isImage) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setSelectedFile({
+          file,
+          name: file.name,
+          size: sizeStr,
+          type: file.type || 'image/png',
+          isImage: true,
+          previewUrl: event.target?.result,
+        });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setSelectedFile({
+        file,
+        name: file.name,
+        size: sizeStr,
+        type: file.type || 'application/octet-stream',
+        isImage: false,
+        previewUrl: null,
+      });
+    }
 
     e.target.value = '';
   };
 
   const handleRemoveFile = () => {
-    if (selectedFile?.previewUrl) {
+    if (selectedFile?.previewUrl && typeof selectedFile.previewUrl === 'string' && selectedFile.previewUrl.startsWith('blob:')) {
       URL.revokeObjectURL(selectedFile.previewUrl);
     }
     setSelectedFile(null);
@@ -128,7 +182,7 @@ export function MessageThread({
     if (!inputText.trim() && !selectedFile) return;
     onSendMessage(inputText.trim(), isPrivateNote, selectedFile);
     setInputText('');
-    handleRemoveFile();
+    setSelectedFile(null);
     setAiNotice(false);
   };
 
@@ -309,6 +363,8 @@ export function MessageThread({
             </div>
           ) : (
             messages.map((m) => {
+              const attachment = getMessageAttachment(m);
+
               // 1. Nota interna (Privada para administración)
               if (m.privado || m.isPrivateNote) {
                 return (
@@ -321,20 +377,30 @@ export function MessageThread({
                         </div>
                         <span className="text-amber-800/80 font-normal shrink-0">{m.timestamp || m.creado_el}</span>
                       </div>
-                      {m.attachment && (
+                      {attachment && (
                         <div className="mb-2">
-                          {m.attachment.isImage && m.attachment.previewUrl ? (
-                            <img
-                              src={m.attachment.previewUrl}
-                              alt={m.attachment.name || 'Adjunto'}
-                              className="max-w-full rounded-lg object-cover max-h-60 border border-amber-300"
-                            />
+                          {attachment.isImage && attachment.previewUrl && !brokenMediaIds[m.id] ? (
+                            <div
+                              onClick={() => setPreviewModalMedia({ url: attachment.previewUrl, name: attachment.name || 'Adjunto' })}
+                              className="relative cursor-pointer group rounded-lg overflow-hidden border border-amber-300 inline-block max-w-full shadow-2xs"
+                              title="Click para ver en tamaño completo"
+                            >
+                              <img
+                                src={attachment.previewUrl}
+                                alt={attachment.name || 'Adjunto'}
+                                onError={() => handleMediaError(m.id)}
+                                className="max-w-full rounded-lg object-cover max-h-60 transition-transform duration-150 group-hover:scale-[1.02]"
+                              />
+                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                <Eye size={20} strokeWidth={2} className="drop-shadow" />
+                              </div>
+                            </div>
                           ) : (
                             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-100/60 border border-amber-300/80 text-xs">
                               <FileText size={18} strokeWidth={1.8} className="shrink-0 text-amber-900" />
-                              <span className="truncate font-semibold">{m.attachment.name}</span>
-                              {m.attachment.size && (
-                                <span className="text-[10px] text-amber-800/70 shrink-0">{m.attachment.size}</span>
+                              <span className="truncate font-semibold">{attachment.name}</span>
+                              {attachment.size && (
+                                <span className="text-[10px] text-amber-800/70 shrink-0">{attachment.size}</span>
                               )}
                             </div>
                           )}
@@ -386,20 +452,30 @@ export function MessageThread({
                       </div>
 
                       {/* Renderizado de Archivo Adjunto */}
-                      {m.attachment && (
+                      {attachment && (
                         <div className="mb-2 mt-1">
-                          {m.attachment.isImage && m.attachment.previewUrl ? (
-                            <img
-                              src={m.attachment.previewUrl}
-                              alt={m.attachment.name || 'Adjunto'}
-                              className="max-w-full rounded-lg object-cover max-h-60 border border-zinc-700"
-                            />
+                          {attachment.isImage && attachment.previewUrl && !brokenMediaIds[m.id] ? (
+                            <div
+                              onClick={() => setPreviewModalMedia({ url: attachment.previewUrl, name: attachment.name || 'Adjunto' })}
+                              className="relative cursor-pointer group rounded-lg overflow-hidden border border-zinc-700 inline-block max-w-full shadow-2xs"
+                              title="Click para ver en tamaño completo"
+                            >
+                              <img
+                                src={attachment.previewUrl}
+                                alt={attachment.name || 'Adjunto'}
+                                onError={() => handleMediaError(m.id)}
+                                className="max-w-full rounded-lg object-cover max-h-60 transition-transform duration-150 group-hover:scale-[1.02]"
+                              />
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                <Eye size={20} strokeWidth={2} className="drop-shadow" />
+                              </div>
+                            </div>
                           ) : (
                             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700 text-xs">
                               <FileText size={18} strokeWidth={1.8} className="shrink-0 text-zinc-200" />
-                              <span className="truncate font-medium">{m.attachment.name}</span>
-                              {m.attachment.size && (
-                                <span className="text-[10px] text-zinc-400 shrink-0">{m.attachment.size}</span>
+                              <span className="truncate font-medium">{attachment.name}</span>
+                              {attachment.size && (
+                                <span className="text-[10px] text-zinc-400 shrink-0">{attachment.size}</span>
                               )}
                             </div>
                           )}
@@ -427,20 +503,30 @@ export function MessageThread({
                     </div>
 
                     {/* Renderizado de Archivo Adjunto */}
-                    {m.attachment && (
+                    {attachment && (
                       <div className="mb-2 mt-1">
-                        {m.attachment.isImage && m.attachment.previewUrl ? (
-                          <img
-                            src={m.attachment.previewUrl}
-                            alt={m.attachment.name || 'Adjunto'}
-                            className="max-w-full rounded-lg object-cover max-h-60 border border-border"
-                          />
+                        {attachment.isImage && attachment.previewUrl && !brokenMediaIds[m.id] ? (
+                          <div
+                            onClick={() => setPreviewModalMedia({ url: attachment.previewUrl, name: attachment.name || 'Adjunto' })}
+                            className="relative cursor-pointer group rounded-lg overflow-hidden border border-border inline-block max-w-full shadow-2xs"
+                            title="Click para ver en tamaño completo"
+                          >
+                            <img
+                              src={attachment.previewUrl}
+                              alt={attachment.name || 'Adjunto'}
+                              onError={() => handleMediaError(m.id)}
+                              className="max-w-full rounded-lg object-cover max-h-60 transition-transform duration-150 group-hover:scale-[1.02]"
+                            />
+                            <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <Eye size={20} strokeWidth={2} className="drop-shadow" />
+                            </div>
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-surface-soft border border-border/80 text-xs text-brand-ink">
                             <FileText size={18} strokeWidth={1.8} className="shrink-0 text-brand-ink" />
-                            <span className="truncate font-semibold">{m.attachment.name}</span>
-                            {m.attachment.size && (
-                              <span className="text-[10px] text-text-muted shrink-0">{m.attachment.size}</span>
+                            <span className="truncate font-semibold">{attachment.name}</span>
+                            {attachment.size && (
+                              <span className="text-[10px] text-text-muted shrink-0">{attachment.size}</span>
                             )}
                           </div>
                         )}
@@ -598,6 +684,58 @@ export function MessageThread({
           </button>
         </form>
       </div>
+
+      {/* Modal de Previsualización de Imagen / Lightbox */}
+      {previewModalMedia && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Previsualización de imagen adjunta"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150"
+          onClick={() => setPreviewModalMedia(null)}
+        >
+          <div
+            className="relative max-w-4xl w-full max-h-[90vh] flex flex-col bg-brand-ink border border-zinc-700 rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del Lightbox */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-white gap-3">
+              <span className="text-xs sm:text-sm font-semibold truncate text-zinc-100">
+                {previewModalMedia.name}
+              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <a
+                  href={previewModalMedia.url}
+                  download={previewModalMedia.name || 'imagen'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Descargar o abrir original"
+                >
+                  <Download size={18} strokeWidth={2} />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalMedia(null)}
+                  className="p-1.5 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Cerrar vista previa (Esc)"
+                >
+                  <X size={18} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+
+            {/* Imagen Principal */}
+            <div className="flex items-center justify-center p-3 bg-black/50 overflow-auto max-h-[calc(90vh-52px)]">
+              <img
+                src={previewModalMedia.url}
+                alt={previewModalMedia.name || 'Vista previa'}
+                className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-md"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
