@@ -375,7 +375,7 @@ export const ApiService = {
   },
 
   // ==========================================
-  // FAQS & BASE DE CONOCIMIENTO (NOCODB INSIDE)
+  // FAQS & BASE DE CONOCIMIENTO
   // ==========================================
   async getFaqs(filters = {}) {
     const res = await apiClient.get('/api/v1/faqs', { params: filters });

@@ -510,7 +510,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                     </div>
                   </form>
                 ) : (
-                  /* SubTab: Atributos Dinámicos (NocoDB Inside) */
+                  /* SubTab: Atributos Dinámicos */
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>

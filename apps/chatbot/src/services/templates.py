@@ -9,14 +9,11 @@ Normas de estilo:
 
 from typing import Dict, List, Any
 import logging
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Catálogo con 3 variantes exactas por plantilla para selección Round-Robin
 TEMPLATES: Dict[str, List[str]] = {
-    # --------------------------------------------------------------------------
-    # ONBOARDING: Vecino sin consorcio ni unidad funcional
-    # --------------------------------------------------------------------------
     "ONBOARDING_DATOS": [
         (
             "Hola{nombre_saludo}, ¿cómo estás? Te comunicaste con la administración de la Dra. Ivana Seliz. "
@@ -73,10 +70,6 @@ TEMPLATES: Dict[str, List[str]] = {
             "Te recomendamos contactar a la administración designada en tu consorcio."
         ),
     ],
-
-    # --------------------------------------------------------------------------
-    # SOLICITANDO EDIFICIO (Para CBU o Emergencia sin consorcio)
-    # --------------------------------------------------------------------------
     "SOLICITAR_EDIFICIO_EXPENSAS": [
         (
             "Hola{nombre_saludo}, para poder enviarte los datos de cuenta bancaria y CBU correspondientes al pago de expensas, "
@@ -115,10 +108,6 @@ TEMPLATES: Dict[str, List[str]] = {
             "Hola{nombre_saludo}, no encontramos coincidencia con esa dirección. Por favor corroborá la calle y número del consorcio."
         ),
     ],
-
-    # --------------------------------------------------------------------------
-    # ESPERANDO SOLO UNIDAD (Edificio ya validado, falta piso y depto)
-    # --------------------------------------------------------------------------
     "SOLICITAR_SOLO_UNIDAD": [
         (
             "Hola{nombre_saludo}, tenemos registrado el edificio {nombre_consorcio}. "
@@ -145,10 +134,6 @@ TEMPLATES: Dict[str, List[str]] = {
             "Hola{nombre_saludo}, requerimos el piso y departamento exacto (ejemplo: 5° B) para actualizar tu ficha en el edificio."
         ),
     ],
-
-    # --------------------------------------------------------------------------
-    # RESPUESTAS RESUELTAS: Expensas, Pagos, Guardias y Reclamos
-    # --------------------------------------------------------------------------
     "EXPENSAS_DATOS_BANCARIOS": [
         (
             "Hola{nombre_saludo}, te pasamos los datos oficiales para el pago de expensas de {nombre_consorcio}:\n\n"
@@ -293,10 +278,6 @@ TEMPLATES: Dict[str, List[str]] = {
             "Gracias a vos{nombre_saludo}. Saludos cordiales."
         ),
     ],
-
-    # --------------------------------------------------------------------------
-    # COMPATIBILIDAD CON PIPELINE PREVIO (ALIAS Y RUTAS LEGACY)
-    # --------------------------------------------------------------------------
     "EMERGENCIA_GENERAL": [
         (
             "Hola{nombre_saludo}. Si estás ante una situación de urgencia con riesgo inminente en el edificio, por favor comunicate cuanto antes con la guardia al {telefono_guardia} o con los servicios de auxilio (Bomberos 100 / SAME 107).\n\n"
@@ -490,7 +471,6 @@ def render_template(template_key: str, historial_len: int = 0, **kwargs: Any) ->
     variant_index = abs(historial_len) % len(variants)
     selected_template = variants[variant_index]
 
-    # Sanitización de nombre de contacto para el saludo
     user_name = kwargs.get("user_name") or kwargs.get("nombre_contacto")
     if user_name and isinstance(user_name, str) and user_name.strip():
         first_name = user_name.strip().split()[0].capitalize()
@@ -501,22 +481,44 @@ def render_template(template_key: str, historial_len: int = 0, **kwargs: Any) ->
     else:
         kwargs.setdefault("nombre_saludo", "")
 
-    # Parámetros por defecto para evitar KeyError y garantizar consistencia
     kwargs.setdefault("unidad", kwargs.get("unidad_funcional") or "tu unidad")
     kwargs.setdefault("unidad_funcional", kwargs.get("unidad") or "tu unidad")
     kwargs.setdefault("nombre_consorcio", "tu consorcio")
-    kwargs.setdefault("cbu", "Dato disponible en horario de oficina")
-    kwargs.setdefault("alias", "Dato disponible en horario de oficina")
-    kwargs.setdefault("cuit", "30-00000000-0")
-    kwargs.setdefault("email_cobranzas", "cobranzas@selizadministraciones.com.ar")
-    kwargs.setdefault("telefono_guardia", kwargs.get("telefonos_guardia") or "+54 9 11 6248-3302")
-    kwargs.setdefault("telefonos_guardia", kwargs.get("telefono_guardia") or "• Guardia general administración: +54 9 11 6248-3302")
+    kwargs.setdefault("cbu", "")
+    kwargs.setdefault("alias", "")
+    kwargs.setdefault("cuit", "")
+
+    if "{email_cobranzas}" in selected_template and not kwargs.get("email_cobranzas"):
+        admin_email = getattr(settings, "ADMIN_EMAIL_COBRANZAS", None)
+        if admin_email:
+            kwargs["email_cobranzas"] = admin_email
+        else:
+            logger.error("[TEMPLATES] Falta parámetro 'email_cobranzas' para plantilla '%s' y no está configurado en ADMIN_EMAIL_COBRANZAS.", template_key)
+            kwargs["email_cobranzas"] = ""
+
+    if ("{telefono_guardia}" in selected_template or "{telefonos_guardia}" in selected_template) and not kwargs.get("telefono_guardia") and not kwargs.get("telefonos_guardia"):
+        admin_guardia = getattr(settings, "ADMIN_TELEFONO_GUARDIA", None)
+        if admin_guardia:
+            kwargs["telefono_guardia"] = admin_guardia
+            kwargs["telefonos_guardia"] = f"• Guardia general administración: {admin_guardia}"
+        else:
+            logger.error("[TEMPLATES] Faltan teléfonos de guardia para plantilla '%s' y no está configurado ADMIN_TELEFONO_GUARDIA.", template_key)
+            kwargs["telefono_guardia"] = ""
+            kwargs["telefonos_guardia"] = ""
+    else:
+        kwargs.setdefault("telefono_guardia", kwargs.get("telefonos_guardia") or "")
+        kwargs.setdefault("telefonos_guardia", kwargs.get("telefono_guardia") or "")
+
     kwargs.setdefault("etiqueta_atributo", "la consulta")
     kwargs.setdefault("valor_atributo", "información provista por la administración")
-    kwargs.setdefault(
-        "pautas_mudanza",
-        "• Días y horarios de mudanza: Lunes a viernes de 09:00 a 17:00 hs y sábados de 09:00 a 13:00 hs con previa coordinación.",
-    )
+
+    if "{pautas_mudanza}" in selected_template and not kwargs.get("pautas_mudanza"):
+        default_pautas = getattr(settings, "DEFAULT_PAUTAS_MUDANZA", None)
+        if default_pautas:
+            kwargs["pautas_mudanza"] = default_pautas
+        else:
+            logger.warning("[TEMPLATES] Falta parámetro 'pautas_mudanza' para plantilla '%s' y no está configurado en DEFAULT_PAUTAS_MUDANZA.", template_key)
+            kwargs["pautas_mudanza"] = ""
 
     try:
         return selected_template.format(**kwargs)
@@ -540,7 +542,7 @@ def validate_templates_on_startup() -> None:
         "alias": "CALLAO.2334.EXPENSAS",
         "cuit": "30-71000000-1",
         "email_cobranzas": "callao2334@selizadministraciones.com.ar",
-        "telefono_guardia": "+54 9 11 6248-3302",
+        "telefono_guardia": "+54 9 11 0000-0000",
         "telefonos_guardia": "• Ascensores: +54 9 11 4444-1111\n• Plomería: +54 9 11 4444-2222",
         "pautas_mudanza": "• Días hábiles de 09:00 a 17:00 hs.",
         "etiqueta_atributo": "código de acceso",

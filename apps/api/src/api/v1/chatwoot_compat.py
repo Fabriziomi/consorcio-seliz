@@ -11,6 +11,7 @@ from sqlalchemy import desc
 
 from core.logging import logger
 from core.security import verify_password, create_access_token, decode_access_token
+from core.config import settings
 from infrastructure.database import get_db
 from infrastructure.models import (
     UsuarioModel,
@@ -58,7 +59,6 @@ async def get_chatwoot_user(
             token = authorization
 
     if not token:
-        # Intento de parámetro en query string
         token = request.query_params.get("access_token")
 
     if not token:
@@ -85,7 +85,6 @@ async def get_chatwoot_user(
 
 async def find_conversation_by_id_or_int(conv_id_str: str, db: AsyncSession) -> Optional[ConversacionModel]:
     """Permite buscar una conversación tanto por su UUID nativo como por su entero hash de Chatwoot."""
-    # 1. Búsqueda directa por UUID
     res = await db.execute(
         select(ConversacionModel)
         .options(
@@ -100,7 +99,6 @@ async def find_conversation_by_id_or_int(conv_id_str: str, db: AsyncSession) -> 
     if conv:
         return conv
 
-    # 2. Si es numérico, comparar con hash
     try:
         numeric_target = int(conv_id_str)
         all_res = await db.execute(
@@ -121,7 +119,6 @@ async def find_conversation_by_id_or_int(conv_id_str: str, db: AsyncSession) -> 
 
 
 def _format_chatwoot_message(m: MensajeModel, conv: ConversacionModel) -> Dict[str, Any]:
-    # message_type: 0 = incoming, 1 = outgoing, 2 = activity
     msg_type_code = 0 if m.tipo == TipoMensaje.INCOMING else 1
     if m.privado or m.tipo == TipoMensaje.ACTIVITY:
         msg_type_code = 2
@@ -227,9 +224,6 @@ def _format_chatwoot_conversation(conv: ConversacionModel) -> Dict[str, Any]:
     }
 
 
-# =========================================================================
-# 1. AUTENTICACIÓN COMPATIBLE CON APP MÓVIL CHATWOOT
-# =========================================================================
 class ChatwootLoginPayload(BaseModel):
     email: str
     password: str
@@ -257,11 +251,9 @@ async def chatwoot_sign_in(
     if not user.activo:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cuenta inactiva.")
 
-    # Generar JWT
     token = create_access_token(data={"sub": user.id, "email": user.email, "rol": user.rol.value})
     user_int_id = str_to_int_id(user.id)
 
-    # Inyectar headers que espera Axios en Chatwoot Mobile
     response.headers["access-token"] = token
     response.headers["uid"] = user.email
     response.headers["client"] = "chatwoot-mobile-app"
@@ -317,9 +309,6 @@ async def chatwoot_profile(user: UsuarioModel = Depends(get_chatwoot_user)):
     }
 
 
-# =========================================================================
-# 2. CONVERSACIONES COMPATIBLES CON CHATWOOT MOBILE
-# =========================================================================
 @router.get("/accounts/{account_id}/conversations")
 async def chatwoot_list_conversations(
     account_id: int,
@@ -352,7 +341,6 @@ async def chatwoot_list_conversations(
     elif assignee_type == "unassigned":
         stmt = stmt.where(ConversacionModel.agente_id.is_(None))
 
-    # Paginación
     limit = 25
     skip = (page - 1) * limit
     stmt = stmt.offset(skip).limit(limit)
@@ -362,7 +350,6 @@ async def chatwoot_list_conversations(
 
     payload_list = [_format_chatwoot_conversation(c) for c in convs]
 
-    # Conteos para meta
     all_res = await db.execute(select(ConversacionModel.id))
     all_count = len(all_res.scalars().all())
 
@@ -572,9 +559,6 @@ async def chatwoot_update_labels(
     return {"payload": conv.etiquetas}
 
 
-# =========================================================================
-# 3. METADATOS: INBOXES, AGENTES Y ETIQUETAS
-# =========================================================================
 @router.get("/accounts/{account_id}/inboxes")
 async def chatwoot_list_inboxes(
     account_id: int,
@@ -588,7 +572,7 @@ async def chatwoot_list_inboxes(
                 "name": "WhatsApp Dra. Ivana Seliz",
                 "channel_type": "Channel::Whatsapp",
                 "avatar_url": "",
-                "phone_number": "+5491162483302",
+                "phone_number": settings.ADMIN_TELEFONO_CONTACTO or settings.ADMIN_TELEFONO_GUARDIA or "",
                 "enable_auto_assignment": True,
             }
         ]
@@ -665,9 +649,6 @@ async def chatwoot_list_contacts(
     return {"payload": payload}
 
 
-# =========================================================================
-# 4. SUBSCRIPCIÓN A NOTIFICACIONES PUSH MÓVILES
-# =========================================================================
 class PushSubscriptionPayload(BaseModel):
     subscription_type: Optional[str] = "fcm"
     subscription_attributes: Optional[Dict[str, Any]] = None

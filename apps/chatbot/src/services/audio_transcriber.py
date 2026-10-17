@@ -58,19 +58,16 @@ class AudioTranscriber:
             logger.warning("[AUDIO_TRANSCRIBER] Audio demasiado corto o vacío.")
             return None
 
-        # Límite aproximado: 90 segundos de audio Opus PTT ronda ~300KB
         if len(audio_bytes) > 350_000:
             logger.warning("[AUDIO_TRANSCRIBER] Audio excede los 90 segundos máximos permitidos (%d bytes).", len(audio_bytes))
             return None
 
-        # 1. Intentar Groq Whisper API si hay clave configurada
         groq_key = self.groq_api_key or settings.GROQ_API_KEY or getattr(settings, "GROQ_KEY", None)
         if groq_key:
             groq_text = await self._transcribe_groq(audio_bytes, api_key=groq_key)
             if groq_text is not None:
                 return groq_text
 
-        # 2. Fallback a modelo local si está disponible
         return await asyncio.to_thread(self._transcribe_local, audio_bytes)
 
     async def _transcribe_groq(self, audio_bytes: bytes, api_key: str) -> Optional[str]:

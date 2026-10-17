@@ -239,7 +239,6 @@ class ExpedienteResponse(ExpedienteBase):
     tickets_count: int = 0
 
 
-# --- Esquemas de Webhooks ---
 class EvolutionMessageData(BaseModel):
     remoteJid: str
     fromMe: bool
@@ -255,7 +254,6 @@ class EvolutionWebhookPayload(BaseModel):
     data: Dict[str, Any]
 
 
-# --- Esquemas de Usuarios y Autenticación ---
 class UsuarioBase(BaseModel):
     email: str
     nombre_completo: str
@@ -293,7 +291,6 @@ class TokenResponse(BaseModel):
     user: UsuarioResponse
 
 
-# --- Esquemas de FAQs y Base de Conocimiento ---
 class FaqBase(BaseModel):
     consorcio_id: Optional[str] = None
     pregunta: str
@@ -318,7 +315,6 @@ class FaqResponse(FaqBase):
     id: str
 
 
-# --- Esquemas de Etiquetas ---
 class EtiquetaBase(BaseModel):
     titulo: str
     color: str = "#475569"
@@ -336,7 +332,6 @@ class EtiquetaResponse(EtiquetaBase):
     creado_el: datetime
 
 
-# --- Esquemas de Mensajes ---
 class MensajeBase(BaseModel):
     tipo: TipoMensaje = TipoMensaje.OUTGOING
     contenido: str
@@ -366,7 +361,6 @@ class MensajeResponse(MensajeBase):
     agente_nombre: Optional[str] = None
 
 
-# --- Esquemas de Conversaciones ---
 class ConversacionBase(BaseModel):
     contacto_id: str
     consorcio_id: Optional[str] = None

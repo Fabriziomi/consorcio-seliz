@@ -28,7 +28,6 @@ class DebounceBufferService:
         Agrega un mensaje al buffer del remitente. Si ya hay un timer corriendo, lo extiende.
         Al finalizar la ventana, invoca el callback con el texto consolidado.
         """
-        # Si se desactiva el buffer en settings, procesar directo
         if settings.BYPASS_DEBOUNCE_BUFFER or settings.FAST_DEBUG_MODE:
             await callback(key, message_text)
             return
@@ -38,15 +37,12 @@ class DebounceBufferService:
 
         self._buffers[key].append(message_text.strip())
 
-        # Si ya había una tarea de espera corriendo, cancelarla para reiniciar la ventana
         if key in self._tasks and not self._tasks[key].done():
             self._tasks[key].cancel()
 
-        # Crear nueva tarea diferida
         async def _delayed_flush():
             try:
                 await asyncio.sleep(self.window_seconds)
-                # Extraer y consolidar mensajes
                 messages = self._buffers.pop(key, [])
                 self._tasks.pop(key, None)
                 if messages:
@@ -54,7 +50,6 @@ class DebounceBufferService:
                     logger.info(f"[DEBOUNCE] Consolidando {len(messages)} mensaje(s) para {key}: '{consolidated}'")
                     await callback(key, consolidated)
             except asyncio.CancelledError:
-                # Cancelado porque llegó otro mensaje dentro de la ventana
                 pass
             except Exception as e:
                 logger.error(f"[DEBOUNCE] Error al procesar buffer diferido para {key}: {e}")

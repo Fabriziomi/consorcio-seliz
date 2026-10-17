@@ -28,20 +28,15 @@ def calculate_human_typing_delay(
 
     length = len(text.strip()) if text else 0
 
-    # Piso mínimo dinámico con jitter (garantiza siempre >= min_seconds, con variación de 0.02s a 0.35s)
     min_floor = min_seconds + random.uniform(0.02, 0.35)
-    # Techo máximo dinámico con jitter
     max_ceiling = max_seconds + random.uniform(-0.10, 0.25)
 
-    # Velocidad de digitación ágil (28 a 42 caracteres por segundo)
     effective_cps = random.uniform(base_chars_per_sec * 0.85, base_chars_per_sec * 1.15)
     calculated_time = (length / effective_cps) if length > 0 else 0.0
 
-    # Jitter aleatorio de tipeo
     jitter = random.uniform(-0.25, 0.35)
     total_delay = calculated_time + jitter
 
-    # Acotación dinámica
     clamped_delay = max(min_floor, min(total_delay, max_ceiling))
     return round(clamped_delay, 2)
 

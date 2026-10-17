@@ -118,8 +118,6 @@ class SemanticExtractor:
     ) -> SemanticExtractionResult:
         """Reglas de contingencia si el modelo LLM no está disponible."""
         m_lower = message.lower().strip()
-        
-        # 1. Unidad funcional básica (números o palabras "cuarto b", "planta baja")
         unit = None
         ORDINAL_MAP = {
             "primero": "1°", "primer": "1°",
@@ -133,7 +131,6 @@ class SemanticExtractor:
             "de": "D", "d": "D", "e": "E", "efe": "F", "f": "F",
         }
         
-        # Mapeo de números hablados como "cuarto be", "cuarto b"
         m_spoken = re.search(r"\b(" + "|".join(ORDINAL_MAP.keys()) + r")\s+([a-zA-Z]{1,2})\b", m_lower)
         if m_spoken:
             piso = ORDINAL_MAP.get(m_spoken.group(1).lower())
@@ -151,7 +148,6 @@ class SemanticExtractor:
             if m_unit:
                 unit = m_unit.group(1).upper()
 
-        # 2. Consorcio por coincidencia de palabras clave
         consorcio_match = None
         if valid_consorcios:
             for c_name in valid_consorcios:
@@ -160,7 +156,6 @@ class SemanticExtractor:
                     consorcio_match = c_name
                     break
 
-        # 3. Categoría y Emergencia
         categoria = "OTRO"
         es_emergencia = False
         if any(w in m_lower for w in ("ascensor", "atrapad", "cabina")):
@@ -186,7 +181,6 @@ class SemanticExtractor:
         elif any(w in m_lower for w in ("cbu", "alias", "transfer", "pago", "expensa", "comprobante", "garp")):
             categoria = "ADMINISTRACION_CONSULTA"
 
-        # 4. Intención
         intencion = "RECLAMO_TECNICO"
         if any(w in m_lower for w in ("cbu", "alias", "datos de la cuenta", "donde pagar")):
             intencion = "SOLICITUD_DATOS_PAGO"
@@ -231,7 +225,6 @@ class SemanticExtractor:
         system_content = SYSTEM_PROMPT_TEMPLATE.format(consorcios_list=consorcios_str)
         user_content = f"Mensaje del vecino: \"{message}\""
 
-        # Adquisición thread-safe del lock con timeout de 2.0s
         acquired = self._inference_lock.acquire(timeout=2.0)
         if not acquired:
             logger.info("[SEMANTIC_EXTRACTOR] Modelo 3B ocupado por otra solicitud. Despachando por motor determinista.")
@@ -254,7 +247,6 @@ class SemanticExtractor:
 
             latency_ms = (time.time() - t0) * 1000
             
-            # Fusión híbrida de seguridad: si el LLM omitió un dato claro, el motor determinista lo rescata
             uf_val = parsed.get("unidad_funcional")
             cons_val = parsed.get("consorcio_mencionado")
             cat_val = parsed.get("categoria") or "OTRO"
@@ -267,7 +259,6 @@ class SemanticExtractor:
                     uf_val = safety.unidad_funcional
                 if not cons_val and safety.consorcio_mencionado:
                     cons_val = safety.consorcio_mencionado
-            # Validación y normalización estricta de categorías válidas
             VALID_CATEGORIAS = {
                 "ASCENSORES", "PLOMERIA", "ELECTRICIDAD", "GAS_CALEFACCION",
                 "PORTON_ACCESO", "LIMPIEZA_AREAS_COMUNES", "SEGURIDAD",
@@ -307,5 +298,4 @@ class SemanticExtractor:
             self._inference_lock.release()
 
 
-# Instancia singleton para reutilización eficiente
 semantic_extractor = SemanticExtractor()

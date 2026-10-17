@@ -37,5 +37,4 @@ class WebSocketManager:
             self.active_connections.discard(dead)
 
 
-# Instancia global compartida del gestor de WebSockets
 ws_manager = WebSocketManager()

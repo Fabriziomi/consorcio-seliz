@@ -23,6 +23,7 @@ from engine.state_models import (
     Intencion,
 )
 from services.templates import render_template
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,23 +44,29 @@ class ConversationFSM:
 
     @staticmethod
     def build_telefonos_guardia(consorcio: Optional[Dict[str, Any]]) -> str:
-        if not consorcio:
-            return "• Guardia general administración: +54 9 11 6248-3302"
+        lines: List[str] = []
+        if consorcio:
+            porteria = consorcio.get("telefono_porteria")
+            ascensores = consorcio.get("emergencia_ascensores")
+            plomeria = consorcio.get("emergencia_plomeria")
 
-        lines = []
-        porteria = consorcio.get("telefono_porteria")
-        ascensores = consorcio.get("emergencia_ascensores")
-        plomeria = consorcio.get("emergencia_plomeria")
-
-        if porteria:
-            lines.append(f"• Portería / Guardia: {porteria}")
-        if ascensores:
-            lines.append(f"• Guardia Ascensores: {ascensores}")
-        if plomeria:
-            lines.append(f"• Urgencias Plomería / Gas: {plomeria}")
+            if porteria:
+                lines.append(f"• Portería / Guardia: {porteria}")
+            if ascensores:
+                lines.append(f"• Guardia Ascensores: {ascensores}")
+            if plomeria:
+                lines.append(f"• Urgencias Plomería / Gas: {plomeria}")
 
         if not lines:
-            lines.append("• Guardia general administración: +54 9 11 6248-3302")
+            admin_guardia = getattr(settings, "ADMIN_TELEFONO_GUARDIA", None)
+            if admin_guardia:
+                lines.append(f"• Guardia general administración: {admin_guardia}")
+            else:
+                consorcio_ident = (consorcio.get("id") or consorcio.get("nombre")) if consorcio else "Desconocido"
+                logger.error(
+                    "[FSM_GUARDIA_MISSING] Teléfonos de guardia no disponibles para consorcio '%s' y ADMIN_TELEFONO_GUARDIA no configurado en entorno.",
+                    consorcio_ident,
+                )
 
         return "\n".join(lines)
 
@@ -79,9 +86,6 @@ class ConversationFSM:
         current_time = now or datetime.now(timezone.utc)
         user_name = contact_profile.get("nombre_completo") or ""
 
-        # ----------------------------------------------------------------------
-        # 1. COMANDOS DE ESCAPE ('0', 'menu', 'reiniciar', 'inicio', 'cancelar')
-        # ----------------------------------------------------------------------
         if cls.is_escape_command(incoming_text):
             nuevo_ctx = FSMContext()
             template_key = "INTENCION_AMBIGUA"
@@ -96,11 +100,9 @@ class ConversationFSM:
             cls._log_audit(state, res, decision, contact_profile, current_time)
             return res
 
-        # ----------------------------------------------------------------------
-        # 2. QUIET HOURS (00:00 A 07:30 HS)
-        # ----------------------------------------------------------------------
         if is_quiet_hours and not decision.is_emergency:
-            # Silencio nocturno total para no importunar al vecino.
+            qh_start = getattr(settings, "QUIET_HOURS_START", "00:00")
+            qh_end = getattr(settings, "QUIET_HOURS_END", "07:30")
             res = FSMTransitionResult(
                 nuevo_estado=state,
                 nuevo_contexto=context,
@@ -108,16 +110,14 @@ class ConversationFSM:
                 template_rendered=None,
                 needs_human_review=True,
                 silencio=True,
-                razon_silencio="Quiet Hours (00:00 a 07:30)",
+                razon_silencio=f"Quiet Hours ({qh_start} a {qh_end})",
             )
             cls._log_audit(state, res, decision, contact_profile, current_time)
             return res
 
-        # Consorcio y unidad conocidos
         consorcio_id = contact_profile.get("consorcio_id") or context.temp_consorcio_id
         unidad_funcional = contact_profile.get("unidad_funcional") or context.temp_unidad
 
-        # Si la decisión aporta datos nuevos confiables (Early Binding)
         early_bind_c = None
         early_bind_u = None
 
@@ -132,24 +132,45 @@ class ConversationFSM:
             early_bind_u = decision.unidad_funcional
             unidad_funcional = early_bind_u
 
-        # Construcción de parámetros para plantillas
+        email_cob = (consorcio_data.get("email_cobranzas") if consorcio_data else None) or getattr(settings, "ADMIN_EMAIL_COBRANZAS", None)
+        if not email_cob:
+            logger.error(
+                "[FSM_CONFIG_MISSING] email_cobranzas no configurado en base de datos para consorcio '%s' ni en ADMIN_EMAIL_COBRANZAS.",
+                consorcio_id,
+            )
+
+        cbu_val = consorcio_data.get("cbu_bancario") if consorcio_data else None
+        if consorcio_id and not cbu_val:
+            logger.warning("[FSM_CONFIG_MISSING] cbu_bancario no configurado para el consorcio '%s'.", consorcio_id)
+
+        alias_val = consorcio_data.get("alias_bancario") if consorcio_data else None
+        if consorcio_id and not alias_val:
+            logger.warning("[FSM_CONFIG_MISSING] alias_bancario no configurado para el consorcio '%s'.", consorcio_id)
+
+        cuit_val = consorcio_data.get("cuit") if consorcio_data else None
+        if consorcio_id and not cuit_val:
+            logger.warning("[FSM_CONFIG_MISSING] cuit no configurado para el consorcio '%s'.", consorcio_id)
+
+        pautas_mudanza_val = (consorcio_data.get("pautas_mudanza") if consorcio_data else None) or getattr(settings, "DEFAULT_PAUTAS_MUDANZA", None)
+        if consorcio_id and not pautas_mudanza_val:
+            logger.warning("[FSM_CONFIG_MISSING] pautas_mudanza no configurado para el consorcio '%s'.", consorcio_id)
+
+        telefonos_guardia_val = cls.build_telefonos_guardia(consorcio_data)
+
         tpl_params: Dict[str, Any] = {
             "user_name": user_name,
             "nombre_contacto": user_name,
             "unidad": unidad_funcional or "tu unidad",
             "unidad_funcional": unidad_funcional or "tu unidad",
-            "nombre_consorcio": consorcio_data.get("nombre") if consorcio_data else "tu consorcio",
-            "cbu": consorcio_data.get("cbu_bancario") if consorcio_data else "Dato disponible en horario de oficina",
-            "alias": consorcio_data.get("alias_bancario") if consorcio_data else "Dato disponible en horario de oficina",
-            "cuit": consorcio_data.get("cuit") if consorcio_data else "30-00000000-0",
-            "email_cobranzas": consorcio_data.get("email_cobranzas") if consorcio_data else "cobranzas@selizadministraciones.com.ar",
-            "telefonos_guardia": cls.build_telefonos_guardia(consorcio_data),
-            "pautas_mudanza": consorcio_data.get("pautas_mudanza") if consorcio_data else "• Días hábiles de 09:00 a 17:00 hs con previo aviso.",
+            "nombre_consorcio": consorcio_data.get("nombre") if consorcio_data else (consorcio_id or "tu consorcio"),
+            "cbu": cbu_val or "",
+            "alias": alias_val or "",
+            "cuit": cuit_val or "",
+            "email_cobranzas": email_cob or "",
+            "telefonos_guardia": telefonos_guardia_val,
+            "pautas_mudanza": pautas_mudanza_val or "",
         }
 
-        # ----------------------------------------------------------------------
-        # 3. DISPATCH SEGÚN ESTADO DE LA FSM
-        # ----------------------------------------------------------------------
         if state == FSMState.IDLE:
             res = cls._handle_idle(
                 context, decision, consorcio_id, unidad_funcional, tpl_params, historial_len, early_bind_c, early_bind_u
@@ -167,7 +188,6 @@ class ConversationFSM:
                 context, decision, consorcio_id, unidad_funcional, tpl_params, historial_len, early_bind_c, early_bind_u
             )
         else:
-            # Fallback seguro a IDLE ante estado desconocido
             res = FSMTransitionResult(
                 nuevo_estado=FSMState.IDLE,
                 nuevo_contexto=FSMContext(),
@@ -179,9 +199,6 @@ class ConversationFSM:
         cls._log_audit(state, res, decision, contact_profile, current_time)
         return res
 
-    # --------------------------------------------------------------------------
-    # MANEJADORES DE ESTADO
-    # --------------------------------------------------------------------------
     @classmethod
     def _handle_idle(
         cls,
@@ -194,7 +211,6 @@ class ConversationFSM:
         early_bind_c: Optional[str],
         early_bind_u: Optional[str],
     ) -> FSMTransitionResult:
-        # Adjunto mudo sin texto
         if ctx.has_attachment and decision.intencion == Intencion.INTENCION_AMBIGUA.value:
             rendered = render_template("ADJUNTO_MUDO", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -205,7 +221,6 @@ class ConversationFSM:
                 needs_human_review=True,
             )
 
-        # Cierre cordial ('gracias', 'ok', etc.)
         if decision.intencion == Intencion.CIERRE_CORDIAL.value:
             rendered = render_template("CIERRE_CORDIAL", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -216,7 +231,6 @@ class ConversationFSM:
                 needs_human_review=False,
             )
 
-        # Intención ambigua
         if decision.intencion == Intencion.INTENCION_AMBIGUA.value:
             rendered = render_template("INTENCION_AMBIGUA", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -227,7 +241,6 @@ class ConversationFSM:
                 needs_human_review=False,
             )
 
-        # Edificio No Administrado
         if decision.consorcio_mencionado == "OTRO_NO_ADMINISTRADO":
             rendered = render_template("EDIFICIO_NO_ADMINISTRADO", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -238,7 +251,6 @@ class ConversationFSM:
                 needs_human_review=False,
             )
 
-        # Emergencia Grave 24/7
         if decision.intencion == Intencion.EMERGENCIA_GRAVE.value:
             if consorcio_id:
                 rendered = render_template("EMERGENCIA_CON_CONSORCIO", historial_len=historial_len, **params)
@@ -261,7 +273,6 @@ class ConversationFSM:
                     needs_human_review=True,
                 )
 
-        # Consulta Expensas / CBU
         if decision.intencion == Intencion.CONSULTA_EXPENSAS.value:
             if consorcio_id:
                 rendered = render_template("EXPENSAS_DATOS_BANCARIOS", historial_len=historial_len, **params)
@@ -284,7 +295,6 @@ class ConversationFSM:
                     needs_human_review=False,
                 )
 
-        # Aviso de Pago Realizado
         if decision.intencion == Intencion.AVISO_PAGO_REALIZADO.value:
             rendered = render_template("AVISO_PAGO_RECORDATORIO_EMAIL", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -297,8 +307,6 @@ class ConversationFSM:
                 early_bind_unidad=early_bind_u,
             )
 
-        # Reclamos Técnicos / Mudanza / Otros
-        # Si tiene perfil completo (consorcio y unidad)
         if consorcio_id and unidad_funcional:
             tpl_key = "MUDANZA_INFO" if decision.intencion == Intencion.MUDANZA.value else "ACUSE_FORMAL_RECLAMO"
             rendered = render_template(tpl_key, historial_len=historial_len, **params)
@@ -312,7 +320,6 @@ class ConversationFSM:
                 early_bind_unidad=early_bind_u,
             )
 
-        # Si tiene consorcio pero falta unidad
         if consorcio_id and not unidad_funcional:
             rendered = render_template("SOLICITAR_SOLO_UNIDAD", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -328,7 +335,6 @@ class ConversationFSM:
                 early_bind_consorcio_id=early_bind_c,
             )
 
-        # Sin consorcio ni unidad
         rendered = render_template("ONBOARDING_DATOS", historial_len=historial_len, **params)
         return FSMTransitionResult(
             nuevo_estado=FSMState.ONBOARDING_DATOS,
@@ -363,7 +369,6 @@ class ConversationFSM:
                 needs_human_review=False,
             )
 
-        # Si proporcionó ambos: consorcio y unidad
         if early_bind_c and (early_bind_u or unidad_funcional):
             pending = ctx.pending_intent or Intencion.RECLAMO_TECNICO.value
             tpl_key = "EXPENSAS_DATOS_BANCARIOS" if pending == Intencion.CONSULTA_EXPENSAS.value else "ACUSE_FORMAL_RECLAMO"
@@ -378,7 +383,6 @@ class ConversationFSM:
                 early_bind_unidad=early_bind_u or unidad_funcional,
             )
 
-        # Si proporcionó solo consorcio pero olvidó unidad
         if early_bind_c and not early_bind_u:
             rendered = render_template("SOLICITAR_SOLO_UNIDAD", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -394,7 +398,6 @@ class ConversationFSM:
                 early_bind_consorcio_id=early_bind_c,
             )
 
-        # Falla intento 1 (retry_count == 0)
         if ctx.retry_count == 0:
             rendered = render_template("ONBOARDING_REINTENTO_1", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -408,7 +411,6 @@ class ConversationFSM:
                 needs_human_review=True,
             )
 
-        # Falla intento 2 (retry_count >= 1) -> Bailout
         rendered = render_template("ONBOARDING_BAILOUT", historial_len=historial_len, **params)
         return FSMTransitionResult(
             nuevo_estado=FSMState.IDLE,
@@ -463,7 +465,6 @@ class ConversationFSM:
                 early_bind_unidad=early_bind_u,
             )
 
-        # Falla intento 1
         if ctx.retry_count == 0:
             rendered = render_template("SOLICITAR_EDIFICIO_REINTENTO", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -477,7 +478,6 @@ class ConversationFSM:
                 needs_human_review=True,
             )
 
-        # Falla intento 2 -> Bailout
         rendered = render_template("ONBOARDING_BAILOUT", historial_len=historial_len, **params)
         return FSMTransitionResult(
             nuevo_estado=FSMState.IDLE,
@@ -513,7 +513,6 @@ class ConversationFSM:
                 early_bind_unidad=early_bind_u,
             )
 
-        # Falla intento 1
         if ctx.retry_count == 0:
             rendered = render_template("SOLICITAR_UNIDAD_REINTENTO", historial_len=historial_len, **params)
             return FSMTransitionResult(
@@ -528,7 +527,6 @@ class ConversationFSM:
                 needs_human_review=True,
             )
 
-        # Falla intento 2 -> Bailout
         rendered = render_template("ONBOARDING_BAILOUT", historial_len=historial_len, **params)
         return FSMTransitionResult(
             nuevo_estado=FSMState.IDLE,

@@ -1,3 +1,4 @@
+import logging
 import re
 from langgraph.graph import StateGraph, END
 from engine.state import ChatState
@@ -6,12 +7,15 @@ from guardrails.emergency_filter import detect_emergency
 from services.templates import render_template
 from services.rag_engine import rag_engine
 from services.tev1_router import tev1_router, Tev1Decision
+from core.config import settings
+
+logger = logging.getLogger(__name__)
 
 CORDIAL_TOKENS = {
     "ok", "okey", "oka", "dale", "listo", "gracias", "muchas", "mil", "barbaro", "bárbaro",
     "buen", "finde", "fin", "de", "semana", "saludos", "chau", "buenas", "bueno", "joya",
     "genial", "perfecto", "impecable", "entendido", "graciass", "graciasss",
-    "👍", "👌", "👋", "🙏"
+    "\U0001f44d", "\U0001f44c", "\U0001f44b", "\U0001f64f"
 }
 
 GREETING_TOKENS = {
@@ -38,25 +42,16 @@ def emergency_node(state: ChatState) -> dict:
 
 
 def content_guardrails_node(state: ChatState) -> dict:
-    """
-    Evalúa la calidad del contenido del mensaje:
-    1. Cierre cordial / Agradecimiento -> Silencio inteligente.
-    2. Ruido real / Teclazos sin sentido -> Silencio inteligente.
-    3. Saludo puro sin consulta -> Bienvenida humana sin crear ticket.
-    """
     raw = state.user_message.strip().lower()
     tokens = re.findall(r"[\w]+|[^\w\s]", raw)
     words = [t for t in tokens if t not in {".", "!", "?", ",", ";", ":", "-", "¡", "¿", "_", "/", "\\"}]
     clean_letters = re.sub(r"[^\w]", "", raw)
 
-    # 1. Comprobaciones de mensajes cortos legítimos (departamento con número, afirmaciones, o pb)
-    # Por ejemplo: "4B", "1A", "PB", "1240", "si", "no", "dale"
     is_legit_short = bool(
         re.match(r"^(\d{1,4}[a-zA-Z]?|[a-zA-Z]{1,2}\d{1,4}|pb|si|sí|no|ok|oka|dale)$", clean_letters)
         or re.search(r"\d+", raw)
     )
 
-    # Filtro de ruido real: solo teclazos al azar ("asdf", "qwer", "zzzz") o caracteres sueltos sin sentido
     is_noise = False
     if not is_legit_short:
         if len(clean_letters) <= 2:
@@ -64,7 +59,6 @@ def content_guardrails_node(state: ChatState) -> dict:
         elif clean_letters in NOISE_WORDS:
             is_noise = True
         elif len(clean_letters) >= 4 and not re.search(r"[aeiouáéíóú\d]", clean_letters):
-            # Secuencia larga de puras consonantes sin dígitos ("qwrty", "zxcvb")
             is_noise = True
 
     if is_noise:
@@ -74,7 +68,6 @@ def content_guardrails_node(state: ChatState) -> dict:
             "is_pure_greeting": False,
         }
 
-    # 2. Cierre cordial / Prevención de bucles ("gracias", "dale listo", "👍", "buen finde")
     is_close = len(words) <= 6 and all(t in CORDIAL_TOKENS for t in words)
     if is_close:
         return {
@@ -83,7 +76,6 @@ def content_guardrails_node(state: ChatState) -> dict:
             "is_pure_greeting": False,
         }
 
-    # 3. Saludo puro aislado ("hola", "buenas tardes", "hola buen día")
     is_greeting = len(words) <= 4 and all(t in GREETING_TOKENS for t in words)
     return {
         "is_noise": False,
@@ -92,7 +84,6 @@ def content_guardrails_node(state: ChatState) -> dict:
     }
 
 
-# --- Nivel 1: Búsqueda Vectorial RAG en FAQs Aprobadas ---
 def rag_faq_node(state: ChatState) -> dict:
     faq, score, latency_ms = rag_engine.search(state.user_message, consorcio_id=state.consorcio_id)
     latencies = dict(state.latency_metrics)
@@ -116,7 +107,6 @@ def rag_faq_node(state: ChatState) -> dict:
     }
 
 
-# --- Nivel 2: Árbitro de Decisión Cerrado (Tev1 0.8B) ---
 def tev1_router_node(state: ChatState) -> dict:
     decision, latency_ms = tev1_router.route(
         state.user_message,
@@ -140,7 +130,10 @@ def generate_emergency_response(state: ChatState) -> dict:
     elif any(k in msg_lower for k in ("plomero", "agua", "caño", "inund", "filtracion", "filtración")) and state.consorcio_emergencia_plomeria:
         telefono_guardia = state.consorcio_emergencia_plomeria
     else:
-        telefono_guardia = state.consorcio_telefono_guardia or "+54 9 11 6248-3302"
+        telefono_guardia = state.consorcio_telefono_guardia or getattr(settings, "ADMIN_TELEFONO_GUARDIA", None)
+        if not telefono_guardia:
+            logger.error("[GRAPH_CONFIG_MISSING] Teléfono de guardia no configurado en BD ni en ADMIN_TELEFONO_GUARDIA.")
+            telefono_guardia = ""
 
     response = render_template(
         "EMERGENCIA_GENERAL",
@@ -165,7 +158,6 @@ def generate_greeting_response(state: ChatState) -> dict:
 
 
 def generate_payment_response(state: ChatState) -> dict:
-    # Si no se tiene el consorcio o CBU identificado, solicitar datos para evitar enviar CBU erróneo
     if not state.consorcio_id or not state.consorcio_cbu:
         response = render_template(
             "SOLICITAR_CONSORCIO_PAGO",
@@ -177,13 +169,18 @@ def generate_payment_response(state: ChatState) -> dict:
             "response_text": response,
         }
 
+    email_cob = state.consorcio_email_cobranzas or getattr(settings, "ADMIN_EMAIL_COBRANZAS", None)
+    if not email_cob:
+        logger.error("[GRAPH_CONFIG_MISSING] email_cobranzas no configurado en BD ni en ADMIN_EMAIL_COBRANZAS.")
+        email_cob = ""
+
     response = render_template(
         "EXPENSAS_PAGO_INFO",
         nombre_consorcio=state.consorcio_nombre or "tu consorcio",
         cbu=state.consorcio_cbu,
         alias=state.consorcio_alias or "",
         cuit=state.consorcio_cuit or "",
-        email_cobranzas=state.consorcio_email_cobranzas or "cobranzas@selizadministraciones.com.ar",
+        email_cobranzas=email_cob,
         user_name=state.user_name,
         unidad_funcional=state.unidad_funcional or "tu unidad",
     )
@@ -195,10 +192,15 @@ def generate_payment_response(state: ChatState) -> dict:
 
 
 def generate_payment_confirmation_response(state: ChatState) -> dict:
+    email_cob = state.consorcio_email_cobranzas or getattr(settings, "ADMIN_EMAIL_COBRANZAS", None)
+    if not email_cob:
+        logger.error("[GRAPH_CONFIG_MISSING] email_cobranzas no configurado en BD ni en ADMIN_EMAIL_COBRANZAS.")
+        email_cob = ""
+
     response = render_template(
         "EXPENSAS_COMPROBANTE_RECIBIDO",
         nombre_consorcio=state.consorcio_nombre or "tu consorcio",
-        email_cobranzas=state.consorcio_email_cobranzas or "cobranzas@selizadministraciones.com.ar",
+        email_cobranzas=email_cob,
         user_name=state.user_name,
         unidad_funcional=state.unidad_funcional or "tu unidad",
     )
@@ -210,7 +212,10 @@ def generate_payment_confirmation_response(state: ChatState) -> dict:
 
 
 def generate_mudanza_response(state: ChatState) -> dict:
-    pautas = state.consorcio_pautas_mudanza or "Lunes a Viernes de 09:00 a 17:00 hs y Sábados de 09:00 a 13:00 hs. Presentar seguro del flete con 48 hs de antelación."
+    pautas = state.consorcio_pautas_mudanza or getattr(settings, "DEFAULT_PAUTAS_MUDANZA", None)
+    if not pautas:
+        logger.warning("[GRAPH_CONFIG_MISSING] Pautas de mudanza no configuradas para consorcio ni en DEFAULT_PAUTAS_MUDANZA.")
+        pautas = ""
     response = render_template(
         "MUDANZA_INFO",
         nombre_consorcio=state.consorcio_nombre or "tu consorcio",
@@ -227,7 +232,6 @@ def generate_mudanza_response(state: ChatState) -> dict:
 def generate_off_hours_response(state: ChatState) -> dict:
     msg_lower = state.user_message.lower()
 
-    # 1. Si el mensaje es una queja, avería o reclamo técnico, NO devolver atributos informativos al azar
     is_complaint = any(
         term in msg_lower
         for term in (
@@ -239,7 +243,6 @@ def generate_off_hours_response(state: ChatState) -> dict:
         )
     )
 
-    # 2. Solo evaluar atributos dinámicos si NO es reclamo y contiene intención de consulta informativa
     if not is_complaint and state.atributos_dinamicos:
         is_query = any(q in msg_lower for q in ("que", "qué", "cual", "cuál", "donde", "dónde", "como", "cómo", "cuando", "cuándo", "hora", "horario", "quien", "quién", "saber", "consulta", "info"))
         for clave, info in state.atributos_dinamicos.items():
@@ -315,7 +318,9 @@ def generate_silent_response(state: ChatState) -> dict:
     if state.schedule_status == ScheduleStatus.HUMAN_OFFICE_HOURS.value:
         reason = "Horario laboral humano activo (Ivana atiende en persona)"
     elif state.schedule_status == ScheduleStatus.QUIET_HOURS.value:
-        reason = "Quiet Hours activas (00:00 - 07:30 hs)"
+        qh_start = getattr(settings, "QUIET_HOURS_START", "00:00")
+        qh_end = getattr(settings, "QUIET_HOURS_END", "07:30")
+        reason = f"Quiet Hours activas ({qh_start} - {qh_end} hs)"
     elif state.is_noise:
         reason = "Ruido de teclado o mensaje no sustantivo (Silencio inteligente)"
     elif state.is_cordial_close or state.tev1_decision == Tev1Decision.C_CORDIAL_SILENCE.value:
@@ -328,7 +333,6 @@ def generate_silent_response(state: ChatState) -> dict:
     }
 
 
-# Router inicial de guardrails
 def route_after_guardrails(state: ChatState) -> str:
     if state.is_emergency:
         return "emergency_response"
@@ -342,7 +346,6 @@ def route_after_guardrails(state: ChatState) -> str:
     if state.is_pure_greeting:
         return "greeting_response"
 
-    # Multi-turno: Si la administración estaba aguardando edificio o unidad
     if state.pending_intent == "SOLICITAR_CONSORCIO_PAGO":
         return "payment_response"
 
@@ -351,18 +354,15 @@ def route_after_guardrails(state: ChatState) -> str:
             return "edificio_confirmed_response"
         return "off_hours_response"
 
-    # Si está fuera de horario hábil y el bot está activo, pasar a RAG Nivel 1
     return "rag_faq_node"
 
 
-# Router después de RAG
 def route_after_rag(state: ChatState) -> str:
     if state.rag_matched:
-        return END  # Respuesta aprobada despachada directamente
+        return END
     return "tev1_router_node"
 
 
-# Router después de Tev1
 def route_after_tev1(state: ChatState) -> str:
     decision = state.tev1_decision
     if decision == Tev1Decision.A_EMERGENCY.value:
@@ -379,7 +379,6 @@ def route_after_tev1(state: ChatState) -> str:
         return "off_hours_response"
 
 
-# Construcción del StateGraph
 def build_decision_graph():
     builder = StateGraph(ChatState)
 

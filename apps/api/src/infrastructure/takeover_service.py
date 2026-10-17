@@ -18,8 +18,8 @@ class TakeoverService:
     """
 
     def __init__(self):
-        self.default_ttl = 43200  # 12 horas en segundos
-        self._memory_cache: Dict[str, float] = {}  # Fallback en memoria: {key: expire_timestamp}
+        self.default_ttl = 43200
+        self._memory_cache: Dict[str, float] = {}
         self._redis_client: Optional[object] = None
         self._redis_available: bool = False
 
@@ -53,7 +53,6 @@ class TakeoverService:
             except Exception as e:
                 logger.warning(f"[TAKEOVER] Error en Redis setex, usando memoria: {e}")
 
-        # Fallback en memoria
         expire_at = time.time() + ttl
         self._memory_cache[key] = expire_at
         logger.info(f"[TAKEOVER] Bloqueo activado en memoria para {key} ({ttl}s)")
@@ -72,7 +71,6 @@ class TakeoverService:
             except Exception as e:
                 logger.warning(f"[TAKEOVER] Error en Redis get: {e}")
 
-        # Verificar en memoria
         expire_at = self._memory_cache.get(key)
         if expire_at:
             if time.time() < expire_at:

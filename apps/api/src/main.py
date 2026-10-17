@@ -38,14 +38,12 @@ async def lifespan(app: FastAPI):
         logger.error("[API_STARTUP] Imposible conectar a la base de datos tras múltiples intentos.")
         raise RuntimeError("Fallo de conexión persistente con la base de datos PostgreSQL")
 
-    # Sembrado inicial automático si la base de datos está vacía
     async with AsyncSessionLocal() as session:
         try:
             await seed_initial_data(session)
         except Exception as e:
             logger.warning(f"[API_STARTUP] Error al sembrar datos iniciales: {e}")
 
-    # Validación preventiva de sintaxis y placeholders de plantillas oficiales
     try:
         from services.templates import validate_templates_on_startup
         validate_templates_on_startup()
@@ -64,7 +62,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -74,7 +71,6 @@ app.add_middleware(
     expose_headers=["access-token", "uid", "client", "expiry", "token-type"],
 )
 
-# Inclusión de Routers
 app.include_router(webhook_router, prefix="/api/v1", tags=["Webhooks"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Autenticación"])
 app.include_router(chatwoot_compat_router, prefix="/api/v1", tags=["Chatwoot Mobile Compatibility"])

@@ -1,7 +1,6 @@
 import re
 from typing import Tuple, List
 
-# Palabras clave y patrones de alta severidad edilicia 24/7
 EMERGENCY_PATTERNS = [
     r"\b(olor a gas|fuga de gas|escape de gas)\b",
     r"\b(atrapad[oa]s? en el ascensor|encerrad[oa]s? en el ascensor|ascensor trabado con gente)\b",

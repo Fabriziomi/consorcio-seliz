@@ -91,7 +91,6 @@ async def delete_consorcio(
     return None
 
 
-# --- Atributos Dinámicos por Consorcio ---
 @router.get("/{consorcio_id}/atributos", response_model=List[ConsorcioAtributoResponse])
 async def list_atributos(
     consorcio_id: str,

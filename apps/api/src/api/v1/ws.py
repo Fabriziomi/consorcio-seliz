@@ -14,7 +14,6 @@ async def websocket_conversaciones(websocket: WebSocket):
             "message": "Conectado al canal en tiempo real de Consorcio Seliz"
         })
         while True:
-            # Mantener conexión viva y procesar pings si el cliente los envía
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_text("pong")

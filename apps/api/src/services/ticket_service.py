@@ -25,8 +25,6 @@ from services.semantic_extractor import semantic_extractor
 def extract_unit_clue(message: str) -> Optional[str]:
     """Extrae indicios de unidad funcional o departamento del texto."""
     raw = message.strip()
-    
-    # 1. Patrones explícitos: "depto 4B", "piso 2 depto A", "uf 12", "cochera 3"
     patterns = [
         r"(?:piso\s*(\d{1,2})\s*(?:depto|dto|departamento)?\s*([a-zA-Z]))",
         r"(?:depto|dto|departamento|unidad|uf)\s*([0-9]{1,4}\s*[a-zA-Z]?)",
@@ -50,7 +48,6 @@ def extract_consorcio_clue(message: str, consorcios: List[ConsorcioModel]) -> Op
     """Compara palabras clave del mensaje con los consorcios activos en base de datos."""
     msg_lower = message.lower()
     for c in consorcios:
-        # Extraer palabras distintivas de nombre y dirección (longitud >= 5)
         text_corpus = f"{c.nombre} {c.direccion}".lower()
         keywords = [
             w for w in re.findall(r"\w+", text_corpus)
@@ -111,7 +108,6 @@ async def process_and_consolidate_ticket(
     2. Enriquece la ficha del contacto si detecta unidad funcional o consorcio en el texto mediante LLM 3B.
     3. Si es un reclamo edilicio con consorcio conocido, agrupa bajo un Expediente de Incidencia común.
     """
-    # 0. Extracción semántica avanzada con LLM (reconoce modismos orales, Whisper y números en palabras)
     all_consorcios_res = await db.execute(select(ConsorcioModel).where(ConsorcioModel.activo == True))
     all_consorcios = all_consorcios_res.scalars().all()
     consorcios_nombres = [c.nombre for c in all_consorcios]
@@ -121,13 +117,11 @@ async def process_and_consolidate_ticket(
     if sem_res.es_emergencia:
         is_emergency = True
 
-    # 1. Enriquecer contacto si falta unidad y fue mencionada (vía semántica o regex)
     unit_clue = sem_res.unidad_funcional or extract_unit_clue(message)
     if unit_clue and not contacto.unidad_funcional:
         contacto.unidad_funcional = unit_clue
         logger.info(f"[TICKET_SERVICE] Unidad funcional detectada por semántica y guardada para {contacto.id}: {unit_clue}")
 
-    # Enriquecer consorcio si no viene dado y fue detectado en el texto
     if not consorcio_id:
         if sem_res.consorcio_mencionado:
             matched = next((c for c in all_consorcios if c.nombre == sem_res.consorcio_mencionado), None)
@@ -141,7 +135,6 @@ async def process_and_consolidate_ticket(
                 contacto.consorcio_id = matched.id
                 logger.info(f"[TICKET_SERVICE] Consorcio detectado y asociado a contacto {contacto.id}: {matched.nombre}")
 
-    # 2. Búsqueda de ticket activo para este contacto en ventana de consolidación (default 24hs)
     cutoff = datetime.utcnow() - timedelta(hours=consolidation_hours)
     recent_q = (
         select(TicketConsultaModel)
@@ -159,7 +152,6 @@ async def process_and_consolidate_ticket(
     existing_ticket = recent_res.scalars().first()
 
     if existing_ticket:
-        # Anexar texto al ticket existente con marca temporal
         timestamp = datetime.utcnow().strftime("%H:%M")
         existing_ticket.descripcion = f"{existing_ticket.descripcion}\n[{timestamp}] - {message}"
         
@@ -168,7 +160,6 @@ async def process_and_consolidate_ticket(
             existing_ticket.prioridad = PrioridadTicket.CRITICA
             existing_ticket.intencion = "EMERGENCIA"
 
-        # Si el ticket estaba esperando consorcio y ahora se obtuvo, promoverlo a NUEVO
         if consorcio_id and (not existing_ticket.consorcio_id or existing_ticket.estado == EstadoTicket.ESPERANDO_RESPUESTA):
             existing_ticket.consorcio_id = consorcio_id
             existing_ticket.estado = EstadoTicket.NUEVO
@@ -188,7 +179,6 @@ async def process_and_consolidate_ticket(
             "expediente_id": existing_ticket.expediente_id,
         }
 
-    # 3. Creación de Nuevo Ticket
     ticket_id = f"tick-{str(uuid.uuid4())[:8]}"
     if is_emergency:
         prioridad = PrioridadTicket.CRITICA
@@ -197,7 +187,6 @@ async def process_and_consolidate_ticket(
     else:
         prioridad = PrioridadTicket.NORMAL
 
-    # Estado sólido: si falta edificio y no es emergencia, se asienta como esperando datos
     if not consorcio_id and not is_emergency:
         estado = EstadoTicket.ESPERANDO_RESPUESTA
     else:
@@ -214,7 +203,6 @@ async def process_and_consolidate_ticket(
         creado_fuera_de_horario=created_off_hours,
     )
 
-    # 4. Agrupamiento en Expediente de Incidencia Edilicia (si hay consorcio identificado)
     expediente_asignado = None
     is_technical_issue = is_emergency or intent in ("FUERA_HORARIO_TICKET", "RECLAMO", "EMERGENCIA")
     
@@ -227,7 +215,6 @@ async def process_and_consolidate_ticket(
         else:
             categoria = classify_incident_category(message, intent)
         
-        # Buscar expediente activo para este consorcio y categoría en las últimas 48hs
         cutoff_exp = datetime.utcnow() - timedelta(hours=48)
         exp_q = (
             select(ExpedienteIncidenciaModel)

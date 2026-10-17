@@ -40,7 +40,6 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
             detail="La cuenta de usuario se encuentra suspendida.",
         )
 
-    # Actualizar fecha de último login
     user.ultimo_login = datetime.now(timezone.utc).replace(tzinfo=None)
     await db.commit()
     await db.refresh(user)

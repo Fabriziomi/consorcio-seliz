@@ -13,7 +13,6 @@ class ChatbotSettings(BaseSettings):
     EVOLUTION_API_KEY: str = "consorcio_api_token_secret"
     EVOLUTION_INSTANCE_NAME: str = "ivana_seliz_whatsapp"
 
-    # Horarios de Atención Ivana Seliz
     OFFICE_HOURS_MF_START: str = "10:00"
     OFFICE_HOURS_MF_END: str = "18:00"
     OFFICE_HOURS_SAT_START: str = "10:00"
@@ -21,11 +20,14 @@ class ChatbotSettings(BaseSettings):
     QUIET_HOURS_START: str = "00:00"
     QUIET_HOURS_END: str = "07:30"
 
-    # Debounce
+    ADMIN_TELEFONO_GUARDIA: Optional[str] = None
+    ADMIN_EMAIL_COBRANZAS: Optional[str] = None
+    ADMIN_TELEFONO_CONTACTO: Optional[str] = None
+    DEFAULT_PAUTAS_MUDANZA: Optional[str] = None
+
     DEBOUNCE_SECONDS: int = 12
     DEBOUNCE_JITTER_SECONDS: int = 3
 
-    # Modelos e Inferencia Externa (OpenRouter / Gemini / Groq)
     OPENROUTER_KEY: Optional[str] = None
     OPENROUTER_BASE_URL: str = "https://openrouter.ai"
     JEV_MODEL: str = "typesafe/jev-1.14"
@@ -33,7 +35,6 @@ class ChatbotSettings(BaseSettings):
     GROQ_API_KEY: Optional[str] = None
     GROQ_KEY: Optional[str] = None
 
-    # Parámetros FSM y Guardrails
     DECISION_TIMEOUT_SECONDS: float = 5.0
     AUDIO_TIMEOUT_SECONDS: float = 3.0
     CONFIDENCE_THRESHOLD: float = 0.55
@@ -44,7 +45,6 @@ class ChatbotSettings(BaseSettings):
     BOT_SHADOW_MODE: bool = False
     BOT_GLOBAL_ENABLED: bool = True
 
-    # Switches de Debug Rápido
     FAST_DEBUG_MODE: bool = False
     BYPASS_DEBOUNCE_BUFFER: bool = False
     OVERRIDE_SCHEDULE_OFF_HOURS: bool = False

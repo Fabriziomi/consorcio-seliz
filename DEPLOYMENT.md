@@ -8,13 +8,12 @@ Este documento detalla la puesta en marcha, arquitectura de contenedores y opera
 
 | Servicio | Contenedor | Puerto Interno | Puerto Expuesto | Función Principal |
 | :--- | :--- | :--- | :--- | :--- |
-| **Frontend CRM** | `consorcio_frontend` | 3000 | `3000` | Inbox Omnicanal, Tickets, Consorcios, Zoom y Borradores IA |
+| **Frontend Dashboard** | `consorcio_frontend` | 3000 | `3000` | Inbox Omnicanal, Tickets, Expedientes, Consorcios y Borradores IA |
 | **API Central** | `consorcio_api` | 8000 | `8000` | FastAPI Gateway, endpoints REST, orquestación y webhooks |
-| **Chatbot Engine** | `consorcio_chatbot_engine` | - | Interno | LangGraph, RAG local, guardrails y Tev1 router |
+| **Chatbot Engine** | `consorcio_chatbot_engine` | - | Interno | ConversationFSM, Tev1 Router, Jev / Gemini 2.5 Flash, Groq Whisper |
 | **Evolution API v2** | `consorcio_evolution_api` | 8080 | `8080` | Pasarela oficial de WhatsApp, webhooks y multi-dispositivo |
-| **PostgreSQL 15** | `consorcio_postgres` | 5432 | `5432` | Base de datos relacional para Consorcios, Contactos y Tickets |
+| **PostgreSQL 15** | `consorcio_postgres` | 5432 | `5432` | Base de datos relacional para Consorcios, Contactos, Tickets y Expedientes |
 | **Redis 7** | `consorcio_redis` | 6379 | `6379` | Buffer debounce, colas y Takeover humano (12 hs TTL) |
-| **NocoDB** | `consorcio_nocodb` | 8080 | `8081` | Backoffice visual tipo Airtable para administración |
 
 ---
 
@@ -81,13 +80,15 @@ El script levantará todos los contenedores y sembrará automáticamente los con
 
 ---
 
-## 5. Vinculación con Chatwoot (Opcional)
+## 5. Panel Administrativo Directo y Webhooks Externos (Opcional)
 
-Si utilizas Chatwoot como panel omnicanal central:
-1. En **Settings > Integrations > Webhooks**, agregar un nuevo Webhook:
+El sistema incluye su propio panel administrativo en `apps/frontend` (disponible en `http://<TU_IP_VPS>:3000`), el cual gestiona en tiempo real conversaciones, expedientes, tickets, consorcios y contactos directamente mediante la API central sin necesidad de instalar o mantener Chatwoot ni NocoDB.
+
+Opcionalmente, si se desea conectar un webhook externo de operador:
+1. En el sistema externo, configurar el webhook a:
    - **URL:** `http://<TU_IP_VPS>:8000/api/v1/webhook/chatwoot`
-   - **Eventos suscritos:** `Message Created`
-2. Cuando Ivana o un asistente responda en Chatwoot, el mensaje saldrá automáticamente por WhatsApp y activará el **Takeover Humano** por 12 horas.
+   - **Eventos suscritos:** `Message Created` (mensajes salientes de operador)
+2. Cuando el operador responda, el mensaje se despacha por WhatsApp y activa automáticamente el **Takeover Humano** por 12 horas.
 
 ---
 

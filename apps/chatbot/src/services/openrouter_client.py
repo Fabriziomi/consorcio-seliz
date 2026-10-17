@@ -44,7 +44,6 @@ class OpenRouterClient:
         """
         start_time = time.perf_counter()
 
-        # Validación temprana de escape o texto vacío
         clean_text = text.strip()
         if not clean_text:
             return DecisionResultado(
@@ -54,7 +53,6 @@ class OpenRouterClient:
                 model_used="early_rule",
             )
 
-        # Regla de cortocircuito para armar las preguntas de Jev
         ask_consorcio = not has_consorcio
         ask_unidad = not has_unidad
 
@@ -152,7 +150,6 @@ class OpenRouterClient:
         intent_confidence = float(ans_intencion.get("confidence", 1.0))
         probabilities = ans_intencion.get("probabilities", {})
 
-        # Evaluación de umbral de confianza
         if intent_confidence < self.confidence_threshold:
             resolved_intent = Intencion.INTENCION_AMBIGUA.value
         else:

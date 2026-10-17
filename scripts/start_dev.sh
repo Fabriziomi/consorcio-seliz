@@ -31,24 +31,21 @@ case "$1" in
     api)
         echo "Iniciando API Core en http://localhost:8000..."
         ensure_venv
-        PYTHONPATH=apps/api/src:apps/chatbot/src uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+        PYTHONPATH=apps/api/src:apps/chatbot/src uvicorn main:app --app-dir apps/api/src --host 0.0.0.0 --port 8000 --reload
         ;;
     frontend)
         echo "Iniciando Frontend en http://localhost:3000..."
         cd apps/frontend && npm run dev
         ;;
     chatbot)
-        echo "Ejecutando pruebas y simulación de mensajes del Chatbot..."
+        echo "Ejecutando pruebas y simulacion de mensajes del Chatbot..."
         ensure_venv
         PYTHONPATH=apps/chatbot/src:apps/api/src python apps/chatbot/src/main.py
         ;;
     test)
         echo "Ejecutando suite completa de tests automatizados..."
         ensure_venv
-        echo "--- Tests de apps/api ---"
-        PYTHONPATH=apps/api/src:apps/chatbot/src pytest apps/api/tests
-        echo "--- Tests de apps/chatbot ---"
-        PYTHONPATH=apps/chatbot/src pytest apps/chatbot/tests
+        PYTHONPATH=apps/api/src:apps/chatbot/src pytest apps/api/tests apps/chatbot/tests
         ;;
     *)
         echo "Uso: ./scripts/start_dev.sh [api | frontend | chatbot | test]"

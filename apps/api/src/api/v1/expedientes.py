@@ -74,7 +74,6 @@ async def create_expediente(
     await db.commit()
     await db.refresh(exp)
     
-    # Cargar relaciones
     res = await db.execute(
         select(ExpedienteIncidenciaModel)
         .options(
@@ -163,7 +162,6 @@ async def notificar_vecinos(
     if not exp:
         raise HTTPException(status_code=404, detail="Expediente no encontrado")
 
-    # Obtener lista única de teléfonos de vecinos involucrados
     telefonos = set()
     for t in exp.tickets:
         if t.contacto and t.contacto.telefono_wa:

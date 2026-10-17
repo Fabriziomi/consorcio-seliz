@@ -18,7 +18,6 @@ class FaqItem:
         return self.preguntas[0] if self.preguntas else ""
 
 
-# Catálogo inicial de FAQs oficiales aprobadas para Consorcios Seliz
 OFFICIAL_FAQS: List[FaqItem] = [
     FaqItem(
         id="faq-expensas-cbu",
@@ -142,7 +141,6 @@ class RagEngine:
             if not activo or not pregunta or not respuesta:
                 continue
 
-            # Mapeo de variaciones (si tiene saltos de línea)
             variaciones = [p.strip() for p in pregunta.split("\n") if p.strip()]
             if not variaciones:
                 variaciones = [pregunta.strip()]
@@ -157,14 +155,12 @@ class RagEngine:
                 )
             )
 
-        # Agregar FAQs oficiales que no colisionen por ID
         existing_ids = {item.id for item in new_faqs}
         for base_faq in OFFICIAL_FAQS:
             if base_faq.id not in existing_ids:
                 new_faqs.append(base_faq)
 
         self.faqs = new_faqs
-        # Invalidar embeddings para reconstrucción en caliente
         self._faq_embeddings = None
         self._index_to_faq = []
 
@@ -188,7 +184,6 @@ class RagEngine:
             embeddings = list(model.embed(textos))
             self._faq_embeddings = np.array(embeddings, dtype=np.float32)
 
-            # Normalizar L2 para que el coseno sea producto punto
             norms = np.linalg.norm(self._faq_embeddings, axis=1, keepdims=True)
             self._faq_embeddings = self._faq_embeddings / np.maximum(norms, 1e-12)
             self._index_to_faq = faq_mapping
@@ -210,7 +205,6 @@ class RagEngine:
         if norm > 0:
             query_emb = query_emb / norm
 
-        # Producto punto contra todas las variaciones indexadas
         scores = np.dot(self._faq_embeddings, query_emb)
         sorted_indices = np.argsort(scores)[::-1]
         best_overall_score = float(scores[sorted_indices[0]]) if len(sorted_indices) > 0 else 0.0
@@ -221,12 +215,11 @@ class RagEngine:
             if score < self.threshold:
                 break
             candidate = self._index_to_faq[idx]
-            # Si la FAQ pertenece a un consorcio específico:
             if candidate.consorcio_id:
                 if consorcio_id and candidate.consorcio_id != consorcio_id:
-                    continue  # Es de otro consorcio, saltar
+                    continue
                 if not consorcio_id:
-                    continue  # Vecino sin consorcio identificado, no divulgar
+                    continue
             return candidate, score, latency_ms
 
         return None, best_overall_score, latency_ms

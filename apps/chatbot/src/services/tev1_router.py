@@ -14,15 +14,14 @@ except ImportError:
 
 
 class Tev1Decision(str, Enum):
-    A_EMERGENCY = "A"               # Emergencia Grave 24/7 (Bypass)
-    B_PAYMENTS = "B"                # Solicitud de CBU, Alias y Datos de Pago
-    C_CORDIAL_SILENCE = "C"         # Cierre Cordial / Silencio (No responder)
-    D_TICKET_NEUTRAL = "D"          # Consulta Técnica / Reclamo / Asentar Ticket
-    E_PAYMENT_CONFIRMATION = "E"    # Comprobante de Pago ya Realizado
-    F_MUDANZA = "F"                 # Pautas, Requisitos y Horarios de Mudanza
+    A_EMERGENCY = "A"
+    B_PAYMENTS = "B"
+    C_CORDIAL_SILENCE = "C"
+    D_TICKET_NEUTRAL = "D"
+    E_PAYMENT_CONFIRMATION = "E"
+    F_MUDANZA = "F"
 
 
-# Patrones contextuales estrictos para evitar falsos positivos
 RE_PAYMENT_REQUEST = re.compile(
     r"\b("
     r"cbu|alias|alias bancario|"
@@ -153,8 +152,6 @@ class Tev1Router:
         Retorna: (Decision: Tev1Decision, latencia_ms: float)
         """
         t0 = time.time()
-
-        # 1. Bypass directo de guardrails inquebrantables
         if is_emergency:
             return Tev1Decision.A_EMERGENCY, (time.time() - t0) * 1000
 
@@ -163,29 +160,23 @@ class Tev1Router:
 
         msg_clean = user_message.strip()
 
-        # 2. Detección de comprobante de pago ya efectuado
         if RE_PAYMENT_CONFIRMATION.search(msg_clean):
             return Tev1Decision.E_PAYMENT_CONFIRMATION, (time.time() - t0) * 1000
 
-        # 3. Solicitud de CBU / Datos de cobranzas (con contexto estricto, sin falsos positivos)
         if RE_PAYMENT_REQUEST.search(msg_clean):
             return Tev1Decision.B_PAYMENTS, (time.time() - t0) * 1000
 
-        # 4. Detección de reclamo o avería técnica (prioridad sobre mudanza si hay roturas)
         if RE_RECLAMO_MANTENIMIENTO.search(msg_clean):
             return Tev1Decision.D_TICKET_NEUTRAL, (time.time() - t0) * 1000
 
-        # 5. Detección específica de mudanzas
         if RE_MUDANZA.search(msg_clean):
             return Tev1Decision.F_MUDANZA, (time.time() - t0) * 1000
 
-        # 6. Para consultas complejas o no catalogadas, recurrir al modelo LLM si está disponible
         llm_decision = self._classify_with_llm(msg_clean)
         if llm_decision:
             latency_ms = (time.time() - t0) * 1000
             return llm_decision, latency_ms
 
-        # 7. Fallback neutro predeterminado
         latency_ms = (time.time() - t0) * 1000
         return Tev1Decision.D_TICKET_NEUTRAL, latency_ms
 

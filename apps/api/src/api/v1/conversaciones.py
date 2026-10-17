@@ -78,7 +78,6 @@ def _to_mensaje_response(m: MensajeModel) -> MensajeResponse:
     )
 
 
-# --- Endpoints de Etiquetas (antes de /{id} para evitar colisión de rutas) ---
 @router.get("/labels/all", response_model=List[EtiquetaResponse])
 async def list_labels(db: AsyncSession = Depends(get_db)):
     """Obtiene el catálogo de todas las etiquetas disponibles."""
@@ -109,7 +108,6 @@ async def create_label(
     return etiqueta
 
 
-# --- Listado y Búsqueda de Conversaciones ---
 @router.get("", response_model=List[ConversacionResponse])
 async def list_conversaciones(
     estado: Optional[EstadoConversacion] = None,
@@ -160,7 +158,6 @@ async def list_conversaciones(
     return [_to_conversacion_response(c) for c in conversaciones]
 
 
-# --- Crear Conversación Manualmente ---
 @router.post("", response_model=ConversacionResponse, status_code=status.HTTP_201_CREATED)
 async def create_conversacion(
     data: ConversacionCreate,
@@ -168,13 +165,11 @@ async def create_conversacion(
     current_user: UsuarioModel = Depends(get_current_user),
 ):
     """Crea o retorna la conversación activa para un contacto."""
-    # Verificar si el contacto existe
     c_res = await db.execute(select(ContactoModel).where(ContactoModel.id == data.contacto_id))
     contacto = c_res.scalar_one_or_none()
     if not contacto:
         raise HTTPException(status_code=404, detail="Contacto no encontrado.")
 
-    # Buscar conversación existente
     existing_res = await db.execute(
         select(ConversacionModel)
         .options(
@@ -205,7 +200,6 @@ async def create_conversacion(
     db.add(conv)
     await db.commit()
 
-    # Re-cargar con relaciones
     reload_res = await db.execute(
         select(ConversacionModel)
         .options(
@@ -219,7 +213,6 @@ async def create_conversacion(
     return _to_conversacion_response(reload_res.scalar_one())
 
 
-# --- Detalle de Conversación con Hilo de Mensajes ---
 @router.get("/{conv_id}", response_model=ConversacionDetailResponse)
 async def get_conversacion(
     conv_id: str,
@@ -250,7 +243,6 @@ async def get_conversacion(
     )
 
 
-# --- Listar Mensajes de una Conversación ---
 @router.get("/{conv_id}/messages", response_model=List[MensajeResponse])
 async def list_messages(
     conv_id: str,
@@ -272,7 +264,6 @@ async def list_messages(
     return [_to_mensaje_response(m) for m in mensajes]
 
 
-# --- Enviar Mensaje u Agregar Nota Interna ---
 @router.post("/{conv_id}/messages", response_model=MensajeResponse, status_code=status.HTTP_201_CREATED)
 async def send_message(
     conv_id: str,
@@ -302,7 +293,6 @@ async def send_message(
     msg_id = f"msg-{str(uuid.uuid4())[:8]}"
 
     if not data.privado:
-        # Mensaje público hacia el vecino por WhatsApp
         phone_wa = conv.contacto.telefono_wa if conv.contacto else None
         if not phone_wa:
             raise HTTPException(status_code=400, detail="La conversación no tiene un contacto telefónico válido.")
@@ -310,12 +300,10 @@ async def send_message(
         clean_phone = phone_wa.replace("+", "").strip()
         remote_jid = f"{clean_phone}@s.whatsapp.net"
 
-        # 1. Enviar por Evolution API
         sent = await evolution_client.send_text(remote_jid, data.contenido)
         if not sent:
             logger.warning(f"[CONVERSACIONES] No se pudo enviar mensaje por WhatsApp a {remote_jid}, se guardará en BD.")
 
-        # 2. Activar Takeover Humano (12 hs)
         await takeover_service.set_takeover(remote_jid)
         conv.bot_activo = False
 
@@ -333,7 +321,6 @@ async def send_message(
             creado_el=now,
         )
     else:
-        # Nota interna privada para el equipo
         nuevo_mensaje = MensajeModel(
             id=msg_id,
             conversacion_id=conv_id,
@@ -352,7 +339,6 @@ async def send_message(
     db.add(nuevo_mensaje)
     await db.commit()
 
-    # Re-cargar con relaciones
     reload_res = await db.execute(
         select(MensajeModel)
         .options(selectinload(MensajeModel.agente))
@@ -369,7 +355,6 @@ async def send_message(
     return msg_response
 
 
-# --- Actualizar Estado de la Conversación (Open / Resolved / Pending) ---
 @router.patch("/{conv_id}/status", response_model=ConversacionResponse)
 async def update_status(
     conv_id: str,
@@ -394,7 +379,6 @@ async def update_status(
 
     conv.estado = nuevo_estado
     if nuevo_estado == EstadoConversacion.RESOLVED:
-        # Si se resuelve, reactivar bot para futuras consultas
         conv.bot_activo = True
         if conv.contacto and conv.contacto.telefono_wa:
             clean_phone = conv.contacto.telefono_wa.replace("+", "").strip()
@@ -413,7 +397,6 @@ async def update_status(
     return status_resp
 
 
-# --- Asignar Operador / Agente ---
 @router.patch("/{conv_id}/assign", response_model=ConversacionResponse)
 async def assign_agent(
     conv_id: str,
@@ -447,7 +430,6 @@ async def assign_agent(
     return _to_conversacion_response(conv)
 
 
-# --- Gestionar Etiquetas de la Conversación ---
 @router.post("/{conv_id}/labels", response_model=ConversacionResponse)
 async def update_labels(
     conv_id: str,
@@ -484,7 +466,6 @@ async def update_labels(
     return label_resp
 
 
-# --- Marcar Mensajes como Leídos ---
 @router.post("/{conv_id}/read")
 async def mark_as_read(
     conv_id: str,

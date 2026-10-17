@@ -29,7 +29,6 @@ async def seed_initial_data(db: AsyncSession):
     Pobla la base de datos con los consorcios administrados por Dra. Ivana Seliz,
     atributos dinámicos, contactos de prueba y tickets iniciales si la base está vacía.
     """
-    # 0. Verificar y sembrar usuario administrador principal
     user_res = await db.execute(select(UsuarioModel).where(UsuarioModel.email == "admin@selizadministraciones.com.ar"))
     admin_user = user_res.scalar_one_or_none()
     if not admin_user:
@@ -61,7 +60,6 @@ async def seed_initial_data(db: AsyncSession):
 
     logger.info("[DB_SEED] Base de datos vacía de consorcios. Sembrando datos iniciales de Consorcios Seliz...")
 
-    # 1. Consorcios
     c1 = ConsorcioModel(
         id="cons-corrientes-lavalle",
         nombre="Consorcio Corrientes y Lavalle (Torres, Cochera y Galería)",
@@ -95,16 +93,14 @@ async def seed_initial_data(db: AsyncSession):
     db.add_all([c1, c2])
     await db.flush()
 
-    # 2. Atributos Dinámicos
     attrs = [
-        # Corrientes y Lavalle
         ConsorcioAtributoDinamicoModel(
             id="attr-c1-1",
             consorcio_id="cons-corrientes-lavalle",
             clave="codigo_alarma_palier",
             etiqueta_visible="Código de Alarma Palier",
             valor="9842#",
-            es_publico_vecinos=False,  # Protegido por seguridad
+            es_publico_vecinos=False,
         ),
         ConsorcioAtributoDinamicoModel(
             id="attr-c1-2",
@@ -122,14 +118,13 @@ async def seed_initial_data(db: AsyncSession):
             valor="Roberto Martínez (+54 9 11 4371-0002)",
             es_publico_vecinos=True,
         ),
-        # Callao 2334
         ConsorcioAtributoDinamicoModel(
             id="attr-c2-1",
             consorcio_id="cons-callao-2334",
             clave="llave_tanque_agua",
             etiqueta_visible="Ubicación Llave Tanque",
             valor="Guardada en tablero técnico central",
-            es_publico_vecinos=False,  # Protegido por seguridad
+            es_publico_vecinos=False,
         ),
         ConsorcioAtributoDinamicoModel(
             id="attr-c2-2",
@@ -143,7 +138,6 @@ async def seed_initial_data(db: AsyncSession):
     db.add_all(attrs)
     await db.flush()
 
-    # 3. Contactos
     contactos = [
         ContactoModel(
             id="cont-1",
@@ -173,7 +167,6 @@ async def seed_initial_data(db: AsyncSession):
     db.add_all(contactos)
     await db.flush()
 
-    # 4. Tickets Iniciales
     tickets = [
         TicketConsultaModel(
             id="tick-1042",
@@ -208,7 +201,6 @@ async def seed_initial_data(db: AsyncSession):
     ]
     db.add_all(tickets)
 
-    # 5. FAQs Homologadas Iniciales
     faqs = [
         FaqAprobadaModel(
             id="faq-1",
@@ -241,7 +233,6 @@ async def seed_initial_data(db: AsyncSession):
     ]
     db.add_all(faqs)
 
-    # 6. Etiquetas Iniciales
     etiquetas = [
         EtiquetaModel(id="lbl-1", titulo="URGENTE", color="#DC2626", descripcion="Incidencias edilicias críticas o emergencias"),
         EtiquetaModel(id="lbl-2", titulo="EXPENSAS", color="#2563EB", descripcion="Consultas de pagos y cobranzas"),
@@ -251,7 +242,6 @@ async def seed_initial_data(db: AsyncSession):
     ]
     db.add_all(etiquetas)
 
-    # 7. Conversaciones y Mensajes Iniciales
     c_conv1 = ConversacionModel(
         id="conv-1",
         contacto_id="cont-1",
@@ -331,7 +321,7 @@ async def seed_initial_data(db: AsyncSession):
         id="msg-init-7",
         conversacion_id="conv-3",
         tipo=TipoMensaje.ACTIVITY,
-        contenido="📋 Ticket registrado automáticamente #tick-1040 [Expediente #EXP-2026-0001]. Escalado a prioridad CRÍTICA.",
+        contenido="Ticket registrado automáticamente #tick-1040 [Expediente #EXP-2026-0001]. Escalado a prioridad CRÍTICA.",
         enviado_por=EnviadoPor.BOT,
         privado=True,
         leido=True,

@@ -1,99 +1,132 @@
-# Chatbot con Árbol de Decisión e IA — Consorcios Dra. Ivana Seliz
+# Sistema de Atencion por WhatsApp — Consorcios Dra. Ivana Seliz
 
-Sistema integral de atención inteligente por WhatsApp para la administración de consorcios de la **Dra. Ivana Seliz**, combinando reconocimiento de intención mediante Inteligencia Artificial (LLM) con un árbol de decisión determinista, seguro y libre de alucinaciones.
-
----
-
-## 📌 1. Resumen del Relevamiento
-
-A partir del relevamiento del proyecto en Obsidian (`Vault/Trabajo/Proyectos/Ivana Seliz/Chatbot - Consorcio/`):
-- **Problema central:** Vecinos (propietarios e inquilinos) escriben a cualquier hora con quejas, dudas, pagos y urgencias de distintos focos: *Torre Corrientes, Torre Lavalle, Cochera, Galería, Callao 2334*, etc.
-- **Horario de atención:** Lunes a Viernes de 10:00 a 14:00 hs y de 14:00 a 17:00 hs. Fuera de ese horario, el bot debe contener al usuario, filtrar emergencias reales y registrar las solicitudes para el siguiente día hábil.
-- **Infraestructura ya disponible en Proxmox:**
-  - **Evolution API:** Pasarela WhatsApp Web multi-device lista para enviar/recibir mensajes, etiquetas y archivos multimedia.
-  - **NocoDB:** Base de datos relacional y panel tipo CRM para que Ivana y su equipo gestionen los tickets, estados y contactos sin programar.
+Sistema integral y determinista de atencion por WhatsApp para la administracion de consorcios de la Dra. Ivana Seliz (CABA, Argentina), combinando clasificacion tipada de intenciones mediante inteligencia artificial con una Maquina de Estados Finitos pura (`ConversationFSM`), guardrails anti-ban y un panel administrativo propio en React.
 
 ---
 
-## 🏛️ 2. Arquitectura de la Solución (Monorepo `/apps/`)
+## 1. Principios Fundamentales
+
+- Determinismo sobre Magia: La logica conversacional y las transiciones de estado residen en codigo Python estructurado (`ConversationFSM`), no en inferencia probabilistica descontrolada.
+- Cero Alucinaciones: El sistema jamas inventa telefonos, cuentas bancarias, horarios ni politicas edilicias. Todas las respuestas se generan mediante plantillas aprobadas con variables verificadas desde base de datos o variables de entorno.
+- Resiliencia Operativa: Conectores a APIs externas (OpenRouter Jev 1.14, Gemini 2.5 Flash, Groq Whisper API, Evolution API v2) con timeouts estrictos (5s para clasificacion, 3s para audio) y conmutacion automatica.
+- Proteccion Anti-Ban: Emision de estados de presencia (`composing`) y retardos humanos naturales (1.5s a 3.0s) antes del despacho de mensajes.
+- Sin Dependencias de Terceros Innecesarias: El sistema es 100% autosuficiente con su propia API FastAPI y su panel web React, eliminando la necesidad de NocoDB o servidores externos de Chatwoot.
+
+---
+
+## 2. Dominio del Negocio y Reglas Operativas
+
+- Canal Oficial: WhatsApp oficial via Evolution API v2 (+54 9 11 6248-3302).
+- Horario de Oficina (Silencio Estricto del Bot):
+  - Lunes a Viernes de 10:00 a 18:00 hs.
+  - Sabados de 10:00 a 13:00 hs.
+  - Durante este periodo atiende personalmente la Dra. Ivana Seliz. El bot permanece en silencio.
+- Horario de Operacion del Bot:
+  - Fuera del horario de oficina, domingos y feriados nacionales argentinos.
+- Quiet Hours (00:00 a 07:30 hs):
+  - Silencio nocturno estricto para no perturbar a los vecinos. Los reclamos no criticos se guardan con `needs_human_review = True` para revision a las 10:00 hs.
+- Emergencias Criticas 24/7:
+  - Fuga de gas, personas atrapadas en ascensores, incendios o inundaciones graves. Se entregan inmediatamente los telefonos de Bomberos (100), SAME (107) y las guardias tecnicas especificas del consorcio.
+- Cobranzas y Expensas:
+  - Entrega de CBU, Alias y CUIT del consorcio identificado. Los comprobantes se remiten al correo oficial de cobranzas.
+
+---
+
+## 3. Arquitectura del Sistema (`/apps`)
 
 ```
 [Vecino en WhatsApp]
-       │
-       ▼
-[Evolution API]  ◄── Webhook bidireccional
-       │
-       ▼
-[Chatwoot API (Intermediario Omnicanal)]
-       │
-       ├──► [apps/api (FastAPI Gateway & Hub)]
-       │        ├── PostgreSQL 15 (Datos y pgvector)
-       │        └── NocoDB (Tablas operativas)
-       │
-       ├──► [apps/chatbot (LangGraph Engine)]
-       │        ├── 1. Validador de Horarios y Quiet Hours
-       │        ├── 2. Filtro Rápido de Emergencias 24/7
-       │        ├── 3. RAG FAQs (Similitud >= 0.85)
-       │        └── 4. Tev1 0.8B Decision Router & Buffer Redis
-       │
-       └──► [apps/frontend (Panel Custom UI)]
-                ├── Chatwoot API (Mensajes, presencia y notas en vivo)
-                ├── Tablas y vistas de Consorcios/Tickets
-                └── Diseño sobrio (Montserrat, monocromático, Lucide Icons)
+       |
+       v
+[Evolution API v2] (Pasarela WhatsApp)
+       |
+       v  (Webhook POST /api/v1/webhook/evolution)
+[apps/api] (FastAPI Backend Gateway)
+       |-- PostgreSQL 15 / SQLite (SQLAlchemy Async: Consorcios, Contactos, Tickets, Expedientes)
+       |-- Redis 7 (Debounce de mensajes, sesiones y Takeover humano 12h)
+       |-- Groq Whisper API (Transcripcion de audios < 90s)
+       |
+       +--> [apps/chatbot] (Motor FSM & Clasificacion Tipada)
+       |        |-- Cortocircuito de Perfil (Early Binding)
+       |        |-- Clasificador Jev 1.14 (OpenRouter) con Fallback a Gemini 2.5 Flash
+       |        |-- ConversationFSM (Estados: IDLE, ONBOARDING_DATOS, SOLICITANDO_EDIFICIO, ESPERANDO_SOLO_UNIDAD)
+       |        |-- Catalogo de Plantillas Tipadas Round-Robin (len(historial) % 3)
+       |
+       +--> [apps/frontend] (Panel Administrativo Propio)
+                |-- Bandeja de Conversaciones en tiempo real
+                |-- Gestion de Expedientes Edilicios y Tickets consolidados
+                |-- Administrador de Consorcios y Atributos Dinamicos
+                |-- Base de Conocimiento y FAQs aprobadas
+                |-- Directorio de Vecinos (Contactos)
+                |-- Simulador interactivo de chat y debug
 ```
 
 ---
 
-## 📑 3. Documentación del Proyecto
+## 4. Estructura del Repositorio
 
-El relevamiento y diseño completo se encuentra desglosado en:
-
-1. [docs/mvp_quickstart.md](file:///run/media/fabrizio/Almacenamiento/Works/Proyects/consorcio-seliz/docs/mvp_quickstart.md): **Guía rápida de ejecución del MVP**, comandos del script y prueba de escenarios.
-2. [docs/project_brief.md](file:///run/media/fabrizio/Almacenamiento/Works/Proyects/consorcio-seliz/docs/project_brief.md): Especificación técnica completa, modelos locales CPU, guardrails y arquitectura.
-3. [docs/frontend_guidelines.md](file:///run/media/fabrizio/Almacenamiento/Works/Proyects/consorcio-seliz/docs/frontend_guidelines.md): Directrices visuales y técnicas del frontend (Montserrat, monocromía sobria, Lucide Icons y consumo de APIs de Chatwoot/NocoDB).
-4. [docs/arbol_de_decision_y_flujos.md](file:///run/media/fabrizio/Almacenamiento/Works/Proyects/consorcio-seliz/docs/arbol_de_decision_y_flujos.md): Diagrama Mermaid del árbol, especificación de las 7 ramas operativas, matriz de estados (FSM) y reglas de negocio.
-5. [docs/clasificador_intenciones_ia.md](file:///run/media/fabrizio/Almacenamiento/Works/Proyects/consorcio-seliz/docs/clasificador_intenciones_ia.md): Prompt del sistema para el LLM, catálogo de intenciones, política estricta anti-alucinaciones y ejemplos reales de vecinos.
-6. [docs/modelo_de_datos_der.md](file:///run/media/fabrizio/Almacenamiento/Works/Proyects/consorcio-seliz/docs/modelo_de_datos_der.md): Diagrama Entidad-Relación (DER) para NocoDB/Postgres (Consorcios, Contactos, Tickets, Respuestas Plantillas, Auditoría).
-7. [docs/mensajes_y_plantillas.md](file:///run/media/fabrizio/Almacenamiento/Works/Proyects/consorcio-seliz/docs/mensajes_y_plantillas.md): Copys textuales de bienvenida, fuera de horario, números de emergencia, datos bancarios por edificio y solicitud de fotos de reclamos.
-8. [config/intents.schema.json](file:///run/media/fabrizio/Almacenamiento/Works/Proyects/consorcio-seliz/config/intents.schema.json): Esquema JSON Schema para forzar Structured Outputs en el modelo.
+- `apps/api`: Servidor FastAPI con endpoints REST para el frontend, webhooks de WhatsApp, gestion de autenticacion JWT, expedientes consolidados y control de takeover humano.
+- `apps/chatbot`: Motor de estados finitos (`ConversationFSM`), evaluador de horarios, clasificador TEV1/Jev, extractor semantico de unidades y motor RAG local.
+- `apps/frontend`: Panel web administrativo desarrollado en React 18, Tailwind CSS, Lucide Icons y Vite.
+- `config/`: Esquemas JSON Schema para structured outputs.
+- `docs/`: Documentacion tecnica de arquitectura, DER relacional y flujos de negocio.
+- `scripts/`: Herramientas de despliegue, verificacion de modelos y pruebas CLI.
 
 ---
 
-## ⚡ 4. Inicio Rápido de Desarrollo (Quickstart)
+## 5. Puesta en Marcha y Desarrollo Local
 
-Podés arrancar y probar cualquier componente del proyecto con el script [`scripts/start_dev.sh`](file:///run/media/fabrizio/Almacenamiento/Works/Proyects/consorcio-seliz/scripts/start_dev.sh):
+### Requisitos Previos
+- Python 3.12+ (compatible con Python 3.14)
+- Node.js 18+ y npm
+- Docker y Docker Compose (opcional para stack completo)
+- Redis (local o en Docker)
+
+### Configuracion de Entorno
+Copiar el archivo de variables de entorno y configurar credenciales:
+```bash
+cp .env.example .env
+```
+
+### Comandos de Desarrollo
+El script `scripts/start_dev.sh` centraliza la ejecucion:
 
 ```bash
-# Correr los 15 tests automatizados (API + Chatbot)
+# Ejecutar suite completa de tests automatizados (84 tests)
 ./scripts/start_dev.sh test
 
-# Iniciar la API Backend (FastAPI + Swagger docs en :8000)
+# Iniciar la API Backend (FastAPI en http://localhost:8000 - Docs: /docs)
 ./scripts/start_dev.sh api
 
-# Iniciar el Frontend (Vite + React en :3000)
+# Iniciar el Frontend (Vite + React en http://localhost:3000)
 ./scripts/start_dev.sh frontend
 
-# Simular casos reales del Chatbot en consola
+# Simular casos conversacionales del Chatbot en consola
 ./scripts/start_dev.sh chatbot
 ```
 
+### Ejecucion con Docker Stack
+```bash
+docker compose up -d --build
+```
+Servicios levantados:
+- Frontend Dashboard: `http://localhost:3000`
+- API REST & Swagger: `http://localhost:8000/docs`
+- Evolution API: `http://localhost:8080`
+- PostgreSQL: `localhost:5433` (interno 5432)
+- Redis: `localhost:6379`
+
 ---
 
-## 🚀 5. Hoja de Ruta de Implementación (Roadmap)
+## 6. Verificacion y Bateria de Pruebas
 
-### Fase 1: Creación de Tablas en NocoDB y Plantillas (Día 1)
-- [ ] Crear el proyecto en NocoDB con las tablas `consorcios`, `contactos`, `tickets_consultas` y `respuestas_plantillas`.
-- [ ] Cargar los datos de los primeros consorcios (*Corrientes y Lavalle*, *Callao 2334*) con sus CBUs, alias, emails de cobranzas y teléfonos de portería.
-
-### Fase 2: Configuración de Evolution API y Webhook (Día 2)
-- [ ] Vincular el número de WhatsApp de atención en Evolution API.
-- [ ] Configurar el webhook hacia el orquestador (n8n o backend).
-
-### Fase 3: Conexión del Clasificador LLM y Árbol de Decisión (Días 3 - 4)
-- [ ] Configurar la llamada a la API de Gemini 1.5/2.0 Flash o GPT-4o-mini con el System Prompt y JSON Schema.
-- [ ] Implementar el árbol de decisión con las 7 ramas operativas (validación de horario, emergencias, CBU, carga de comprobantes, tickets con fotos).
-
-### Fase 4: Pruebas Piloto y Puesta en Producción (Día 5)
-- [ ] Simular casos reales con vecinos de prueba (avería de ascensor, fuera de horario, comprobante de pago).
-- [ ] Validar la interfaz de NocoDB junto a Ivana para que empiece a gestionar los tickets diarios.
-# consorcio-seliz
+El sistema cuenta con una cobertura integral de 84 pruebas unitarias y de integracion:
+```bash
+.venv/bin/pytest apps/api/tests apps/chatbot/tests
+```
+- Validacion de FSM y maquinas de estado multi-turno.
+- Verificacion de cero fallbacks hardcodeados en plantillas y generacion de respuestas.
+- Evaluador de horarios de oficina, feriados argentinos y quiet hours nocturnas.
+- Deteccion y clasificacion de emergencias edilicias criticas.
+- Rutas REST de la API: autenticacion, expedientes, conversaciones, tickets y contactos.
+- Compilacion de produccion del frontend validada con Vite.

@@ -78,7 +78,6 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
     t_start = time.time()
     logger.info(f"[DEBUG_CHAT] Mensaje recibido de {req.phone}: \"{req.message}\"")
 
-    # 1. Buscar o registrar contacto en la base de datos
     result = await db.execute(select(ContactoModel).where(ContactoModel.telefono_wa == req.phone))
     contacto = result.scalar_one_or_none()
 
@@ -105,7 +104,6 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
         consorcio_id = contacto.consorcio_id
         unidad_funcional = contacto.unidad_funcional
 
-    # Pre-extracción: Si el contacto no tiene consorcio o unidad, extraer del mensaje actual
     all_consorcios_res = await db.execute(select(ConsorcioModel).where(ConsorcioModel.activo == True))
     all_consorcios = all_consorcios_res.scalars().all()
 
@@ -154,7 +152,6 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
             for attr in dyn_res.scalars().all()
         }
 
-    # Memoria conversacional multi-turno: buscar si el último ticket o mensaje esperaba edificio o pago
     pending_intent = None
     last_t_res = await db.execute(
         select(TicketConsultaModel)
@@ -169,13 +166,11 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
         elif last_ticket.estado == EstadoTicket.ESPERANDO_RESPUESTA or last_ticket.intencion == "FUERA_HORARIO_SOLICITAR_EDIFICIO":
             pending_intent = "FUERA_HORARIO_SOLICITAR_EDIFICIO"
 
-    # Sincronizar FAQs activas de la BD con el motor RAG
     faqs_res = await db.execute(select(FaqAprobadaModel).where(FaqAprobadaModel.activo == True))
     db_faqs = faqs_res.scalars().all()
     if db_faqs:
         rag_engine.load_db_faqs(db_faqs)
 
-    # 2. Preparar el estado inicial de LangGraph
     schedule_override = req.override_schedule
     if not schedule_override and req.override_time:
         try:
@@ -205,10 +200,8 @@ async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
         atributos_dinamicos=atributos_dinamicos,
     )
 
-    # 3. Ejecutar el grafo de decisión
     graph_result = decision_graph.invoke(initial_state)
 
-    # 4. Gestión inteligente de tickets (Filtro de ruido, saludos y consolidación 24hs)
     ticket_info = None
     intent = graph_result.get("intent")
     is_noise = graph_result.get("is_noise", False)
