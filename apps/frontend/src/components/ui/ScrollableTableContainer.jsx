@@ -22,14 +22,21 @@ export function ScrollableTableContainer({
   const movedDistanceRef = useRef(0);
 
   const [isGrabbing, setIsGrabbing] = useState(false);
+  const [isCompressed, setIsCompressed] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   const checkScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const { scrollLeft } = el;
-    // Mostrar indicador derecho solo cuando está al inicio
-    setCanScrollRight(scrollLeft <= 1);
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    // La tabla está comprimida al interior únicamente cuando su ancho de contenido excede el ancho visible
+    const compressed = scrollWidth > clientWidth + 1;
+    setIsCompressed(compressed);
+
+    // Las sombras indicadoras solo se aplican si la tabla está comprimida
+    setCanScrollLeft(compressed && scrollLeft > 2);
+    setCanScrollRight(compressed && scrollLeft + clientWidth < scrollWidth - 2);
   }, []);
 
   useEffect(() => {
@@ -44,6 +51,10 @@ export function ScrollableTableContainer({
         checkScroll();
       });
       resizeObserver.observe(el);
+      // Observar cambios de tamaño del contenido interno de la tabla
+      if (el.firstElementChild) {
+        resizeObserver.observe(el.firstElementChild);
+      }
     }
     window.addEventListener('resize', checkScroll);
 
@@ -54,6 +65,9 @@ export function ScrollableTableContainer({
   }, [checkScroll]);
 
   const handleMouseDown = (e) => {
+    // Si la tabla no está comprimida, no activar drag
+    if (!isCompressed) return;
+
     // Si el clic fue en un botón, enlace, input o control interactivo, no activar drag
     if (
       e.target.closest('button') ||
@@ -77,7 +91,7 @@ export function ScrollableTableContainer({
   };
 
   const handleMouseMove = (e) => {
-    if (!isDraggingRef.current) return;
+    if (!isDraggingRef.current || !isCompressed) return;
     const el = containerRef.current;
     if (!el) return;
 
@@ -106,12 +120,20 @@ export function ScrollableTableContainer({
   };
 
   return (
-    <div className="relative group w-full max-w-full">
-      {/* Indicador sutil: solo visible al inicio para indicar que hay más contenido a la derecha */}
+    <div className="relative group w-full max-w-full overflow-hidden">
+      {/* Sombra indicadora izquierda: únicamente visible si la tabla está comprimida y se desplazó */}
+      {hasOverflowHint && canScrollLeft ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 z-20 w-6 sm:w-8 bg-gradient-to-r from-black/10 via-black/5 to-transparent transition-opacity duration-200"
+        />
+      ) : null}
+
+      {/* Sombra indicadora derecha: únicamente visible si la tabla está comprimida al interior y desborda */}
       {hasOverflowHint && canScrollRight ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 z-0 w-8 bg-gradient-to-l from-black/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+          className="pointer-events-none absolute inset-y-0 right-0 z-20 w-6 sm:w-8 bg-gradient-to-l from-black/10 via-black/5 to-transparent transition-opacity duration-200"
         />
       ) : null}
 
@@ -124,7 +146,7 @@ export function ScrollableTableContainer({
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
         className={`overflow-x-auto select-none sm:select-auto w-full max-w-full relative z-10 ${
-          isGrabbing ? 'cursor-grabbing select-none' : 'cursor-grab'
+          isGrabbing ? 'cursor-grabbing select-none' : isCompressed ? 'cursor-grab' : ''
         } ${className}`}
         style={{
           WebkitOverflowScrolling: 'touch',
