@@ -146,9 +146,9 @@ export function DebugSimulator() {
 
         <CardContent>
           <form onSubmit={handleSend} className="space-y-4">
-            <div className="grid grid-cols-12 gap-3.5">
+            <div className="grid grid-cols-12 gap-3 sm:gap-3.5">
               {/* Teléfono */}
-              <div className="col-span-12 sm:col-span-3">
+              <div className="col-span-12 sm:col-span-6 lg:col-span-3">
                 <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary mb-1">
                   Teléfono WhatsApp
                 </label>
@@ -156,13 +156,13 @@ export function DebugSimulator() {
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="min-h-11 w-full rounded-base border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
+                  className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink shadow-2xs"
                   placeholder="+5491144558899"
                 />
               </div>
 
               {/* Nombre Vecino */}
-              <div className="col-span-12 sm:col-span-3">
+              <div className="col-span-12 sm:col-span-6 lg:col-span-3">
                 <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary mb-1">
                   Vecino Remitente
                 </label>
@@ -170,13 +170,13 @@ export function DebugSimulator() {
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  className="min-h-11 w-full rounded-base border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
+                  className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink shadow-2xs"
                   placeholder="Carlos Méndez"
                 />
               </div>
 
               {/* Guardrail Horario */}
-              <div className="col-span-12 sm:col-span-4">
+              <div className="col-span-12 sm:col-span-8 lg:col-span-4">
                 <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary mb-1">
                   Franja Horaria de Prueba
                 </label>
@@ -193,12 +193,12 @@ export function DebugSimulator() {
               </div>
 
               {/* Botón Enviar */}
-              <div className="col-span-12 sm:col-span-2 flex items-end">
+              <div className="col-span-12 sm:col-span-4 lg:col-span-2 flex items-end">
                 <Button
                   type="submit"
                   size="md"
                   disabled={loading || !message.trim()}
-                  className="w-full"
+                  className="w-full min-h-11 rounded-xl shadow-2xs"
                 >
                   <Send className="w-4 h-4" />
                   <span>{loading ? 'Procesando…' : 'Probar Respuesta'}</span>
@@ -212,14 +212,14 @@ export function DebugSimulator() {
                 <label className="text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary">
                   Mensaje del Vecino
                 </label>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs text-text-muted font-medium">Ejemplos:</span>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar">
+                  <span className="text-xs text-text-muted font-medium shrink-0">Ejemplos:</span>
                   {quickMessages.map((qm, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => setMessage(qm.text)}
-                      className="text-xs px-2.5 py-0.5 rounded-full border border-border bg-surface-muted text-text-secondary hover:border-brand-ink hover:text-brand-ink transition-colors cursor-pointer"
+                      className="text-xs px-2.5 py-1 rounded-full border border-border bg-surface-muted text-text-secondary hover:border-brand-ink hover:text-brand-ink transition-colors cursor-pointer shrink-0"
                     >
                       {qm.label}
                     </button>

@@ -289,136 +289,243 @@ export function ContactosManager({ consorcios = [], onOpenChat }) {
             </div>
           )}
 
-          <ScrollableTableContainer className="h-full">
-            <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 z-10 bg-surface-soft border-b border-border text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                <tr>
-                  <th className="py-2.5 px-4 min-w-[200px]">Vecino / Contacto</th>
-                  <th className="py-2.5 px-4 w-40">Teléfono WA</th>
-                  <th className="py-2.5 px-4 min-w-[180px]">Consorcio</th>
-                  <th className="py-2.5 px-4 w-32">Unidad</th>
-                  <th className="py-2.5 px-4 w-28">Rol</th>
-                  <th className="py-2.5 px-4 w-32 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border text-xs">
-                {filteredContactos.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-text-muted text-xs">
-                      {loading
-                        ? 'Cargando directorio de contactos...'
-                        : 'No se encontraron contactos con los criterios seleccionados.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredContactos.map((c) => (
-                    <tr key={c.id} className="hover:bg-surface-soft/60 transition-colors">
-                      {/* Nombre */}
-                      <td className="py-3 px-4 font-bold text-brand-ink">
-                        <div className="flex items-center gap-2">
-                          <div className="size-7 rounded-full bg-surface-muted text-brand-ink font-bold text-[11px] flex items-center justify-center shrink-0 border border-border">
-                            {c.nombre_completo ? c.nombre_completo.charAt(0).toUpperCase() : 'V'}
-                          </div>
-                          <span className="truncate">{c.nombre_completo}</span>
-                        </div>
-                      </td>
-
-                      {/* Teléfono sin font-mono */}
-                      <td className="py-3 px-4 text-brand-ink font-normal">
-                        <div className="flex items-center gap-1.5 text-text-secondary">
+          {/* Vista Móvil / Tablet Estrecha: Tarjetas Compactas */}
+          <div className="md:hidden h-full overflow-y-auto p-2.5 space-y-2.5">
+            {filteredContactos.length === 0 ? (
+              <div className="py-12 text-center text-text-muted text-xs">
+                {loading
+                  ? 'Cargando directorio de contactos...'
+                  : 'No se encontraron contactos con los criterios seleccionados.'}
+              </div>
+            ) : (
+              filteredContactos.map((c) => (
+                <div
+                  key={c.id}
+                  className="p-3.5 bg-white border border-border/80 rounded-xl space-y-2.5 shadow-2xs hover:border-brand-ink/40 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="size-9 rounded-full bg-surface-muted text-brand-ink font-bold text-xs flex items-center justify-center shrink-0 border border-border shadow-2xs">
+                        {c.nombre_completo ? c.nombre_completo.charAt(0).toUpperCase() : 'V'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-brand-ink truncate">{c.nombre_completo}</p>
+                        <div className="flex items-center gap-1.5 text-text-secondary mt-0.5">
                           <Phone size={13} strokeWidth={1.8} className="text-text-muted shrink-0" />
                           <span className="text-xs">{c.telefono_wa}</span>
                         </div>
-                      </td>
+                      </div>
+                    </div>
+                    <div className="shrink-0">{getRolBadge(c.rol)}</div>
+                  </div>
 
-                      {/* Consorcio */}
-                      <td className="py-3 px-4 text-text-secondary">
-                        {c.consorcio_nombre ? (
-                          <div className="flex items-center gap-1.5 text-brand-ink">
-                            <Building2 size={14} strokeWidth={1.8} className="text-text-muted shrink-0" />
-                            <span className="truncate">{c.consorcio_nombre}</span>
-                          </div>
-                        ) : (
-                          <span className="text-text-muted text-[11px] italic">Sin consorcio</span>
-                        )}
-                      </td>
+                  <div className="flex items-center justify-between text-xs text-text-secondary pt-2 border-t border-border/60">
+                    <div className="min-w-0 flex items-center gap-1.5 text-text-secondary truncate">
+                      <Building2 size={13} strokeWidth={1.8} className="text-text-muted shrink-0" />
+                      <span className="truncate font-medium">{c.consorcio_nombre || 'Sin consorcio'}</span>
+                      {c.unidad_funcional && (
+                        <>
+                          <span>•</span>
+                          <span className="font-semibold text-brand-ink shrink-0">U.F. {c.unidad_funcional}</span>
+                        </>
+                      )}
+                    </div>
 
-                      {/* Unidad */}
-                      <td className="py-3 px-4 font-semibold text-brand-ink">
-                        {c.unidad_funcional || '—'}
-                      </td>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {onOpenChat && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenChat(c)}
+                          title="Abrir conversación WhatsApp"
+                          aria-label="Abrir conversación WhatsApp"
+                          className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
+                        >
+                          <MessageSquare size={17} strokeWidth={1.8} />
+                        </button>
+                      )}
 
-                      {/* Rol */}
-                      <td className="py-3 px-4">{getRolBadge(c.rol)}</td>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(c)}
+                        title="Editar contacto"
+                        aria-label="Editar contacto"
+                        className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <Pencil size={17} strokeWidth={1.8} />
+                      </button>
 
-                      {/* Acciones */}
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Botón Abrir Chat */}
-                          {onOpenChat && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenChat(c)}
-                              title="Abrir conversación WhatsApp"
-                              aria-label="Abrir conversación WhatsApp"
-                              className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
-                            >
-                              <MessageSquare size={18} strokeWidth={1.8} />
-                            </button>
-                          )}
-
-                          {/* Botón Editar */}
+                      {deleteConfirmId === c.id ? (
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => handleOpenEditModal(c)}
-                            title="Editar contacto"
-                            aria-label="Editar contacto"
-                            className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
+                            onClick={() => handleDelete(c.id)}
+                            title="Confirmar eliminación"
+                            aria-label="Confirmar eliminación"
+                            className="size-9 rounded-xl flex items-center justify-center bg-danger text-white hover:bg-rose-700 transition-colors cursor-pointer shadow-2xs"
                           >
-                            <Pencil size={18} strokeWidth={1.8} />
+                            <Check size={17} strokeWidth={2.2} />
                           </button>
-
-                          {/* Botón Eliminar */}
-                          {deleteConfirmId === c.id ? (
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(c.id)}
-                                title="Confirmar eliminación"
-                                aria-label="Confirmar eliminación"
-                                className="size-9 rounded-xl flex items-center justify-center bg-danger text-white hover:bg-rose-700 transition-colors cursor-pointer shadow-2xs"
-                              >
-                                <Check size={18} strokeWidth={2.2} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDeleteConfirmId(null)}
-                                title="Cancelar"
-                                aria-label="Cancelar"
-                                className="size-9 rounded-xl flex items-center justify-center border border-border/80 bg-white text-text-secondary hover:text-brand-ink transition-colors cursor-pointer shadow-2xs"
-                              >
-                                <X size={18} strokeWidth={2} />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirmId(c.id)}
-                              title="Eliminar contacto"
-                              aria-label="Eliminar contacto"
-                              className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft transition-colors cursor-pointer shadow-2xs"
-                            >
-                              <Trash2 size={18} strokeWidth={1.8} />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmId(null)}
+                            title="Cancelar"
+                            aria-label="Cancelar"
+                            className="size-9 rounded-xl flex items-center justify-center border border-border/80 bg-white text-text-secondary hover:text-brand-ink transition-colors cursor-pointer shadow-2xs"
+                          >
+                            <X size={17} strokeWidth={2} />
+                          </button>
                         </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirmId(c.id)}
+                          title="Eliminar contacto"
+                          aria-label="Eliminar contacto"
+                          className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft transition-colors cursor-pointer shadow-2xs"
+                        >
+                          <Trash2 size={17} strokeWidth={1.8} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Vista Escritorio / Tablet Apaisada: Tabla Completa */}
+          <div className="hidden md:block h-full">
+            <ScrollableTableContainer className="h-full">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 z-10 bg-surface-soft border-b border-border text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                  <tr>
+                    <th className="py-2.5 px-4 min-w-[200px]">Vecino / Contacto</th>
+                    <th className="py-2.5 px-4 w-40">Teléfono WA</th>
+                    <th className="py-2.5 px-4 min-w-[180px]">Consorcio</th>
+                    <th className="py-2.5 px-4 w-32">Unidad</th>
+                    <th className="py-2.5 px-4 w-28">Rol</th>
+                    <th className="py-2.5 px-4 w-32 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-xs">
+                  {filteredContactos.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-text-muted text-xs">
+                        {loading
+                          ? 'Cargando directorio de contactos...'
+                          : 'No se encontraron contactos con los criterios seleccionados.'}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </ScrollableTableContainer>
+                  ) : (
+                    filteredContactos.map((c) => (
+                      <tr key={c.id} className="hover:bg-surface-soft/60 transition-colors">
+                        {/* Nombre */}
+                        <td className="py-3 px-4 font-bold text-brand-ink">
+                          <div className="flex items-center gap-2">
+                            <div className="size-7 rounded-full bg-surface-muted text-brand-ink font-bold text-[11px] flex items-center justify-center shrink-0 border border-border">
+                              {c.nombre_completo ? c.nombre_completo.charAt(0).toUpperCase() : 'V'}
+                            </div>
+                            <span className="truncate">{c.nombre_completo}</span>
+                          </div>
+                        </td>
+
+                        {/* Teléfono sin font-mono */}
+                        <td className="py-3 px-4 text-brand-ink font-normal">
+                          <div className="flex items-center gap-1.5 text-text-secondary">
+                            <Phone size={13} strokeWidth={1.8} className="text-text-muted shrink-0" />
+                            <span className="text-xs">{c.telefono_wa}</span>
+                          </div>
+                        </td>
+
+                        {/* Consorcio */}
+                        <td className="py-3 px-4 text-text-secondary">
+                          {c.consorcio_nombre ? (
+                            <div className="flex items-center gap-1.5 text-brand-ink">
+                              <Building2 size={14} strokeWidth={1.8} className="text-text-muted shrink-0" />
+                              <span className="truncate">{c.consorcio_nombre}</span>
+                            </div>
+                          ) : (
+                            <span className="text-text-muted text-[11px] italic">Sin consorcio</span>
+                          )}
+                        </td>
+
+                        {/* Unidad */}
+                        <td className="py-3 px-4 font-semibold text-brand-ink">
+                          {c.unidad_funcional || '—'}
+                        </td>
+
+                        {/* Rol */}
+                        <td className="py-3 px-4">{getRolBadge(c.rol)}</td>
+
+                        {/* Acciones */}
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Botón Abrir Chat */}
+                            {onOpenChat && (
+                              <button
+                                type="button"
+                                onClick={() => onOpenChat(c)}
+                                title="Abrir conversación WhatsApp"
+                                aria-label="Abrir conversación WhatsApp"
+                                className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
+                              >
+                                <MessageSquare size={18} strokeWidth={1.8} />
+                              </button>
+                            )}
+
+                            {/* Botón Editar */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(c)}
+                              title="Editar contacto"
+                              aria-label="Editar contacto"
+                              className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
+                            >
+                              <Pencil size={18} strokeWidth={1.8} />
+                            </button>
+
+                            {/* Botón Eliminar */}
+                            {deleteConfirmId === c.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(c.id)}
+                                  title="Confirmar eliminación"
+                                  aria-label="Confirmar eliminación"
+                                  className="size-9 rounded-xl flex items-center justify-center bg-danger text-white hover:bg-rose-700 transition-colors cursor-pointer shadow-2xs"
+                                >
+                                  <Check size={18} strokeWidth={2.2} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmId(null)}
+                                  title="Cancelar"
+                                  aria-label="Cancelar"
+                                  className="size-9 rounded-xl flex items-center justify-center border border-border/80 bg-white text-text-secondary hover:text-brand-ink transition-colors cursor-pointer shadow-2xs"
+                                >
+                                  <X size={18} strokeWidth={2} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(c.id)}
+                                title="Eliminar contacto"
+                                aria-label="Eliminar contacto"
+                                className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft transition-colors cursor-pointer shadow-2xs"
+                              >
+                                <Trash2 size={18} strokeWidth={1.8} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </ScrollableTableContainer>
+          </div>
         </CardContent>
       </Card>
 
@@ -453,7 +560,7 @@ export function ContactosManager({ consorcios = [], onOpenChat }) {
                   placeholder="Ej: Marcelo Benítez"
                   value={formData.nombre_completo}
                   onChange={(e) => setFormData({ ...formData, nombre_completo: e.target.value })}
-                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-lg px-3 outline-none focus:border-brand-ink"
+                  className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none focus:border-brand-ink shadow-2xs"
                 />
               </div>
 
@@ -467,7 +574,7 @@ export function ContactosManager({ consorcios = [], onOpenChat }) {
                   placeholder="+5491166778899"
                   value={formData.telefono_wa}
                   onChange={(e) => setFormData({ ...formData, telefono_wa: e.target.value })}
-                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-lg px-3 outline-none focus:border-brand-ink font-normal"
+                  className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none focus:border-brand-ink font-normal shadow-2xs"
                 />
               </div>
 
@@ -476,7 +583,7 @@ export function ContactosManager({ consorcios = [], onOpenChat }) {
                 <select
                   value={formData.consorcio_id}
                   onChange={(e) => setFormData({ ...formData, consorcio_id: e.target.value })}
-                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-lg px-2.5 outline-none focus:border-brand-ink"
+                  className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none focus:border-brand-ink shadow-2xs"
                 >
                   <option value="">Sin consorcio asignado</option>
                   {consorcios.map((c) => (
@@ -487,7 +594,7 @@ export function ContactosManager({ consorcios = [], onOpenChat }) {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-brand-ink mb-1">Unidad Funcional</label>
                   <input
@@ -495,7 +602,7 @@ export function ContactosManager({ consorcios = [], onOpenChat }) {
                     placeholder="Ej: 4° B"
                     value={formData.unidad_funcional}
                     onChange={(e) => setFormData({ ...formData, unidad_funcional: e.target.value })}
-                    className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-lg px-3 outline-none focus:border-brand-ink"
+                    className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none focus:border-brand-ink shadow-2xs"
                   />
                 </div>
                 <div>
@@ -503,7 +610,7 @@ export function ContactosManager({ consorcios = [], onOpenChat }) {
                   <select
                     value={formData.rol}
                     onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
-                    className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-lg px-2.5 outline-none focus:border-brand-ink"
+                    className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none focus:border-brand-ink shadow-2xs"
                   >
                     {ROLES.map((r) => (
                       <option key={r.id} value={r.id}>
@@ -521,7 +628,7 @@ export function ContactosManager({ consorcios = [], onOpenChat }) {
                   placeholder="Observaciones de cobranza, horarios de contacto o detalles de la unidad..."
                   value={formData.notas}
                   onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                  className="w-full bg-white border border-border text-brand-ink text-xs rounded-lg p-2.5 outline-none focus:border-brand-ink leading-relaxed"
+                  className="w-full bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl p-3 outline-none focus:border-brand-ink leading-relaxed shadow-2xs"
                 />
               </div>
 

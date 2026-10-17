@@ -136,3 +136,19 @@ button:active:not(:disabled), a:active {
 .pb-safe {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
+
+/* Ocultar barra de desplazamiento en contenedores horizontales móviles manteniendo el scroll táctil */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Prevenir auto-zoom de viewport en navegadores móviles (iOS/Android) al hacer foco */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px !important;
+  }
+}

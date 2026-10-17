@@ -16,6 +16,7 @@ import {
   EyeOff,
   Layers,
   ChevronRight,
+  ChevronLeft,
   AlertCircle,
 } from 'lucide-react';
 import { useToast } from '../ui/ToastNotification.jsx';
@@ -29,6 +30,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
   const [consorcios, setConsorcios] = useState(initialConsorcios);
   const [selectedId, setSelectedId] = useState(() => initialConsorcios[0]?.id || null);
   const [activeSubTab, setActiveSubTab] = useState('datos'); // 'datos' | 'atributos'
+  const [mobileView, setMobileView] = useState('list'); // 'list' | 'detail' en vista movil
   const [loading, setLoading] = useState(false);
   const [savingConsorcio, setSavingConsorcio] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
@@ -242,7 +244,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
       {/* Contenedor Master/Detail */}
       <div className="flex-1 flex flex-col md:flex-row gap-3.5 min-h-0">
         {/* Columna Izquierda: Lista de Consorcios */}
-        <Card className="w-full md:w-72 lg:w-80 flex flex-col bg-white border border-border shadow-subtle shrink-0 overflow-hidden">
+        <Card className={`w-full md:w-72 lg:w-80 flex flex-col bg-white border border-border shadow-subtle shrink-0 overflow-hidden ${mobileView === 'detail' ? 'hidden md:flex' : 'flex'}`}>
           <CardHeader className="p-3.5 sm:p-4 border-b border-border bg-white flex items-center justify-between shrink-0">
             <div>
               <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
@@ -278,7 +280,10 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
               return (
                 <div
                   key={c.id}
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => {
+                    setSelectedId(c.id);
+                    setMobileView('detail');
+                  }}
                   className={`p-3.5 cursor-pointer transition-colors flex items-center justify-between gap-2 border-l-4 ${
                     isSelected
                       ? 'bg-surface-soft border-brand-ink'
@@ -306,21 +311,32 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
         </Card>
 
         {/* Columna Derecha: Ficha de Edición y Atributos Dinámicos */}
-        <Card className="flex-1 flex flex-col bg-white border border-border shadow-subtle min-h-0 overflow-hidden">
+        <Card className={`flex-1 flex flex-col bg-white border border-border shadow-subtle min-h-0 overflow-hidden ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
           {selectedConsorcio ? (
             <>
-              {/* Header de la Ficha */}
-              <div className="px-5 py-4 border-b border-border bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Building2 size={18} strokeWidth={1.8} className="text-brand-ink shrink-0" />
-                    <h2 className="text-sm sm:text-base font-bold text-brand-ink truncate">
-                      {selectedConsorcio.nombre}
-                    </h2>
+              {/* Header de la Ficha con Botón Volver en Móvil */}
+              <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-border bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setMobileView('list')}
+                    aria-label="Volver al listado de consorcios"
+                    title="Volver al listado de consorcios"
+                    className="md:hidden size-9 rounded-xl border border-border/80 flex items-center justify-center text-brand-ink hover:bg-surface-muted transition-colors shrink-0 shadow-2xs"
+                  >
+                    <ChevronLeft size={20} strokeWidth={2} />
+                  </button>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Building2 size={18} strokeWidth={1.8} className="text-brand-ink shrink-0" />
+                      <h2 className="text-sm sm:text-base font-bold text-brand-ink truncate">
+                        {selectedConsorcio.nombre}
+                      </h2>
+                    </div>
+                    <p className="text-xs text-text-secondary mt-0.5 truncate">
+                      {selectedConsorcio.direccion}
+                    </p>
                   </div>
-                  <p className="text-xs text-text-secondary mt-0.5 truncate">
-                    {selectedConsorcio.direccion}
-                  </p>
                 </div>
 
                 {/* Sub-Tabs: Datos Administrativos vs Atributos Dinámicos */}
@@ -374,7 +390,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           required
                           value={currentForm.nombre || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, nombre: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -387,7 +403,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           required
                           value={currentForm.direccion || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, direccion: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -400,7 +416,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="30-71122334-5"
                           value={currentForm.cuit || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, cuit: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -413,7 +429,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="cobranzas@selizadministraciones.com.ar"
                           value={currentForm.email_cobranzas || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, email_cobranzas: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -426,7 +442,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="0140000000000000000001"
                           value={currentForm.cbu_bancario || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, cbu_bancario: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -439,7 +455,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="CONSORCIO.LAVALLE.OFICIAL"
                           value={currentForm.alias_bancario || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, alias_bancario: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink font-semibold"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink font-semibold shadow-2xs"
                         />
                       </div>
 
@@ -452,7 +468,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="+54 9 11 4371-0001"
                           value={currentForm.telefono_porteria || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, telefono_porteria: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -465,7 +481,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="+54 9 11 4444-1111"
                           value={currentForm.emergencia_ascensores || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, emergencia_ascensores: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
                         />
                       </div>
 
@@ -478,7 +494,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                           placeholder="+54 9 11 4444-2222"
                           value={currentForm.emergencia_plomeria || ''}
                           onChange={(e) => setCurrentForm({ ...currentForm, emergencia_plomeria: e.target.value })}
-                          className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-base px-3 outline-none focus:border-brand-ink"
+                          className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 sm:px-3.5 outline-none focus:border-brand-ink shadow-2xs"
                         />
                       </div>
                     </div>
@@ -492,7 +508,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                         placeholder="Días y horarios permitidos, seguro de flete y requisitos..."
                         value={currentForm.pautas_mudanza || ''}
                         onChange={(e) => setCurrentForm({ ...currentForm, pautas_mudanza: e.target.value })}
-                        className="w-full bg-white border border-border text-brand-ink text-xs rounded-base p-3 outline-none focus:border-brand-ink leading-relaxed"
+                        className="w-full bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl p-3 outline-none focus:border-brand-ink leading-relaxed shadow-2xs"
                       />
                     </div>
 

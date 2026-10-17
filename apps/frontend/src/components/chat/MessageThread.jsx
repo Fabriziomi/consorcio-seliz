@@ -17,6 +17,8 @@ import {
   FileText,
   Eye,
   Download,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { WhatsAppDoodleBackground } from './WhatsAppDoodleBackground.jsx';
 
@@ -53,6 +55,8 @@ export function MessageThread({
   onUpdateStatus,
   onGenerateAiDraft,
   generatingDraft = false,
+  inboxListCollapsed = false,
+  onToggleInboxList = null,
   onBack,
   onClose,
 }) {
@@ -223,6 +227,19 @@ export function MessageThread({
           >
             <ChevronLeft size={20} strokeWidth={2} />
           </button>
+
+          {/* Botón Alternar Bandeja Lateral en Tablets / Notebooks */}
+          {onToggleInboxList && (
+            <button
+              type="button"
+              onClick={onToggleInboxList}
+              aria-label={inboxListCollapsed ? 'Mostrar lista de chats' : 'Ocultar lista de chats'}
+              title={inboxListCollapsed ? 'Mostrar lista de chats' : 'Ocultar lista de chats'}
+              className="hidden md:grid size-10 sm:size-11 place-items-center rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors shrink-0 cursor-pointer shadow-2xs"
+            >
+              {inboxListCollapsed ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}
+            </button>
+          )}
 
           {/* Botón Cerrar Conversación en Desktop */}
           <button

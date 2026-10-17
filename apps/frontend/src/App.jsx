@@ -913,7 +913,7 @@ export default function App() {
       {/* Contenedor Principal (con compensación de ancho según sidebarPinned) */}
       <div className={`flex-1 min-w-0 ${sidebarPinned ? 'lg:pl-64 xl:pl-72' : 'lg:pl-[68px]'} flex flex-col h-[100dvh] overflow-hidden transition-[padding] duration-200 ease-in-out`}>
         {/* Barra Superior Minimalista */}
-        <header className="sticky top-0 z-20 flex min-h-12 sm:min-h-14 items-center justify-between border-b border-border/80 bg-white/95 px-3 sm:px-5 lg:px-6 backdrop-blur shrink-0">
+        <header className={`sticky top-0 z-20 ${activeTab === 'inbox' && mobileChatOpen ? 'hidden md:flex' : 'flex'} min-h-12 sm:min-h-14 items-center justify-between border-b border-border/80 bg-white/95 px-3 sm:px-5 lg:px-6 backdrop-blur shrink-0`}>
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Branding Móvil */}
             <div className="lg:hidden flex items-center gap-1.5 shrink-0">
@@ -926,13 +926,13 @@ export default function App() {
             {/* Breadcrumb */}
             <div className="min-w-0 flex items-center gap-1 text-xs sm:text-sm text-text-secondary font-medium">
               <span className="font-semibold text-brand-ink hidden sm:inline">Consorcios /</span>
-              <span className="truncate font-semibold text-brand-ink">{activeLabel}</span>
+              <span className="truncate max-w-[150px] sm:max-w-none font-semibold text-brand-ink">{activeLabel}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Controlador de Zoom Minimalista */}
-            <div className="flex items-center gap-0.5 rounded-full border border-border/80 bg-surface-muted/60 p-0.5 text-xs">
+            {/* Controlador de Zoom Minimalista (visible en tablets y notebooks, oculto en celulares) */}
+            <div className="hidden sm:flex items-center gap-0.5 rounded-full border border-border/80 bg-surface-muted/60 p-0.5 text-xs">
               <button
                 type="button"
                 onClick={handleZoomOut}
@@ -969,7 +969,7 @@ export default function App() {
               type="button"
               onClick={() => ApiService.logout()}
               title="Cerrar sesión"
-              className="lg:hidden size-7 rounded-full flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
+              className="lg:hidden size-8 rounded-full flex items-center justify-center text-text-muted hover:text-danger hover:bg-danger-soft transition-colors cursor-pointer"
             >
               <LogOut size={16} strokeWidth={1.8} />
             </button>
@@ -979,7 +979,9 @@ export default function App() {
         {/* Área de Contenido Dinámico con Zoom */}
         <main
           style={{ zoom: zoomLevel }}
-          className="flex-1 overflow-hidden p-2 sm:p-3 md:p-3.5 lg:p-4 pb-20 lg:pb-4"
+          className={`flex-1 overflow-hidden p-1.5 sm:p-3 md:p-3.5 lg:p-4 ${
+            activeTab === 'inbox' && mobileChatOpen ? 'pb-0' : 'pb-20'
+          } lg:pb-4`}
         >
           {activeTab === 'inbox' && (
             <Card className="h-full flex overflow-hidden border border-border/80 bg-white shadow-subtle">
@@ -1023,6 +1025,8 @@ export default function App() {
                       onUpdateStatus={handleUpdateConversationStatus}
                       onGenerateAiDraft={handleGenerateAiDraft}
                       generatingDraft={generatingDraft}
+                      inboxListCollapsed={inboxListCollapsed}
+                      onToggleInboxList={() => setInboxListCollapsed((prev) => !prev)}
                       onBack={() => {
                         setSelectedConvId(null);
                         setMobileChatOpen(false);
@@ -1033,7 +1037,6 @@ export default function App() {
                         setMobileChatOpen(false);
                         setInboxListCollapsed(false);
                       }}
-
                     />
                   </div>
                 ) : (
@@ -1096,7 +1099,7 @@ export default function App() {
       </div>
 
       {/* Barra de Navegación Inferior Fija para Móviles y Tablets Monocromática */}
-      <nav className="fixed bottom-0 inset-x-0 z-30 flex items-center justify-around gap-1 border-t border-zinc-800 bg-zinc-900 px-2 py-1.5 lg:hidden pb-safe shadow-2xl">
+      <nav className={`fixed bottom-0 inset-x-0 z-30 ${activeTab === 'inbox' && mobileChatOpen ? 'hidden' : 'flex'} items-center justify-around gap-1 border-t border-zinc-800 bg-zinc-900 px-2 py-1.5 lg:hidden pb-safe shadow-2xl`}>
         {navigationItems.map(({ id, label, icon: Icon }) => {
           const isActive = id === activeTab;
           return (

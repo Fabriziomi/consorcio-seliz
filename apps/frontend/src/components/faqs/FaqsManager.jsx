@@ -291,129 +291,237 @@ export function FaqsManager({ consorcios = [] }) {
             </div>
           )}
 
-          <ScrollableTableContainer className="h-full">
-            <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 z-10 bg-surface-soft border-b border-border text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                <tr>
-                  <th className="py-2.5 px-4 w-12 text-center">Estado</th>
-                  <th className="py-2.5 px-4 min-w-[220px]">Pregunta Frecuente</th>
-                  <th className="py-2.5 px-4 min-w-[300px]">Respuesta Oficial Homologada</th>
-                  <th className="py-2.5 px-4 w-48">Consorcio</th>
-                  <th className="py-2.5 px-4 w-24 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border text-xs">
-                {filteredFaqs.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center text-text-muted text-xs">
-                      {loading
-                        ? 'Cargando preguntas frecuentes...'
-                        : 'No se encontraron FAQs con los criterios de búsqueda seleccionados.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredFaqs.map((faq) => (
-                    <tr
-                      key={faq.id}
-                      className={`hover:bg-surface-soft/60 transition-colors ${
-                        !faq.es_activa ? 'opacity-60 bg-surface-muted/20' : ''
-                      }`}
-                    >
-                      {/* Switch Activo / Inactivo */}
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleActive(faq)}
-                          title={faq.es_activa ? 'Desactivar FAQ' : 'Activar FAQ'}
-                          className={`size-6 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer ${
-                            faq.es_activa
-                              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                              : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300'
-                          }`}
-                        >
-                          {faq.es_activa ? <CheckCircle2 size={16} strokeWidth={2} className="text-emerald-600" /> : <XCircle size={16} strokeWidth={2} className="text-zinc-400" />}
-                        </button>
-                      </td>
+          {/* Vista Móvil / Tablet Estrecha: Tarjetas Compactas */}
+          <div className="md:hidden h-full overflow-y-auto p-2.5 space-y-2.5">
+            {filteredFaqs.length === 0 ? (
+              <div className="py-12 text-center text-text-muted text-xs">
+                {loading
+                  ? 'Cargando preguntas frecuentes...'
+                  : 'No se encontraron FAQs con los criterios de búsqueda seleccionados.'}
+              </div>
+            ) : (
+              filteredFaqs.map((faq) => (
+                <div
+                  key={faq.id}
+                  className={`p-3.5 bg-white border border-border/80 rounded-xl space-y-2.5 shadow-2xs hover:border-brand-ink/40 transition-colors ${
+                    !faq.es_activa ? 'opacity-70 bg-surface-muted/30' : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(faq)}
+                        title={faq.es_activa ? 'Desactivar FAQ' : 'Activar FAQ'}
+                        className={`size-6 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer shrink-0 mt-0.5 ${
+                          faq.es_activa
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300'
+                        }`}
+                      >
+                        {faq.es_activa ? <CheckCircle2 size={16} strokeWidth={2} className="text-emerald-600" /> : <XCircle size={16} strokeWidth={2} className="text-zinc-400" />}
+                      </button>
+                      <p className="text-sm font-bold text-brand-ink leading-snug">{faq.pregunta}</p>
+                    </div>
 
-                      {/* Pregunta */}
-                      <td className="py-3 px-4 font-semibold text-brand-ink align-top">
-                        <p className="leading-snug">{faq.pregunta}</p>
-                      </td>
+                    <div className="shrink-0">
+                      {faq.consorcio_nombre ? (
+                        <span className="text-[10px] font-semibold text-text-secondary bg-surface-muted px-2 py-0.5 rounded border border-border/60">
+                          {faq.consorcio_nombre}
+                        </span>
+                      ) : (
+                        <Badge variant="neutral" className="text-[10px]">
+                          General
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
 
-                      {/* Respuesta Oficial */}
-                      <td className="py-3 px-4 text-text-secondary whitespace-pre-line leading-relaxed align-top">
-                        <div className="bg-surface-soft p-2.5 rounded-lg border border-border/70 text-brand-ink text-xs">
-                          {faq.respuesta}
-                        </div>
-                      </td>
+                  <div className="bg-surface-soft p-3 rounded-lg border border-border/70 text-brand-ink text-xs whitespace-pre-line leading-relaxed">
+                    {faq.respuesta}
+                  </div>
 
-                      {/* Consorcio */}
-                      <td className="py-3 px-4 align-top">
-                        {faq.consorcio_nombre ? (
-                          <div className="flex items-center gap-1.5 text-brand-ink font-medium">
-                            <Building2 size={14} strokeWidth={1.8} className="text-text-muted shrink-0" />
-                            <span className="truncate">{faq.consorcio_nombre}</span>
-                          </div>
-                        ) : (
-                          <Badge variant="neutral" className="text-[10px]">
-                            General (Todos)
-                          </Badge>
-                        )}
-                      </td>
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-border/60">
+                    <span className={`text-[11px] font-semibold ${faq.es_activa ? 'text-emerald-700' : 'text-zinc-500'}`}>
+                      {faq.es_activa ? 'Activa en bot' : 'Inactiva (Pausada)'}
+                    </span>
 
-                      {/* Acciones */}
-                      <td className="py-3 px-4 text-right align-top">
-                        <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(faq)}
+                        title="Editar FAQ"
+                        aria-label="Editar FAQ"
+                        className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <Pencil size={17} strokeWidth={1.8} />
+                      </button>
+
+                      {deleteConfirmId === faq.id ? (
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => handleOpenEditModal(faq)}
-                            title="Editar FAQ"
-                            aria-label="Editar FAQ"
-                            className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
+                            onClick={() => handleDelete(faq.id)}
+                            title="Confirmar eliminación"
+                            aria-label="Confirmar eliminación"
+                            className="size-9 rounded-xl flex items-center justify-center bg-danger text-white hover:bg-rose-700 transition-colors cursor-pointer shadow-2xs"
                           >
-                            <Pencil size={18} strokeWidth={1.8} />
+                            <Check size={17} strokeWidth={2.2} />
                           </button>
-
-                          {deleteConfirmId === faq.id ? (
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(faq.id)}
-                                title="Confirmar eliminación"
-                                aria-label="Confirmar eliminación"
-                                className="size-9 rounded-xl flex items-center justify-center bg-danger text-white hover:bg-rose-700 transition-colors cursor-pointer shadow-2xs"
-                              >
-                                <Check size={18} strokeWidth={2.2} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDeleteConfirmId(null)}
-                                title="Cancelar"
-                                aria-label="Cancelar"
-                                className="size-9 rounded-xl flex items-center justify-center border border-border/80 bg-white text-text-secondary hover:text-brand-ink transition-colors cursor-pointer shadow-2xs"
-                              >
-                                <X size={18} strokeWidth={2} />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirmId(faq.id)}
-                              title="Eliminar FAQ"
-                              aria-label="Eliminar FAQ"
-                              className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft transition-colors cursor-pointer shadow-2xs"
-                            >
-                              <Trash2 size={18} strokeWidth={1.8} />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmId(null)}
+                            title="Cancelar"
+                            aria-label="Cancelar"
+                            className="size-9 rounded-xl flex items-center justify-center border border-border/80 bg-white text-text-secondary hover:text-brand-ink transition-colors cursor-pointer shadow-2xs"
+                          >
+                            <X size={17} strokeWidth={2} />
+                          </button>
                         </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirmId(faq.id)}
+                          title="Eliminar FAQ"
+                          aria-label="Eliminar FAQ"
+                          className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft transition-colors cursor-pointer shadow-2xs"
+                        >
+                          <Trash2 size={17} strokeWidth={1.8} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Vista Escritorio / Tablet Apaisada: Tabla Completa */}
+          <div className="hidden md:block h-full">
+            <ScrollableTableContainer className="h-full">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 z-10 bg-surface-soft border-b border-border text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                  <tr>
+                    <th className="py-2.5 px-4 w-12 text-center">Estado</th>
+                    <th className="py-2.5 px-4 min-w-[220px]">Pregunta Frecuente</th>
+                    <th className="py-2.5 px-4 min-w-[300px]">Respuesta Oficial Homologada</th>
+                    <th className="py-2.5 px-4 w-48">Consorcio</th>
+                    <th className="py-2.5 px-4 w-24 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-xs">
+                  {filteredFaqs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-text-muted text-xs">
+                        {loading
+                          ? 'Cargando preguntas frecuentes...'
+                          : 'No se encontraron FAQs con los criterios de búsqueda seleccionados.'}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </ScrollableTableContainer>
+                  ) : (
+                    filteredFaqs.map((faq) => (
+                      <tr
+                        key={faq.id}
+                        className={`hover:bg-surface-soft/60 transition-colors ${
+                          !faq.es_activa ? 'opacity-60 bg-surface-muted/20' : ''
+                        }`}
+                      >
+                        {/* Switch Activo / Inactivo */}
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(faq)}
+                            title={faq.es_activa ? 'Desactivar FAQ' : 'Activar FAQ'}
+                            className={`size-6 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer ${
+                              faq.es_activa
+                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300'
+                            }`}
+                          >
+                            {faq.es_activa ? <CheckCircle2 size={16} strokeWidth={2} className="text-emerald-600" /> : <XCircle size={16} strokeWidth={2} className="text-zinc-400" />}
+                          </button>
+                        </td>
+
+                        {/* Pregunta */}
+                        <td className="py-3 px-4 font-semibold text-brand-ink align-top">
+                          <p className="leading-snug">{faq.pregunta}</p>
+                        </td>
+
+                        {/* Respuesta Oficial */}
+                        <td className="py-3 px-4 text-text-secondary whitespace-pre-line leading-relaxed align-top">
+                          <div className="bg-surface-soft p-2.5 rounded-lg border border-border/70 text-brand-ink text-xs">
+                            {faq.respuesta}
+                          </div>
+                        </td>
+
+                        {/* Consorcio */}
+                        <td className="py-3 px-4 align-top">
+                          {faq.consorcio_nombre ? (
+                            <div className="flex items-center gap-1.5 text-brand-ink font-medium">
+                              <Building2 size={14} strokeWidth={1.8} className="text-text-muted shrink-0" />
+                              <span className="truncate">{faq.consorcio_nombre}</span>
+                            </div>
+                          ) : (
+                            <Badge variant="neutral" className="text-[10px]">
+                              General (Todos)
+                            </Badge>
+                          )}
+                        </td>
+
+                        {/* Acciones */}
+                        <td className="py-3 px-4 text-right align-top">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(faq)}
+                              title="Editar FAQ"
+                              aria-label="Editar FAQ"
+                              className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
+                            >
+                              <Pencil size={18} strokeWidth={1.8} />
+                            </button>
+
+                            {deleteConfirmId === faq.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(faq.id)}
+                                  title="Confirmar eliminación"
+                                  aria-label="Confirmar eliminación"
+                                  className="size-9 rounded-xl flex items-center justify-center bg-danger text-white hover:bg-rose-700 transition-colors cursor-pointer shadow-2xs"
+                                >
+                                  <Check size={18} strokeWidth={2.2} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmId(null)}
+                                  title="Cancelar"
+                                  aria-label="Cancelar"
+                                  className="size-9 rounded-xl flex items-center justify-center border border-border/80 bg-white text-text-secondary hover:text-brand-ink transition-colors cursor-pointer shadow-2xs"
+                                >
+                                  <X size={18} strokeWidth={2} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(faq.id)}
+                                title="Eliminar FAQ"
+                                aria-label="Eliminar FAQ"
+                                className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-muted hover:text-danger hover:border-danger/30 hover:bg-danger-soft transition-colors cursor-pointer shadow-2xs"
+                              >
+                                <Trash2 size={18} strokeWidth={1.8} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </ScrollableTableContainer>
+          </div>
         </CardContent>
       </Card>
 
@@ -452,7 +560,7 @@ export function FaqsManager({ consorcios = [] }) {
                   placeholder="Ej: ¿Cuáles son las pautas de mudanza para el edificio?"
                   value={formData.pregunta}
                   onChange={(e) => setFormData({ ...formData, pregunta: e.target.value })}
-                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-lg px-3 outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
+                  className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none transition-colors focus:border-brand-ink shadow-2xs"
                 />
               </div>
 
@@ -466,7 +574,7 @@ export function FaqsManager({ consorcios = [] }) {
                   placeholder="Escribí aquí la respuesta oficial aprobada. El asistente virtual utilizará este texto para responder de forma directa y fehaciente a los vecinos."
                   value={formData.respuesta}
                   onChange={(e) => setFormData({ ...formData, respuesta: e.target.value })}
-                  className="w-full bg-white border border-border text-brand-ink text-xs rounded-lg p-3 outline-none transition-colors focus:border-brand-ink focus:ring-1 focus:ring-brand-ink leading-relaxed"
+                  className="w-full bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl p-3 outline-none transition-colors focus:border-brand-ink leading-relaxed shadow-2xs"
                 />
               </div>
 
@@ -477,7 +585,7 @@ export function FaqsManager({ consorcios = [] }) {
                 <select
                   value={formData.consorcio_id}
                   onChange={(e) => setFormData({ ...formData, consorcio_id: e.target.value })}
-                  className="w-full h-9 bg-white border border-border text-brand-ink text-xs rounded-lg px-3 outline-none transition-colors focus:border-brand-ink"
+                  className="w-full h-10 sm:h-11 bg-white border border-border text-brand-ink text-sm sm:text-xs rounded-xl px-3 outline-none transition-colors focus:border-brand-ink shadow-2xs"
                 >
                   <option value="">Consorcio General (Aplica a todos los edificios)</option>
                   {consorcios.map((c) => (
