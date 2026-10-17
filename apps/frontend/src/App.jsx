@@ -931,12 +931,6 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Indicador de conexión en móvil / tablet */}
-            <div className="flex lg:hidden items-center gap-1.5 px-2 py-0.5 rounded-full border border-border/70 text-[10px] text-text-secondary bg-surface-muted/50">
-              <span className={`size-1.5 rounded-full ${apiConnected ? 'bg-success' : 'bg-text-muted'}`} />
-              <span>{apiConnected ? 'En línea' : 'Desconectado'}</span>
-            </div>
-
             {/* Controlador de Zoom Minimalista */}
             <div className="flex items-center gap-0.5 rounded-full border border-border/80 bg-surface-muted/60 p-0.5 text-xs">
               <button
@@ -1102,7 +1096,7 @@ export default function App() {
       </div>
 
       {/* Barra de Navegación Inferior Fija para Móviles y Tablets Monocromática */}
-      <nav className="fixed bottom-0 inset-x-0 z-30 flex items-center justify-around border-t border-zinc-800 bg-zinc-900/98 px-2 py-1 backdrop-blur lg:hidden pb-safe">
+      <nav className="fixed bottom-0 inset-x-0 z-30 flex items-center justify-around gap-1 border-t border-zinc-800 bg-zinc-900 px-2 py-1.5 lg:hidden pb-safe shadow-2xl">
         {navigationItems.map(({ id, label, icon: Icon }) => {
           const isActive = id === activeTab;
           return (
@@ -1112,14 +1106,14 @@ export default function App() {
                 setActiveTab(id);
                 if (id === 'inbox') setMobileChatOpen(false);
               }}
-              className={`flex flex-col items-center justify-center gap-1 min-h-[44px] flex-1 rounded-xl px-1 py-1 text-[11px] font-semibold transition-colors duration-150 cursor-pointer ${
+              className={`flex flex-col items-center justify-center gap-1 min-h-[48px] py-1 px-1.5 flex-1 rounded-xl text-[11px] font-semibold transition-[background-color,border-color,color,box-shadow] duration-150 cursor-pointer ${
                 isActive
-                  ? 'text-white font-bold'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-zinc-800 text-white font-bold shadow-sm border border-zinc-700/80'
+                  : 'border border-transparent text-zinc-400 hover:bg-zinc-800/60 hover:text-white hover:border-zinc-700/40'
               }`}
             >
-              <Icon size={19} className={isActive ? 'text-white stroke-[2.2]' : 'text-zinc-400'} />
-              <span className="truncate max-w-[76px]">{label.split(' ')[0]}</span>
+              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" className="shrink-0 text-current" />
+              <span className="truncate max-w-[76px] tracking-tight">{label.split(' ')[0]}</span>
             </button>
           );
         })}
