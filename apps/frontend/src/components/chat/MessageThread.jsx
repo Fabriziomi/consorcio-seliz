@@ -45,11 +45,37 @@ export function MessageThread({
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const statusDropdownRef = useRef(null);
 
   // Auto-scroll al final con cada mensaje nuevo
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, selectedFile]);
+
+  // Cerrar el menú desplegable al hacer clic fuera o presionar Escape
+  useEffect(() => {
+    if (!statusDropdownOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setStatusDropdownOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setStatusDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [statusDropdownOpen]);
 
   // Manejo de selección de archivo nativo
   const handleFileSelect = (e) => {
@@ -131,7 +157,7 @@ export function MessageThread({
   return (
     <div className="h-full flex flex-col bg-surface-soft min-w-0 relative">
       {/* Cabecera del Hilo Monocromática y Limpia */}
-      <div className="h-14 sm:h-15 px-3 sm:px-4 border-b border-border/80 flex items-center justify-between bg-white shrink-0 min-w-0 z-10 shadow-xs">
+      <div className="h-14 sm:h-15 px-3 sm:px-4 border-b border-border/80 flex items-center justify-between bg-white shrink-0 min-w-0 relative z-20 shadow-xs">
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
           {/* Botón Volver en Móvil */}
           <button
@@ -206,20 +232,22 @@ export function MessageThread({
           )}
 
           {/* Selector de Estado Monocromático */}
-          <div className="relative">
+          <div ref={statusDropdownRef} className="relative">
             <button
               type="button"
               onClick={() => setStatusDropdownOpen((prev) => !prev)}
+              aria-expanded={statusDropdownOpen}
+              aria-haspopup="menu"
               aria-label={`Estado actual: ${statusLabels[status] || status}. Cambiar estado`}
               title={`Estado: ${statusLabels[status] || status}`}
               className="h-10 sm:h-11 px-3.5 sm:px-4 rounded-xl border border-border/80 bg-white text-brand-ink text-xs sm:text-sm font-semibold flex items-center gap-2 hover:bg-surface-muted cursor-pointer transition-colors shadow-2xs"
             >
               <span className="capitalize">{statusLabels[status] || status}</span>
-              <ChevronDown size={14} strokeWidth={2} className="text-text-muted" />
+              <ChevronDown size={14} strokeWidth={2} className={`text-text-muted transition-transform duration-150 ${statusDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {statusDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-36 bg-white border border-border rounded-xl shadow-lg z-30 py-1 text-xs divide-y divide-border/60 overflow-hidden">
+              <div className="absolute right-0 mt-1.5 w-36 bg-white border border-border rounded-xl shadow-lg z-50 py-1 text-xs divide-y divide-border/60 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                 <button
                   type="button"
                   onClick={() => handleStatusSelect('open')}
@@ -269,7 +297,7 @@ export function MessageThread({
       </div>
 
       {/* Contenedor de Mensajes con Wallpaper WhatsApp Fijo y Continuo */}
-      <div className="flex-1 relative overflow-hidden bg-[#efeae2] min-h-0">
+      <div className="flex-1 relative isolate overflow-hidden bg-[#efeae2] min-h-0 z-0">
         <WhatsAppDoodleBackground />
 
         <div className="absolute inset-0 overflow-y-auto p-3 sm:p-4 space-y-2">
