@@ -119,7 +119,7 @@ export function DebugSimulator() {
   };
 
   return (
-    <div className="h-full flex flex-col gap-3.5 sm:gap-4 lg:gap-5 overflow-hidden">
+    <div className="w-full space-y-3.5 sm:space-y-4">
       {/* Panel Superior: Formulario de Simulación HTTP */}
       <Card className="shrink-0">
         <CardHeader>
@@ -252,7 +252,7 @@ export function DebugSimulator() {
       </Card>
 
       {/* Panel Inferior: Feed de Conversación e Inspección Técnica */}
-      <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+      <div className="overflow-y-auto space-y-4 pr-1 max-h-[calc(100dvh-20rem)]">
         {history.length === 0 ? (
           <Card className="p-8 text-center text-text-muted">
             <Terminal className="w-8 h-8 mx-auto mb-2 opacity-40 text-brand-ink" />

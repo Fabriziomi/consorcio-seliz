@@ -240,11 +240,11 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
   };
 
   return (
-    <div className="h-full flex flex-col space-y-3.5 sm:space-y-4">
+    <div className="w-full space-y-3.5 sm:space-y-4">
       {/* Contenedor Master/Detail */}
-      <div className="flex-1 flex flex-col md:flex-row gap-3.5 min-h-0">
+      <div className="flex flex-col md:flex-row gap-3.5 md:items-start">
         {/* Columna Izquierda: Lista de Consorcios */}
-        <Card className={`w-full md:w-72 lg:w-80 flex flex-col bg-white border border-border shadow-subtle shrink-0 overflow-hidden ${mobileView === 'detail' ? 'hidden md:flex' : 'flex'}`}>
+        <Card className={`w-full md:w-72 lg:w-80 flex flex-col bg-white border border-border shadow-subtle shrink-0 overflow-hidden md:sticky md:top-0 max-h-[calc(100dvh-6.5rem)] ${mobileView === 'detail' ? 'hidden md:flex' : 'flex'}`}>
           <CardHeader className="p-3.5 sm:p-4 border-b border-border bg-white flex items-center justify-between shrink-0">
             <div>
               <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
@@ -274,7 +274,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 p-0 overflow-y-auto divide-y divide-border">
+          <CardContent className="p-0 overflow-y-auto divide-y divide-border max-h-[calc(100dvh-12rem)]">
             {consorcios.map((c) => {
               const isSelected = c.id === selectedId;
               return (
@@ -311,7 +311,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
         </Card>
 
         {/* Columna Derecha: Ficha de Edición y Atributos Dinámicos */}
-        <Card className={`flex-1 flex flex-col bg-white border border-border shadow-subtle min-h-0 overflow-hidden ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
+        <Card className={`flex-1 flex flex-col bg-white border border-border shadow-subtle overflow-hidden max-h-[calc(100dvh-6.5rem)] ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
           {selectedConsorcio ? (
             <>
               {/* Header de la Ficha con Botón Volver en Móvil */}
@@ -379,8 +379,8 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
                 {activeSubTab === 'datos' ? (
                   /* Formulario de Edición de Consorcio */
-                  <form onSubmit={handleSaveConsorcio} className="space-y-4 max-w-4xl">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <form onSubmit={handleSaveConsorcio} className="space-y-4 w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-brand-ink mb-1">
                           Nombre del Consorcio *

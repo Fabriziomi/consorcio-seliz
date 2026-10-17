@@ -372,13 +372,14 @@ export function MessageThread({
         <WhatsAppDoodleBackground />
 
         <div className="absolute inset-0 overflow-y-auto p-3 sm:p-4 space-y-2">
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-xs text-text-muted relative z-10">
-              <p className="bg-white/95 px-3 py-1.5 rounded-full border border-border/80 shadow-2xs">
-                No hay mensajes registrados en este hilo de conversación.
-              </p>
-            </div>
-          ) : (
+          <div className="max-w-4xl mx-auto w-full space-y-2">
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-xs text-text-muted relative z-10">
+                <p className="bg-white/95 px-3 py-1.5 rounded-full border border-border/80 shadow-2xs">
+                  No hay mensajes registrados en este hilo de conversación.
+                </p>
+              </div>
+            ) : (
             messages.map((m) => {
               const attachment = getMessageAttachment(m);
 
@@ -559,12 +560,14 @@ export function MessageThread({
             })
           )}
           <div ref={messagesEndRef} />
+          </div>
         </div>
       </div>
 
       {/* Barra de Entrada Monocromática e Íconos Sin Texto Innecesario */}
       <div className="p-2.5 sm:p-3 bg-white border-t border-border/80 shrink-0 z-10 shadow-xs">
-        {/* Selector de Modo: Iconos Monocromáticos con tooltips claros */}
+        <div className="max-w-4xl mx-auto w-full">
+          {/* Selector de Modo: Iconos Monocromáticos con tooltips claros */}
         <div className="inline-flex p-0.5 rounded-lg bg-surface-muted border border-border/60 mb-2 gap-0.5">
           <button
             type="button"
@@ -700,6 +703,7 @@ export function MessageThread({
             <SendHorizontal size={20} strokeWidth={2} />
           </button>
         </form>
+        </div>
       </div>
 
       {/* Modal de Previsualización de Imagen / Lightbox */}

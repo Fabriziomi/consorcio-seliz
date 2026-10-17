@@ -984,7 +984,7 @@ export default function App() {
           } lg:pb-4`}
         >
           {activeTab === 'inbox' && (
-            <Card className="h-full flex overflow-hidden border border-border/80 bg-white shadow-subtle">
+            <Card className="h-full flex overflow-hidden border border-border/80 bg-white shadow-subtle max-w-[1700px] mx-auto w-full">
               {/* Columna Izquierda: Inbox (Master view en móvil, colapsable en desktop) */}
               <div
                 className={`${
@@ -1067,32 +1067,40 @@ export default function App() {
           )}
 
           {activeTab === 'faqs' && (
-            <div className="h-full overflow-hidden">
-              <FaqsManager consorcios={consorcios} />
+            <div className="h-full overflow-y-auto">
+              <div className="max-w-7xl mx-auto w-full">
+                <FaqsManager consorcios={consorcios} />
+              </div>
             </div>
           )}
 
           {activeTab === 'consorcios' && (
-            <div className="h-full overflow-hidden">
-              <ConsorciosManager
-                consorcios={consorcios}
-                onRefreshParent={loadConsorcios}
-              />
+            <div className="h-full overflow-y-auto">
+              <div className="max-w-7xl mx-auto w-full">
+                <ConsorciosManager
+                  consorcios={consorcios}
+                  onRefreshParent={loadConsorcios}
+                />
+              </div>
             </div>
           )}
 
           {activeTab === 'contactos' && (
-            <div className="h-full overflow-hidden">
-              <ContactosManager
-                consorcios={consorcios}
-                onOpenChat={handleOpenChatFromContacto}
-              />
+            <div className="h-full overflow-y-auto">
+              <div className="max-w-7xl mx-auto w-full">
+                <ContactosManager
+                  consorcios={consorcios}
+                  onOpenChat={handleOpenChatFromContacto}
+                />
+              </div>
             </div>
           )}
 
           {activeTab === 'debug' && (
-            <div className="h-full overflow-hidden">
-              <DebugSimulator />
+            <div className="h-full overflow-y-auto">
+              <div className="max-w-7xl mx-auto w-full">
+                <DebugSimulator />
+              </div>
             </div>
           )}
         </main>

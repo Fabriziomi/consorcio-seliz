@@ -189,8 +189,8 @@ export function FaqsManager({ consorcios = [] }) {
   };
 
   return (
-    <div className="h-full flex flex-col space-y-3.5 sm:space-y-4">
-      <Card className="flex-1 flex flex-col min-h-0 bg-white border border-border shadow-subtle overflow-hidden">
+    <div className="w-full space-y-3.5 sm:space-y-4">
+      <Card className="flex flex-col bg-white border border-border shadow-subtle overflow-hidden max-h-[calc(100dvh-6.5rem)]">
         {/* Cabecera Principal */}
         <CardHeader className="border-b border-border bg-white px-4 py-3 sm:px-6 sm:py-4 shrink-0">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -283,7 +283,7 @@ export function FaqsManager({ consorcios = [] }) {
         </CardHeader>
 
         {/* Tabla de Contenido */}
-        <CardContent className="flex-1 p-0 overflow-hidden relative">
+        <CardContent className="p-0 overflow-hidden relative">
           {errorMsg && (
             <div className="p-3 bg-danger-soft text-danger text-xs flex items-center gap-2 border-b border-border">
               <AlertCircle size={14} strokeWidth={2} />
@@ -292,7 +292,7 @@ export function FaqsManager({ consorcios = [] }) {
           )}
 
           {/* Vista Móvil / Tablet Estrecha: Tarjetas Compactas */}
-          <div className="md:hidden h-full overflow-y-auto p-2.5 space-y-2.5">
+          <div className="md:hidden max-h-[calc(100dvh-15rem)] overflow-y-auto p-2.5 space-y-2.5">
             {filteredFaqs.length === 0 ? (
               <div className="py-12 text-center text-text-muted text-xs">
                 {loading
@@ -397,8 +397,8 @@ export function FaqsManager({ consorcios = [] }) {
           </div>
 
           {/* Vista Escritorio / Tablet Apaisada: Tabla Completa */}
-          <div className="hidden md:block h-full">
-            <ScrollableTableContainer className="h-full">
+          <div className="hidden md:block max-h-[calc(100dvh-15rem)] overflow-y-auto">
+            <ScrollableTableContainer>
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 z-10 bg-surface-soft border-b border-border text-[11px] font-bold uppercase tracking-wider text-text-muted">
                   <tr>
