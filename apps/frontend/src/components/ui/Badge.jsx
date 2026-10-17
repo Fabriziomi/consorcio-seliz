@@ -14,12 +14,16 @@ export const badgeVariants = {
   brand: 'border-zinc-200 bg-zinc-800 text-white',
 };
 
-const variants = badgeVariants;
+export const badgeSizes = {
+  xs: 'min-h-5 px-2 py-0.5 text-[10px] gap-1',
+  sm: 'min-h-6 px-2.5 py-0.5 text-[11px] gap-1.5',
+  md: 'min-h-7 px-3 py-0.5 text-xs gap-1.5',
+};
 
-export function Badge({ variant = 'neutral', className = '', children }) {
+export function Badge({ variant = 'neutral', size = 'md', className = '', children }) {
   return (
     <span
-      className={`inline-flex min-h-7 items-center justify-center rounded-full border px-3 py-0.5 text-xs font-medium leading-none tracking-tight transition-colors ${variants[variant] ?? variants.neutral} ${className}`}
+      className={`inline-flex items-center justify-center rounded-full border font-medium leading-none tracking-tight transition-colors ${badgeSizes[size] ?? badgeSizes.md} ${badgeVariants[variant] ?? badgeVariants.neutral} ${className}`}
     >
       {children}
     </span>

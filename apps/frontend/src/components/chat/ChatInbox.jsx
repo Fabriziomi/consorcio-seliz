@@ -3,10 +3,8 @@ import {
   Search,
   Tag,
   User,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
 } from 'lucide-react';
+import { Badge } from '../ui/Badge.jsx';
 
 export function ChatInbox({ conversations = [], selectedId, onSelect }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,30 +35,31 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
     switch (status) {
       case 'emergency':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-brand-ink px-2 py-0.5 rounded-full">
-            <AlertCircle size={13} strokeWidth={2} />
+          <Badge variant="danger" size="xs" className="font-semibold shadow-2xs">
+            <span className="size-1.5 rounded-full bg-rose-500 shrink-0 animate-pulse" />
             <span>Emergencia</span>
-          </span>
+          </Badge>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand-ink bg-surface-muted border border-border px-2 py-0.5 rounded-full">
-            <Clock size={13} strokeWidth={2} />
+          <Badge variant="warning" size="xs" className="font-medium shadow-2xs">
+            <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />
             <span>Pendiente</span>
-          </span>
+          </Badge>
         );
       case 'resolved':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand-ink bg-surface-soft border border-border px-2 py-0.5 rounded-full">
-            <CheckCircle2 size={13} strokeWidth={2} />
+          <Badge variant="success" size="xs" className="font-medium shadow-2xs">
+            <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
             <span>Resuelto</span>
-          </span>
+          </Badge>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-text-secondary bg-surface-muted/60 border border-border/70 px-2 py-0.5 rounded-full">
+          <Badge variant="neutral" size="xs" className="font-medium shadow-2xs">
+            <span className="size-1.5 rounded-full bg-zinc-400 shrink-0" />
             <span>Abierto</span>
-          </span>
+          </Badge>
         );
     }
   };
@@ -167,43 +166,49 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
                   )}
                 </div>
 
-                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-xs sm:text-sm font-bold text-brand-ink truncate">
-                        {name}
-                      </span>
-                      {unread > 0 && (
-                        <span className="size-4 rounded-full bg-brand-ink text-white text-[9px] font-bold flex items-center justify-center shrink-0">
-                          {unread}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] sm:text-[11px] text-text-muted shrink-0 font-medium">
+                <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                  {/* Fila 1: Remitente y Hora/Fecha */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-xs sm:text-sm truncate ${unread > 0 ? 'font-bold text-brand-ink' : 'font-semibold text-brand-ink'}`}>
+                      {name}
+                    </span>
+                    <span className={`text-[10px] sm:text-[11px] shrink-0 ${unread > 0 ? 'text-brand-ink font-semibold' : 'text-text-muted font-normal'}`}>
                       {timestamp}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 text-[11px] text-text-secondary">
-                    <span className="truncate max-w-[190px]">
-                      {consorcio} {unidad ? `— ${unidad}` : ''}
-                    </span>
-                    {getStatusBadge(status)}
+                  {/* Fila 2: Consorcio & Unidad a la izquierda, Estado y Unread Badge a la derecha */}
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-1.5 text-[11px] text-text-secondary truncate min-w-0">
+                      <span className="truncate font-medium">{consorcio}</span>
+                      {unidad && <span className="text-zinc-300 shrink-0">•</span>}
+                      {unidad && <span className="truncate text-text-muted">{unidad}</span>}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {getStatusBadge(status)}
+                      {unread > 0 && (
+                        <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-brand-ink text-white text-[10px] font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                          {unread}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
+                  {/* Fila 3: Último mensaje */}
+                  <p className={`text-xs line-clamp-2 leading-relaxed ${unread > 0 ? 'text-brand-ink font-medium' : 'text-text-secondary'}`}>
                     {lastMsg}
                   </p>
 
-                  {/* Etiquetas monocromáticas */}
+                  {/* Fila 4: Etiquetas monocromáticas sutiles */}
                   {etiquetas.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-0.5">
                       {etiquetas.map((tag) => (
                         <span
                           key={tag}
-                          className="text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-md bg-surface-muted text-text-secondary border border-border/60 flex items-center gap-1"
+                          className="text-[9px] sm:text-[10px] font-medium tracking-wide px-2 py-0.5 rounded-full bg-surface-muted text-text-secondary border border-border/70 flex items-center gap-1 shadow-2xs"
                         >
-                          <Tag size={11} strokeWidth={1.8} className="text-text-muted" />
+                          <Tag size={10} strokeWidth={1.8} className="text-text-muted shrink-0" />
                           <span>{tag}</span>
                         </span>
                       ))}
