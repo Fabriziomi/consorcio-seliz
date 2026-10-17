@@ -385,7 +385,7 @@ export default function App() {
         }));
         setConversations(formatted);
         setSelectedConvId((prev) => {
-          if (!prev || !formatted.some((f) => f.id === prev)) {
+          if (!prev || !formatted.some((f) => String(f.id) === String(prev))) {
             return formatted[0].id;
           }
           return prev;
@@ -487,7 +487,7 @@ export default function App() {
             const data = JSON.parse(event.data);
             if (data.type === 'new_message') {
               const { conversacion_id } = data.data || {};
-              if (conversacion_id && conversacion_id === selectedConvId) {
+              if (conversacion_id && String(conversacion_id) === String(selectedConvId)) {
                 loadMessagesForConversation(selectedConvId);
               }
               loadConversaciones();
@@ -563,7 +563,7 @@ export default function App() {
     { id: 'debug', label: 'Simulador de Atención', icon: Terminal },
   ];
 
-  const currentConv = selectedConvId ? (conversations.find((c) => c.id === selectedConvId) || null) : null;
+  const currentConv = selectedConvId ? (conversations.find((c) => String(c.id) === String(selectedConvId)) || null) : null;
   const currentMessages = messagesByConv[selectedConvId] || [];
   const currentDraft = aiDrafts[selectedConvId];
   const activeLabel = navigationItems.find((item) => item.id === activeTab)?.label || 'Inbox';
@@ -600,7 +600,7 @@ export default function App() {
 
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === selectedConvId
+        String(c.id) === String(selectedConvId)
           ? {
               ...c,
               lastMessage: isPrivate
@@ -627,7 +627,7 @@ export default function App() {
   const handleUpdateConversationStatus = async (newStatus) => {
     if (!selectedConvId) return;
     setConversations((prev) =>
-      prev.map((c) => (c.id === selectedConvId ? { ...c, status: newStatus } : c))
+      prev.map((c) => (String(c.id) === String(selectedConvId) ? { ...c, status: newStatus } : c))
     );
     try {
       await ApiService.updateConversacionStatus(selectedConvId, newStatus);
@@ -718,7 +718,7 @@ export default function App() {
 
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === selectedConvId
+        String(c.id) === String(selectedConvId)
           ? {
               ...c,
               lastMessage: text.trim(),
@@ -753,7 +753,7 @@ export default function App() {
           }));
           setConversations((prev) =>
             prev.map((c) =>
-              c.id === selectedConvId ? { ...c, status: 'emergency' } : c
+              String(c.id) === String(selectedConvId) ? { ...c, status: 'emergency' } : c
             )
           );
         } else {

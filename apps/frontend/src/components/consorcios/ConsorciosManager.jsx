@@ -69,7 +69,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
       const data = await ApiService.getConsorcios();
       if (Array.isArray(data) && data.length > 0) {
         setConsorcios(data);
-        if (!selectedId || !data.some((c) => c.id === selectedId)) {
+        if (!selectedId || !data.some((c) => String(c.id) === String(selectedId))) {
           setSelectedId(data[0].id);
         }
       }
@@ -84,7 +84,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
   // Sincronizar selección actual con el formulario
   useEffect(() => {
     if (selectedId) {
-      const current = consorcios.find((c) => c.id === selectedId);
+      const current = consorcios.find((c) => String(c.id) === String(selectedId));
       if (current) {
         setCurrentForm({
           nombre: current.nombre || '',
@@ -123,7 +123,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
     }
   }, [selectedId, activeSubTab, loadAtributos]);
 
-  const selectedConsorcio = consorcios.find((c) => c.id === selectedId);
+  const selectedConsorcio = consorcios.find((c) => String(c.id) === String(selectedId));
 
   // Guardar datos del consorcio
   const handleSaveConsorcio = async (e) => {
@@ -134,7 +134,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
     setSaveSuccessMsg('');
     try {
       const updated = await ApiService.updateConsorcio(selectedId, currentForm);
-      setConsorcios((prev) => prev.map((c) => (c.id === selectedId ? updated : c)));
+      setConsorcios((prev) => prev.map((c) => (String(c.id) === String(selectedId) ? updated : c)));
       setSaveSuccessMsg('Datos actualizados correctamente.');
       setTimeout(() => setSaveSuccessMsg(''), 4000);
       if (onRefreshParent) onRefreshParent();
@@ -277,22 +277,32 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
 
           <CardContent className="p-0 overflow-y-auto divide-y divide-border max-h-[calc(100dvh-12rem)]">
             {consorcios.map((c) => {
-              const isSelected = c.id === selectedId;
+              const isSelected = Boolean(selectedId != null && (c.id === selectedId || String(c.id) === String(selectedId)));
               return (
                 <div
                   key={c.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-selected={isSelected}
                   onClick={() => {
                     setSelectedId(c.id);
                     setMobileView('detail');
                   }}
-                  className={`p-3.5 cursor-pointer group transition-all duration-500 ease-out flex items-center justify-between gap-2 border-l-4 hover:translate-x-0.5 ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedId(c.id);
+                      setMobileView('detail');
+                    }
+                  }}
+                  className={`p-3.5 cursor-pointer group transition-all duration-150 ease-out flex items-center justify-between gap-2 border-l-4 hover:translate-x-0.5 active:scale-[0.99] outline-none ${
                     isSelected
-                      ? 'bg-surface-soft border-brand-ink'
-                      : 'border-transparent hover:bg-surface-soft/80'
+                      ? 'bg-zinc-100 border-brand-ink shadow-2xs'
+                      : 'border-transparent hover:bg-zinc-100/70 focus-visible:bg-zinc-100/70'
                   }`}
                 >
                   <div className="min-w-0">
-                    <p className="text-xs sm:text-sm font-bold text-brand-ink truncate">
+                    <p className={`text-xs sm:text-sm truncate ${isSelected ? 'font-bold text-brand-ink' : 'font-semibold text-brand-ink'}`}>
                       {c.nombre}
                     </p>
                     <p className="text-[11px] text-text-muted truncate mt-0.5">
@@ -304,7 +314,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                       </span>
                     )}
                   </div>
-                  <ChevronRight size={14} strokeWidth={2} className={`transition-all duration-500 ease-out group-hover:translate-x-1 group-hover:scale-120 ${isSelected ? 'text-brand-ink' : 'text-text-muted'}`} />
+                  <ChevronRight size={14} strokeWidth={2} className={`transition-all duration-200 ease-out group-hover:translate-x-1 group-hover:scale-120 ${isSelected ? 'text-brand-ink' : 'text-text-muted'}`} />
                 </div>
               );
             })}
