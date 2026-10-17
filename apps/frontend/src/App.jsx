@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2,
   MessagesSquare,
-  CheckSquare,
   Terminal,
   ZoomOut,
   ZoomIn,
@@ -12,7 +11,6 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  Archive,
   BookOpen,
   Users,
 } from 'lucide-react';
@@ -21,8 +19,6 @@ import { LoginForm } from './components/auth/LoginForm.jsx';
 import { ChatInbox } from './components/chat/ChatInbox.jsx';
 import { MessageThread } from './components/chat/MessageThread.jsx';
 import { WhatsAppDoodleBackground } from './components/chat/WhatsAppDoodleBackground.jsx';
-import { TicketsTable } from './components/tables/TicketsTable.jsx';
-import { ExpedientesTable } from './components/tables/ExpedientesTable.jsx';
 import { DebugSimulator } from './components/debug/DebugSimulator.jsx';
 import { FaqsManager } from './components/faqs/FaqsManager.jsx';
 import { ConsorciosManager } from './components/consorcios/ConsorciosManager.jsx';
@@ -561,8 +557,6 @@ export default function App() {
 
   const navigationItems = [
     { id: 'inbox', label: 'Inbox', icon: MessagesSquare },
-    { id: 'expedientes', label: 'Expedientes & Incidentes', icon: Archive },
-    { id: 'tickets', label: 'Tickets & Reclamos', icon: CheckSquare },
     { id: 'faqs', label: 'Base de Conocimiento', icon: BookOpen },
     { id: 'consorcios', label: 'Consorcios & Atributos', icon: Building2 },
     { id: 'contactos', label: 'Directorio de Contactos', icon: Users },
@@ -1073,29 +1067,6 @@ export default function App() {
                 )}
               </div>
             </Card>
-          )}
-
-          {activeTab === 'expedientes' && (
-            <div className="h-full overflow-y-auto">
-              <ExpedientesTable
-                expedientes={expedientes}
-                loading={loadingExpedientes}
-                onRefresh={loadExpedientes}
-                onUpdateStatus={handleUpdateExpedienteStatus}
-                onNotifyNeighbors={handleNotifyNeighbors}
-              />
-            </div>
-          )}
-
-          {activeTab === 'tickets' && (
-            <div className="h-full overflow-y-auto">
-              <TicketsTable
-                tickets={tickets}
-                loading={loadingTickets}
-                onRefresh={loadTickets}
-                onUpdateStatus={handleUpdateTicketStatus}
-              />
-            </div>
           )}
 
           {activeTab === 'faqs' && (
