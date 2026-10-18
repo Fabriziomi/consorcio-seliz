@@ -1,29 +1,40 @@
-# Especificación del Árbol de Decisión y Flujos Operativos
+# Especificación del Árbol de Decisión, Flujos y FSM
 
-Este documento formaliza las reglas de negocio, los estados de conversación y los flujos detallados del chatbot para el consorcio administrado por la **Dra. Ivana Seliz**.
+Este documento formaliza las reglas de negocio, los estados de conversación y los flujos operativos del sistema de atención automatizada por WhatsApp para la administración de consorcios de la **Dra. Ivana Seliz**.
 
 ---
 
 ## 1. Reglas de Negocio Fundamentales
 
-1. **Horario de Atención:**
-   - **Días hábiles:** Lunes a Viernes.
-   - **Bloques:** 10:00 a 14:00 hs y 14:00 a 17:00 hs.
-   - **Fuera de horario:** Noches (17:01 a 09:59 hs), fines de semana y feriados.
-2. **Privacidad de Consorcios (Regla estricta):**
-   - El chatbot **NUNCA** debe enumerar o exponer públicamente la lista de consorcios que administra Ivana a un usuario no identificado.
-   - Si no se conoce el edificio del usuario, se le pregunta amablemente: *"¿A qué edificio/dirección pertenecés?"*.
-3. **Identificación del Usuario:**
-   - Debe registrarse en base de datos:
-     - Teléfono (WhatsApp ID).
-     - Nombre / Alias.
-     - Rol: `Propietario` | `Inquilino` | `Inmobiliaria` | `Proveedor / Otro`.
-     - Consorcio asignado (ej. *Corrientes y Lavalle*, *Callao 2334*, etc.).
-     - Unidad Funcional / Piso y Depto.
-4. **Modos de Decisión y Control Humano (según diseño en Obsidian):**
-   - **Modo Básico (Determinístico - Fase 1):** El chatbot solo envía mensajes aprobados y predefinidos. Si una consulta no encaja, toma los datos, la registra como ticket en NocoDB y le avisa que la Dra. Seliz le responderá.
-   - **Modo Intermedio (Asistido por IA - Fase 2):** Si la consulta no tiene plantilla exacta, la IA redacta un borrador de respuesta y lo guarda en la tabla `Respuestas_Pendientes_Aprobacion` en NocoDB. Ivana o su asistente pueden dar un clic a "Aprobar" y el webhook de Evolution API dispara el mensaje al vecino.
-   - **Modo Avanzado (Fase 3):** Respuestas conversacionales automáticas acotadas estrictamente a reglamentos aprobados y preguntas frecuentes (FAQs validadas).
+1. **Horarios Operativos y Silencio del Bot:**
+   - **Horario de Oficina (Silencio Total del Bot):**
+     - Lunes a Viernes de 10:00 a 18:00 hs.
+     - Sábados de 10:00 a 13:00 hs.
+     - *Regla:* Durante este horario atiende la Dra. Ivana Seliz personalmente desde su teléfono físico. El bot permanece en silencio estricto.
+   - **Horario de Operación del Bot:**
+     - Fuera del horario de oficina, domingos completos y feriados nacionales argentinos (`FERIADOS_AR`).
+   - **Quiet Hours (00:00 a 07:30 hs):**
+     - Silencio nocturno total para no despertar a los vecinos.
+     - Los mensajes no urgentes se persisten con `needs_human_review = True` para revisión humana matutina a las 10:00 hs.
+     - No se disparan ráfagas de respuestas automáticas a las 07:31 hs.
+2. **Emergencias Críticas 24/7:**
+   - Incendios, escape de gas, inundaciones graves o personas atrapadas en ascensor.
+   - Operan las 24 horas sin importar el horario ni las Quiet Hours.
+   - Si no se conoce el edificio, se entregan números públicos inmediatos (Bomberos 100, SAME 107, Policía 911) mientras se solicita la dirección con urgencia.
+   - Si el edificio está identificado, se despachan los números de guardia técnica específicos (ascensorista, plomero de urgencia, portería).
+3. **Privacidad de Consorcios (Regla Inquebrantable):**
+   - El bot **NUNCA** lista ni enumera el padrón de consorcios administrados a un usuario no identificado.
+   - Si falta el edificio, solicita calle y altura sin dar opciones.
+4. **Cobranzas y Trámites de Pago:**
+   - Cero pasarelas ni botones de pago en WhatsApp.
+   - Todo comprobante se remite obligatoriamente al correo oficial del consorcio (`email_cobranzas`).
+   - El bot entrega CBU, Alias, CUIT y cuenta oficial, pero no concilia pagos por WhatsApp.
+5. **Takeover Humano (12 Horas de TTL):**
+   - Si Ivana envía un mensaje manual desde su celular (`fromMe: true` no emitido por el bot), la conversación entra en silencio automático durante 12 horas.
+6. **Early Binding de Perfil:**
+   - En cuanto un mensaje revela un consorcio o unidad válidos, se persisten inmediatamente en la tabla `contactos` antes de evaluar la FSM, evitando preguntas repetitivas.
+7. **Comandos de Escape:**
+   - Si el usuario escribe `0`, `menu`, `reiniciar`, `inicio`, `cancelar` o `salir`, la FSM resetea su estado inmediatamente a `IDLE`, reinicia `retry_count = 0` y emite la plantilla cordial de reinicio.
 
 ---
 
@@ -31,101 +42,119 @@ Este documento formaliza las reglas de negocio, los estados de conversación y l
 
 ```mermaid
 flowchart TD
-    Start([Mensaje Entrante de WhatsApp]) --> CheckContact{¿Contacto existe en BD?}
+    Start([Mensaje Entrante de WhatsApp]) --> Webhook[FastAPI: Webhook Evolution API]
+    Webhook --> GroupCheck{¿Grupo @g.us o Difusión?}
     
-    CheckContact -- No --> RegContact[Crear Contacto Nuevo] --> AskIdentity[Preguntar Consorcio y Rol: Inquilino/Propietario]
-    CheckContact -- Sí --> CheckSchedule{¿Dentro del horario de atención?}
-
-    AskIdentity --> SaveIdentity[Guardar en NocoDB] --> CheckSchedule
-
-    CheckSchedule -- Fuera de Horario --> IA_Classify_Night[IA: Detectar si es Emergencia Grave]
-    CheckSchedule -- En Horario --> IA_Classify[IA: Detectar Intención y Entidades]
-
-    IA_Classify_Night -- Es Emergencia --> BranchEmergency[RAMA 1: Emergencia 24/7]
-    IA_Classify_Night -- No es Emergencia --> BranchOffHours[RAMA 2: Mensaje Fuera de Horario + Registro Ticket]
-
-    IA_Classify --> BranchRoute{Ruta de Intención}
-    BranchRoute -- Emergencia --> BranchEmergency
-    BranchRoute -- Expensas / Cobranzas --> BranchExpenses[RAMA 3: Cobranzas y Expensas]
-    BranchRoute -- Reclamo / Avería Edilicia --> BranchMaintenance[RAMA 4: Reclamos y Mantenimiento]
-    BranchRoute -- Mudanzas / Reglamentos --> BranchRules[RAMA 5: Mudanzas y Normas]
-    BranchRoute -- Teléfono Portería / Info --> BranchInfo[RAMA 6: Contacto Edificio / Portería]
-    BranchRoute -- Consulta Abierta / Otra --> BranchHuman[RAMA 7: Derivación y Asistencia de Ivana]
+    GroupCheck -- Sí --> Drop[Descarte Inmediato ms 0]
+    GroupCheck -- No --> Debounce[Redis Buffer Debounce 8-10s]
+    
+    Debounce --> BotActive{¿Bot Activo y Contacto Habilitado?}
+    BotActive -- No --> Silence[Silencio Permanente]
+    BotActive -- Sí --> TakeoverCheck{¿Takeover Manual Activo < 12h?}
+    
+    TakeoverCheck -- Sí --> SilenceTakeover[Silencio por Takeover de Ivana]
+    TakeoverCheck -- No --> OfficeHours{¿Dentro de Horario de Oficina?\nL-V 10-18hs / Sáb 10-13hs}
+    
+    OfficeHours -- En Oficina --> SilenceOffice[Silencio Estricto: Atiende Ivana]
+    OfficeHours -- Fuera de Oficina --> AudioCheck{¿Es Audio?}
+    
+    AudioCheck -- Sí --> Whisper[Groq Whisper API < 350ms] --> FastTokens
+    AudioCheck -- No --> FastTokens{Content Guardrails}
+    
+    FastTokens -- Ruido asd/zz --> DropNoise[Silencio / Descarte Ruido]
+    FastTokens -- Agradecimiento gracias/ok --> IntelligentSilence[Silencio Inteligente Anti-Spam]
+    FastTokens -- Saludo puro --> WelcomeTemplate[Plantilla Bienvenida Institucional]
+    FastTokens -- Mensaje con Contenido --> EscapeCheck{¿Comando Escape?\n0, menu, reiniciar}
+    
+    EscapeCheck -- Sí --> ResetFSM[Reset FSM a IDLE]
+    EscapeCheck -- No --> TTLCheck{¿Inactividad > 120 min?}
+    
+    TTLCheck -- Sí --> ResetTTL[Reset FSM a IDLE] --> RouterAI
+    TTLCheck -- No --> RouterAI[Router Tipado Jev 1.14 / Gemini Fallback]
+    
+    RouterAI --> EarlyBinding[Early Binding: Persistir Consorcio/Unidad en BD]
+    EarlyBinding --> QuietCheck{¿Quiet Hours 00:00-07:30\ny no es Emergencia?}
+    
+    QuietCheck -- Sí --> NightSilence[Silencio Nocturno\nneeds_human_review = True]
+    QuietCheck -- No --> FSM[ConversationFSM]
+    
+    FSM --> StateSwitch{Estado FSM}
+    StateSwitch -- IDLE --> BranchIDLE[Rama: Reposo y Consultas Directas]
+    StateSwitch -- SOLICITANDO_EDIFICIO --> BranchEdificio[Rama: Esperando Edificio]
+    StateSwitch -- ONBOARDING_DATOS --> BranchOnboarding[Rama: Esperando Edificio y Unidad]
+    StateSwitch -- ESPERANDO_SOLO_UNIDAD --> BranchUnidad[Rama: Esperando Solo Unidad]
+    
+    BranchIDLE --> SelectTemplate[Round-Robin Template len % 3]
+    BranchEdificio --> SelectTemplate
+    BranchOnboarding --> SelectTemplate
+    BranchUnidad --> SelectTemplate
+    
+    SelectTemplate --> Audit[Log JSONL en fsm_audit.log]
+    Audit --> AntiBan[Presencia composing 1.5s-3.0s]
+    AntiBan --> Send[Despacho WhatsApp vía Evolution API]
 ```
 
 ---
 
 ## 3. Especificación de Ramas Operativas
 
-### Rama 1: Emergencias Graves (24/7 sin excepción de horario)
-- **Criterio de activación:** Incendio, inundación masiva o rotura de caño maestro, personas atrapadas en ascensor, olor a gas, peligro de derrumbe o corte eléctrico general del edificio.
-- **Acción del Chatbot:**
-  1. Envía de inmediato el mensaje de emergencia con los números de acción rápida:
-     - Bomberos (100) / SAME (107) / Policía (911).
-     - Proveedores de guardia correspondientes al consorcio (Ascensorista de turno, plomero de guardia, empresa de mantenimiento de bombas).
-  2. Etiqueta al usuario como `EMERGENCIA_ACTIVA` en WhatsApp / Evolution API.
-  3. Crea un ticket con `Prioridad: CRÍTICA` en NocoDB y envía una notificación push/alerta directa a Ivana.
-
-### Rama 2: Fuera de Horario de Atención
-- **Criterio de activación:** Mensajes recibidos de Lunes a Viernes de 17:01 a 09:59 hs, o Sábados, Domingos y Feriados, **que no sean emergencias**.
-- **Acción del Chatbot:**
-  1. Envía el mensaje informativo fuera de horario:
-     > *"Hola, gracias por comunicarte con la administración de la Dra. Ivana Seliz. Te recordamos que nuestro horario de atención es de Lunes a Viernes de 10:00 a 14:00 y de 14:00 a 17:00 hs.*
-     > *Tu consulta ha quedado registrada y te responderemos a la brevedad al iniciar la próxima jornada hábil."*
-  2. Registra el mensaje en NocoDB con etiqueta `Fuera_De_Horario` para que no se pierda.
-
-### Rama 3: Expensas y Cobranzas
-- **Sub-intenciones recurrentes:**
-  - **A. Pedido de CBU / Datos de Cuenta del Consorcio:**
-    - El bot identifica el consorcio del usuario (ej. *Corrientes y Lavalle* o *Callao 2334*).
-    - Entrega únicamente el CBU, Alias y CUIT de la cuenta oficial de ese edificio específico.
-    - Recuerda el email de cobranzas para remitir el comprobante.
-  - **B. Envío de Comprobante de Pago:**
-    - Si el usuario adjunta una imagen o PDF de transferencia:
-    - El bot descarga el archivo mediante Evolution API y lo adjunta al registro del consorcio en NocoDB.
-    - Responde: *"Recibimos tu comprobante de pago para la unidad [Piso/Depto]. Lo derivamos al área de cobranzas para su imputación en la próxima liquidación."*
-  - **C. Reclamo de Saldo o Deuda:**
-    - Registra el reclamo contable y notifica plazo de revisión (48 a 72hs hábiles).
-
-### Rama 4: Reclamos y Mantenimiento Edilicio
-- **Sub-intenciones recurrentes:**
-  - Filtración de agua en techo/pared.
-  - Ascensor fuera de servicio o ruidos extraños.
-  - Puerta de entrada rota, cerradura electromagnética trabada.
-  - Luz quemada en palier / pasillos.
-  - Problemas con cochera / portón levadizo / galería.
-- **Pasos del flujo:**
-  1. Verificar datos: ¿Tenemos el Piso y Depto? Si no, pedirlo.
-  2. Solicitar evidencia: *"Por favor, si es posible, envianos una foto o video breve del problema para coordinar con el técnico correspondiente."*
-  3. Generación de Ticket en NocoDB:
-     - Campos: Consorcio, Unidad, Tipo de Avería, Descripción, URLs de Fotos, Estado = `PENDIENTE_REVISION`.
-  4. Cierre del paso: Se le informa el número de reclamo interno y que el área técnica se contactará.
-
-### Rama 5: Mudanzas y Reglamento Interno
-- **Sub-intenciones recurrentes:**
-  - Días y horarios autorizados para mudanza.
-  - Seguro de accidentes personales (ART) para fleteros.
-  - Reserva de quincho, SUM o parrilla.
-  - Ruidos molestos o convivencia de mascotas.
-- **Acción del Chatbot:**
-  - Envía las pautas del reglamento del edificio correspondiente (ej. días permitidos de mudanza: Lunes a Viernes de 9 a 18hs, sábados de 9 a 13hs; uso obligatorio de cobertores en ascensor).
-
-### Rama 6: Contacto de Portería e Información de Edificio
-- **Sub-intenciones:**
-  - Teléfono del encargado/portero.
-  - Horarios de recolección de basura.
+### Rama 1: Emergencia Crítica 24/7
+- **Activación:** Fuego, escape de gas, inundación de columna principal, personas atrapadas en ascensor, derrumbe.
 - **Acción:**
-  - Envía la información de contacto del encargado del consorcio consultado.
+  - Si el usuario tiene consorcio registrado: entrega teléfonos de guardia técnica directa (portería, ascensorista, plomero de guardia) y números públicos de auxilio (100, 107, 911).
+  - Si el usuario no tiene consorcio registrado: entrega números públicos y solicita con urgencia la dirección del edificio (`SOLICITANDO_EDIFICIO` con `pending_intent = EMERGENCIA`).
+  - Persiste el mensaje y marca `needs_human_review = True` con prioridad `CRÍTICA`.
+
+### Rama 2: Expensas y Cobranzas
+- **Sub-flujo A: Pedido de CBU / Datos de Cuenta:**
+  - Si el usuario tiene consorcio asignado: entrega CBU, Alias, CUIT, Titular y correo oficial de cobranzas.
+  - Si el usuario no tiene consorcio: transiciona a `SOLICITANDO_EDIFICIO` con `pending_intent = EXPENSAS_DATOS_PAGO`.
+- **Sub-flujo B: Aviso de Transferencia / Envío de Comprobante:**
+  - El bot recuerda enviar el comprobante adjunto al correo oficial (`email_cobranzas`).
+  - Si viene una imagen o PDF adjunto, se persiste en la conversación y se confirma su recepción para imputación contable.
+- **Sub-flujo C: Reclamos de Saldo:**
+  - Se registra el mensaje para análisis administrativo de Ivana a las 10:00 hs (`needs_human_review = True`).
+
+### Rama 3: Reclamos y Mantenimiento Edilicio
+- **Condición:**
+  - Requiere consorcio y unidad funcional completos.
+  - Si falta consorcio y unidad: transiciona a `ONBOARDING_DATOS`.
+  - Si tiene consorcio pero falta unidad: transiciona a `ESPERANDO_SOLO_UNIDAD`.
+  - Si tiene ambos: emite acuse de recibo formal confirmando que el reclamo fue registrado para evaluación por el equipo técnico a las 10:00 hs (`needs_human_review = True`).
+
+### Rama 4: Mudanzas y Normas de Convivencia
+- Si el consorcio tiene `pautas_mudanza` cargadas, se envían los horarios y requisitos de seguros de ART.
+- Se marca para revisión humana si se solicita reserva de ascensor o coordinación con portería.
 
 ---
 
-## 4. Matriz de Estados de la Conversación (FSM)
+## 4. Máquina de Estados Finitos (`ConversationFSM`)
 
-| Estado | Evento Esperado | Siguiente Estado | Acción |
-| :--- | :--- | :--- | :--- |
-| `INIT` | Primer mensaje recibido | `CHECK_PROFILE` | Buscar número en NocoDB |
-| `AWAITING_BUILDING` | Usuario responde con su consorcio | `AWAITING_UNIT` | Validar edificio y guardar |
-| `AWAITING_UNIT` | Usuario indica piso/depto | `IDLE` | Guardar unidad |
-| `IDLE` | Mensaje nuevo | `CLASSIFY_INTENT` | Clasificar intención con IA |
-| `AWAITING_MEDIA_RECLAMO` | Envío de foto/video de avería | `TICKET_CREATED` | Descargar adjunto, crear ticket y agradecer |
-| `AWAITING_PAYMENT_PROOF` | Envío de foto/PDF comprobante | `PROOF_LOGGED` | Guardar comprobante y notificar imputación |
+```mermaid
+stateDiagram-v2
+    [*] --> IDLE
+    
+    IDLE --> IDLE : Perfil completo + Consulta resuelta
+    IDLE --> SOLICITANDO_EDIFICIO : Falta edificio para CBU o Emergencia
+    IDLE --> ONBOARDING_DATOS : Reclamo / Mudanza sin datos
+    IDLE --> ESPERANDO_SOLO_UNIDAD : Consorcio conocido, falta piso/depto
+    
+    SOLICITANDO_EDIFICIO --> IDLE : Consorcio válido identificado\nDespacha pending_intent
+    SOLICITANDO_EDIFICIO --> SOLICITANDO_EDIFICIO : Reintento 1 (Dirección no reconocida)
+    SOLICITANDO_EDIFICIO --> IDLE : Bailout (Intento 2 fallido)\nneeds_human_review = True (10:00 hs)
+    SOLICITANDO_EDIFICIO --> IDLE : Edificio no administrado
+    
+    ONBOARDING_DATOS --> IDLE : Edificio y unidad provistos juntos\nEarly Binding + Despacha pending_intent
+    ONBOARDING_DATOS --> ESPERANDO_SOLO_UNIDAD : Indicó consorcio pero olvidó unidad
+    ONBOARDING_DATOS --> ONBOARDING_DATOS : Reintento 1 (No se entendió)
+    ONBOARDING_DATOS --> IDLE : Bailout (Intento 2 fallido)\nneeds_human_review = True (10:00 hs)
+    
+    ESPERANDO_SOLO_UNIDAD --> IDLE : Unidad válida provista (ej: 4° B)\nEarly Binding + Despacha pending_intent
+    ESPERANDO_SOLO_UNIDAD --> ESPERANDO_SOLO_UNIDAD : Reintento 1 (Formato no claro)
+    ESPERANDO_SOLO_UNIDAD --> IDLE : Bailout (Intento 2 fallido)\nneeds_human_review = True (10:00 hs)
+    
+    IDLE --> IDLE : Escape (0, menu, reiniciar) -> Reset
+    SOLICITANDO_EDIFICIO --> IDLE : Escape / TTL > 120m -> Reset
+    ONBOARDING_DATOS --> IDLE : Escape / TTL > 120m -> Reset
+    ESPERANDO_SOLO_UNIDAD --> IDLE : Escape / TTL > 120m -> Reset
+```

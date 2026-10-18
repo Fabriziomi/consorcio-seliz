@@ -65,12 +65,12 @@ Sistema integral y determinista de atencion por WhatsApp para la administracion 
 
 ## 4. Estructura del Repositorio
 
-- `apps/api`: Servidor FastAPI con endpoints REST para el frontend, webhooks de WhatsApp, gestion de autenticacion JWT, expedientes consolidados y control de takeover humano.
-- `apps/chatbot`: Motor de estados finitos (`ConversationFSM`), evaluador de horarios, clasificador TEV1/Jev, extractor semantico de unidades y motor RAG local.
-- `apps/frontend`: Panel web administrativo desarrollado en React 18, Tailwind CSS, Lucide Icons y Vite.
+- `apps/api`: Servidor FastAPI con endpoints REST para el frontend, webhooks de WhatsApp, gestión de autenticación JWT, expedientes consolidados y control de takeover humano.
+- `apps/chatbot`: Motor de estados finitos (`ConversationFSM`), evaluador de horarios, clasificador tipado Jev 1.14 / Gemini Flash, extractor semántico de unidades y motor RAG.
+- `apps/frontend`: Panel web administrativo desarrollado en React 19, Tailwind CSS, Lucide Icons y Vite, con diseño monocromático, memoización de componentes y posicionamiento instantáneo de scroll en chats.
 - `config/`: Esquemas JSON Schema para structured outputs.
-- `docs/`: Documentacion tecnica de arquitectura, DER relacional y flujos de negocio.
-- `scripts/`: Herramientas de despliegue, verificacion de modelos y pruebas CLI.
+- `docs/`: Documentación técnica sincronizada (FSM, DER PostgreSQL, catálogo de plantillas sin emojis, arquitectura y flujos Mermaid).
+- `scripts/`: Herramientas de benchmark (`benchmark_jev.py`), simulador interactivo (`test_fsm_cli.py`) y testing automatizado.
 
 ---
 

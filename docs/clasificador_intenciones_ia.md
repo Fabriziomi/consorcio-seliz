@@ -1,166 +1,91 @@
-# Clasificador de Intenciones con IA (System Prompt y Structured Outputs)
+# Clasificador de Intenciones y Extractor Semántico con IA
 
-Este documento especifica cómo se utiliza la Inteligencia Artificial (LLM) de forma segura y libre de alucinaciones dentro del chatbot.
+Este documento especifica cómo se utiliza la Inteligencia Artificial de forma determinista, tipada y sin alucinaciones dentro del sistema de atención de la **Dra. Ivana Seliz Administraciones**.
 
 ---
 
 ## 1. Rol de la IA en la Arquitectura
 
-Para garantizar que el chatbot **no alucine** información legal, contable ni promesas de servicio falsas a los propietarios o inquilinos:
+Para garantizar un sistema **cero alucinaciones**, la IA no redacta respuestas abiertas al vecino. Su función está estrictamente acotada a:
 
-1. **La IA NO redacta respuestas directas al usuario final de forma autónoma en la fase inicial**.
-2. **Su único rol es actuar como "Router Semántico" (Clasificador)**:
-   - Recibe el texto del vecino.
-   - Comprende el lenguaje coloquial, faltas de ortografía, audios transcriptos o quejas.
-   - Devuelve un objeto JSON estructurado con la intención, nivel de urgencia y entidades extraídas.
-3. El árbol de decisión toma ese JSON y ejecuta la plantilla pre-aprobada o el flujo correspondiente.
-
----
-
-## 2. Catálogo de Intenciones y Urgencias
-
-### Intenciones Principales (`intent`):
-- `EMERGENCIA`: Situaciones de riesgo edilicio, siniestros, caños maestros rotos, incendio, inundación, ascensor trabado con personas adentro.
-- `EXPENSAS_DATOS_PAGO`: Solicitud de CBU, alias, formas de pago, fecha de vencimiento.
-- `EXPENSAS_COMPROBANTE`: El usuario indica que envía o quiere enviar un comprobante de pago/transferencia.
-- `EXPENSAS_RECLAMO_SALDO`: Dudas sobre montos adeudados, intereses o no imputación de pagos.
-- `RECLAMO_MANTENIMIENTO`: Averías en partes comunes o filtraciones (plomería, electricidad, gas, cerrajería, ascensor averiado vacío, cochera/portón).
-- `MUDANZA_Y_REGLAMENTO`: Consultas de horarios de mudanza, solicitud de seguro, uso de SUM, mascotas, ruidos molestos.
-- `CONTACTO_PORTERIA`: Pedido de teléfono o datos del encargado/portero del edificio.
-- `CONSULTA_ADMINISTRACION`: Consultas legales, asambleas de copropietarios, venta/alquiler de unidad, atención presencial.
-- `SALUDO_CORDIAL`: Saludos sin consulta específica ("Buen día", "Hola").
-- `DESCONOCIDO_AMBIGUO`: Mensajes confusos o que requieren intervención manual.
-
-### Niveles de Urgencia (`urgency`):
-- `EMERGENCY`: Acción inmediata requerida (24/7).
-- `HIGH`: Reclamo prioritario (ej. corte de agua de toda la columna).
-- `NORMAL`: Consultas habituales de administración.
-- `LOW`: Saludos o confirmaciones de lectura.
+1. **Router de Decisión Tipado (`OpenRouterClient`):**
+   - Infiere la intención del usuario a partir de un conjunto cerrado de intenciones de negocio.
+   - Aplica cortocircuito de preguntas según los datos faltantes en la base de datos (`has_consorcio`, `has_unidad`).
+   - Devuelve un objeto tipado `DecisionResultado` con probabilidad de confianza y latencia.
+2. **Extractor de Entidades y Normalización (`semantic_extractor.py`):**
+   - Si se detecta mención de unidad funcional (`contiene_unidad == Yes`), normaliza expresiones coloquiales rioplatenses (ej. *"vivo en el 4b"*, *"soy de planta baja a"*) a cadenas estandarizadas (*"4° B"*, *"PB A"*).
+   - Identifica menciones de calles y edificios administrados sin exponer el padrón general.
+3. El motor determinista `ConversationFSM` recibe el objeto tipado y selecciona la plantilla oficial aprobada correspondiente.
 
 ---
 
-## 3. System Prompt del Clasificador
+## 2. Catálogo Cerrado de Intenciones (`Intencion`)
 
-```markdown
-Eres un clasificador de intenciones experto para el sistema de atención por WhatsApp de la administración de consorcios de la Dra. Ivana Seliz (CABA, Argentina).
+Definido en `apps/chatbot/src/engine/state_models.py`:
 
-Tu única función es analizar el mensaje entrante del usuario y clasificarlo con precisión estricta en formato JSON.
+| Clave de Intención | Descripción y Criterio de Activación |
+| :--- | :--- |
+| `EMERGENCIA` | Riesgo edilicio grave: incendio, personas atrapadas en ascensor, escape de gas, inundación de caño maestro. |
+| `CONSULTA_EXPENSAS` | Pedido de CBU, alias bancario, CUIT o datos de cuenta para pagar las expensas. |
+| `AVISO_PAGO_REALIZADO` | Vecino indica que realizó una transferencia o remite comprobante de pago. |
+| `RECLAMO_MANTENIMIENTO` | Averías en partes comunes: luces de palier quemadas, filtración, cerradura trabada, cochera. |
+| `MUDANZA_O_REGLAMENTO` | Horarios de mudanza, solicitud de seguro de ART, reglamento de convivencia, SUM. |
+| `TELEFONO_PORTERIA` | Pedido de teléfono o contacto del encargado / portería del edificio. |
+| `CONSULTA_ADMINISTRACION` | Consultas administrativas varias (asambleas, certificados, atención en oficina). |
+| `CIERRE_CORDIAL` | Agradecimientos y despedidas (*"gracias"*, *"ok"*, *"buen finde"*, *"👍"*). |
+| `INTENCION_AMBIGUA` | Mensajes difusos, ambiguos o cuya confianza es inferior a 0.55. |
 
-### CONTEXTO DEL NEGOCIO:
-- Consorcios administrados frecuentes:
-  - Consorcio Corrientes y Lavalle (Torre Corrientes, Torre Lavalle, Cocheras, Galería)
-  - Consorcio Callao 2334
-- Horario de atención: Lunes a Viernes de 10 a 14hs y de 14 a 17hs.
-- Las emergencias incluyen: incendios, inundaciones masivas, personas atrapadas en ascensores, escape de gas, riesgo inminente de vida o derrumbe.
+---
 
-### REGLAS DE RESPUESTA:
-- Responde ÚNICAMENTE con un JSON válido que cumpla con el esquema provisto.
-- No agregues texto introductorio, ni markdown innecesario, ni explicaciones.
-- Si el usuario menciona datos como piso, departamento o nombre del edificio, extráelos en "extracted_entities".
-- Si no estás seguro de la intención (confianza menor a 0.65), clasifica como "DESCONOCIDO_AMBIGUO".
+## 3. Lógica de Cortocircuito y Clasificación Híbrida
+
+El cliente `OpenRouterClient` evalúa qué información ya posee el contacto en PostgreSQL antes de formular el prompt a la IA:
+
+```mermaid
+flowchart TD
+    Msg[Mensaje Entrante] --> CheckProfile{¿Qué datos faltan en BD?}
+    
+    CheckProfile -- Tiene Consorcio y Unidad --> AskOnlyIntent[Pregunta Únicamente: intencion]
+    CheckProfile -- Tiene Consorcio, Falta Unidad --> AskIntentUnit[Pregunta: intencion + contiene_unidad]
+    CheckProfile -- No tiene Consorcio ni Unidad --> AskAll[Pregunta: intencion + consorcio_mencionado + contiene_unidad]
+    
+    AskOnlyIntent --> CallJev[OpenRouter typesafe/jev-1.14\nTimeout 5s]
+    AskIntentUnit --> CallJev
+    AskAll --> CallJev
+    
+    CallJev --> CheckConfidence{¿Respuesta OK y\nconfianza >= 0.55?}
+    CheckConfidence -- Sí --> ReturnDecision[DecisionResultado Listo]
+    CheckConfidence -- No / Timeout / HTTP 5xx --> FallbackGemini[Fallback Gemini 2.5 Flash\nStructured Outputs temp=0.0]
+    
+    FallbackGemini --> ReturnDecision
 ```
 
 ---
 
-## 4. Esquema JSON de Salida (Structured Output)
+## 4. Normalización de Unidades Funcionales
 
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "intent": {
-      "type": "string",
-      "enum": [
-        "EMERGENCIA",
-        "EXPENSAS_DATOS_PAGO",
-        "EXPENSAS_COMPROBANTE",
-        "EXPENSAS_RECLAMO_SALDO",
-        "RECLAMO_MANTENIMIENTO",
-        "MUDANZA_Y_REGLAMENTO",
-        "CONTACTO_PORTERIA",
-        "CONSULTA_ADMINISTRACION",
-        "SALUDO_CORDIAL",
-        "DESCONOCIDO_AMBIGUO"
-      ]
-    },
-    "sub_intent": {
-      "type": "string",
-      "description": "Detalle específico, ej: plomeria, ascensor, cerrajeria, cbu, etc."
-    },
-    "urgency": {
-      "type": "string",
-      "enum": ["EMERGENCY", "HIGH", "NORMAL", "LOW"]
-    },
-    "extracted_entities": {
-      "type": "object",
-      "properties": {
-        "consorcio_mencionado": { "type": ["string", "null"] },
-        "unidad_funcional": { "type": ["string", "null"] },
-        "descripcion_corta": { "type": ["string", "null"] }
-      },
-      "required": ["consorcio_mencionado", "unidad_funcional", "descripcion_corta"]
-    },
-    "confidence": {
-      "type": "number",
-      "description": "Nivel de certeza de 0.0 a 1.0"
-    }
-  },
-  "required": ["intent", "sub_intent", "urgency", "extracted_entities", "confidence"]
-}
-```
+Cuando `contiene_unidad == True`, se ejecuta la normalización semántica en `semantic_extractor.py`:
+
+| Entrada del Vecino | Cadena Normalizada Guardada en BD |
+| :--- | :--- |
+| *"vivo en el 4b"* / *"cuarto be"* | `"4° B"` |
+| *"soy de planta baja a"* / *"pb a"* | `"PB A"` |
+| *"segundo c"* / *"2 c"* | `"2° C"` |
+| *"piso dos depto cuatro"* | `"2° 4"` |
+| *"cochera 12 subsuelo"* | `"Cochera 12"` |
+| *"séptimo 7"* | `"7° 7"` |
 
 ---
 
-## 5. Ejemplos de Clasificación en Casos Reales
+## 5. Esquema Tipado de Salida (`DecisionResultado`)
 
-### Ejemplo 1: Emergencia Real
-- **Mensaje:** *"Hola Ivana urgente, se trabó el ascensor de la torre Lavalle en el piso 3 y hay una señora adentro pidiendo auxilio!"*
-- **JSON de Salida:**
-```json
-{
-  "intent": "EMERGENCIA",
-  "sub_intent": "ascensor_personas_atrapadas",
-  "urgency": "EMERGENCY",
-  "extracted_entities": {
-    "consorcio_mencionado": "Corrientes y Lavalle - Torre Lavalle",
-    "unidad_funcional": "Piso 3",
-    "descripcion_corta": "Ascensor trabado con personas adentro"
-  },
-  "confidence": 0.99
-}
-```
-
-### Ejemplo 2: Cobranzas / Pago de Expensas
-- **Mensaje:** *"Buenas tardes Dra, le paso el comprobante de la transferencia de las expensas de octubre del depto 8 B de Callao. Muchas gracias."*
-- **JSON de Salida:**
-```json
-{
-  "intent": "EXPENSAS_COMPROBANTE",
-  "sub_intent": "envio_transferencia",
-  "urgency": "NORMAL",
-  "extracted_entities": {
-    "consorcio_mencionado": "Callao 2334",
-    "unidad_funcional": "8 B",
-    "descripcion_corta": "Comprobante de pago expensas octubre"
-  },
-  "confidence": 0.98
-}
-```
-
-### Ejemplo 3: Reclamo Edilicio Habitual
-- **Mensaje:** *"Buen día, desde ayer que no tenemos agua caliente en el piso 4 de Corrientes, parece que la caldera está apagada."*
-- **JSON de Salida:**
-```json
-{
-  "intent": "RECLAMO_MANTENIMIENTO",
-  "sub_intent": "caldera_agua_caliente",
-  "urgency": "HIGH",
-  "extracted_entities": {
-    "consorcio_mencionado": "Corrientes y Lavalle - Torre Corrientes",
-    "unidad_funcional": "Piso 4",
-    "descripcion_corta": "Falta de agua caliente general / caldera"
-  },
-  "confidence": 0.95
-}
+```python
+class DecisionResultado(BaseModel):
+    intencion: str = Field(description="Clave de intención tipada")
+    confidence: float = Field(ge=0.0, le=1.0, description="Probabilidad de acierto")
+    consorcio_mencionado: Optional[str] = Field(None, description="Nombre normalizado del consorcio si fue detectado")
+    contiene_unidad: bool = Field(False, description="True si el mensaje contiene piso/depto")
+    unidad_extraida: Optional[str] = Field(None, description="Unidad normalizada ej: '4° B'")
+    latency_ms: float = Field(0.0, description="Tiempo de inferencia en milisegundos")
+    model_used: str = Field("typesafe/jev-1.14", description="Modelo que resolvió la clasificación")
 ```

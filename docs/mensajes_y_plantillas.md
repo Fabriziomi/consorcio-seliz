@@ -1,112 +1,118 @@
-# Catálogo de Mensajes y Plantillas Aprobadas
+# Catálogo Oficial de Mensajes y Plantillas Institucionales
 
-Este archivo contiene los textos exactos y parametrizados que el chatbot utilizará en cada punto del árbol de decisión.
-
----
-
-## 1. Mensajes de Apertura y Horario
-
-### Plantilla: `BIENVENIDA_HORARIO` (Dentro de 10 a 14hs y 14 a 17hs)
-> *"Hola, buenos días. Te comunicaste con la administración de la Dra. Ivana Seliz.*
-> *Te cuento que mi horario de atención es de 10 a 14hs y de 14 a 17hs, de Lunes a Viernes.*
-> *¿En qué podemos ayudarte hoy?"*
-
-### Plantilla: `FUERA_HORARIO` (Fuera de días y horas hábiles)
-> *"Hola, gracias por comunicarte con la administración de la Dra. Ivana Seliz.*
-> *En este momento nos encontramos fuera del horario de atención (Lunes a Viernes de 10 a 14hs y de 14 a 17hs).*
-> *Cualquier mensaje fuera del horario de atención será respondido a la brevedad en la próxima jornada hábil.*
-> 
-> *⚠️ Si tu consulta corresponde a un incidente grave (incendio, inundación, ascensor trabado con personas), por favor leé las instrucciones de emergencia a continuación."*
+Este documento formaliza el catálogo oficial de plantillas del sistema de atención conversacional de la **Dra. Ivana Seliz Administraciones**, implementado en `apps/chatbot/src/services/templates.py`.
 
 ---
 
-## 2. Mensajes de Emergencia (24/7)
+## 1. Reglas de Estilo y Políticas de Redacción
 
-### Plantilla: `EMERGENCIA_GENERAL`
-> *"🚨 **CANALES DE CONTACTO DE EMERGENCIA** 🚨*
-> 
-> *NOTA: Válido exclusivamente para situaciones de incendio, inundaciones graves, personas atrapadas en ascensores o incidentes con riesgo inminente.*
-> 
-> *• **Guardia de Emergencia Consorcio:** +54 9 11 [NÚMERO_DE_GUARDIA]*
-> *• **Bomberos:** 100*
-> *• **SAME (Urgencias Médicas):** 107*
-> *• **Policía:** 911*
-> *• **Defensa Civil CABA:** 103*
-> 
-> *Si tu edificio cuenta con portería o encargado presente, por favor dale aviso de inmediato.*
-> *Tu alerta ha sido registrada con máxima prioridad para el equipo de administración."*
+1. **Español Rioplatense Formal:**
+   - Voseo profesional argentino (*"¿cómo estás?"*, *"te comunicaste con la administración"*, *"por favor indicanos"*, *"remití tu comprobante"*).
+   - Tono sobrio, empático, resolutivo y con autoridad institucional.
+2. **Cero Emojis (Regla Estricta):**
+   - Prohibido el uso de emojis en todos los mensajes automáticos, placeholders y metadatos.
+3. **Selección Round-Robin Determinista:**
+   - Cada plantilla cuenta con 3 variantes formales equivalentes.
+   - La selección de la variante se realiza mediante `len(historial) % 3`, logrando variedad conversacional natural sin depender de variabilidad estocástica de un LLM.
+4. **Cero Alucinaciones:**
+   - Las plantillas solo interpolan variables previamente verificadas en la base de datos o validadas en el contexto.
 
 ---
 
-## 3. Identificación y Protección de Privacidad
+## 2. Catálogo de Plantillas por Estado e Intención
 
-### Plantilla: `SOLICITAR_CONSORCIO` (Para usuarios no registrados)
-*(Cumple la regla de NO revelar la lista de clientes o consorcios externos)*
-> *"Para poder derivar correctamente tu consulta, por favor indicanos:*
-> 1. *¿A qué edificio o dirección pertenecés?*
-> 2. *¿Cuál es tu unidad (Piso y Depto / Cochera)?*
-> 3. *¿Sos propietario o inquilino?*
-> 
-> *Con estos datos podremos brindarte la información exacta de tu consorcio."*
+### A. Onboarding de Datos (`ONBOARDING_DATOS`)
+*Se activa cuando un usuario nuevo o sin datos en su perfil envía una consulta que requiere consorcio y unidad.*
+- **Variante 1:** *"Hola{nombre_saludo}, ¿cómo estás? Te comunicaste con la administración de la Dra. Ivana Seliz. Para poder registrar tu consulta y asistirte, ¿podrías indicarnos a qué edificio pertenecés y cuál es tu unidad funcional (piso y departamento)?"*
+- **Variante 2:** *"Hola{nombre_saludo}, gracias por contactar a la administración de la Dra. Ivana Seliz. Para poder canalizar tu mensaje con el equipo correspondiente, por favor decinos de qué consorcio y qué departamento nos escribís."*
+- **Variante 3:** *"Hola{nombre_saludo}, buenas tardes. Desde la administración de la Dra. Ivana Seliz te pedimos, por favor, que nos indiques tu edificio y número de unidad funcional (piso y letra) para poder gestionar tu mensaje."*
+
+### B. Reintento de Onboarding (`ONBOARDING_REINTENTO_1`)
+*Se activa si en el primer intento no fue posible identificar el edificio o la unidad.*
+- **Variante 1:** *"Hola{nombre_saludo}, no pudimos identificar el edificio en nuestro padrón. Por favor, escribí la calle y altura exacta del inmueble, junto con tu piso y departamento."*
+- **Variante 2:** *"Disculpá{nombre_saludo}, no encontramos el consorcio con los datos provistos. ¿Podrías reiterarnos la dirección exacta con calle, numeración y unidad funcional?"*
+- **Variante 3:** *"Hola{nombre_saludo}, necesitamos confirmar la dirección precisa. Indicá por favor la calle y número de puerta del consorcio y tu departamento para poder ubicarte en el sistema."*
+
+### C. Bailout de Onboarding (`ONBOARDING_BAILOUT`)
+*Se activa al fallar dos intentos consecutivos para cortar el bucle y derivar a atención humana.*
+- **Variante 1:** *"Hola{nombre_saludo}, no logramos validar los datos de tu edificio en el sistema. Dejamos asentado tu mensaje para que la Dra. Ivana Seliz lo revise personalmente a partir de las 10:00 hs en horario de oficina."*
+- **Variante 2:** *"Gracias por tu mensaje{nombre_saludo}. Al no poder verificar la dirección del inmueble, el caso queda derivado para su revisión manual por la administración a las 10:00 hs."*
+- **Variante 3:** *"Hola{nombre_saludo}, asentamos tu contacto para atención personalizada. El equipo de administración retomará tu consulta a partir de las 10:00 hs en horario habitual de atención."*
+
+### D. Solicitud de Edificio para Expensas (`SOLICITAR_EDIFICIO_EXPENSAS`)
+*Se activa cuando se solicita CBU pero no se conoce el edificio del usuario.*
+- **Variante 1:** *"Hola{nombre_saludo}, para poder enviarte los datos de cuenta bancaria y CBU correspondientes al pago de expensas, ¿podrías indicarnos la dirección de tu edificio?"*
+- **Variante 2:** *"Hola{nombre_saludo}, ¿a qué edificio pertenecés? Decinos la calle y altura para poder enviarte el CBU oficial de tu consorcio."*
+- **Variante 3:** *"Buenas tardes{nombre_saludo}, para brindarte la información bancaria exacta necesitamos saber a qué consorcio pertenecés. Por favor indicanos la dirección de tu edificio."*
+
+### E. Solicitud de Edificio para Emergencia (`SOLICITAR_EDIFICIO_EMERGENCIA`)
+*Se activa ante un incidente grave sin consorcio asignado.*
+- **Variante 1:** *"Hola{nombre_saludo}. Si estás ante una emergencia con riesgo inminente, comunicate de inmediato con Bomberos (100) o SAME (107). Para enviar la guardia técnica del edificio a la brevedad, por favor indicanos con urgencia la dirección exacta y piso."*
+- **Variante 2:** *"ATENCIÓN: Si hay peligro inminente (gas, fuego o derrumbe), llamá urgente a Bomberos (100), SAME (107) o Policía (911). Por favor escribinos la calle y número del edificio para despachar la guardia técnica correspondiente."*
+- **Variante 3:** *"Hola{nombre_saludo}. Ante situaciones de urgencia crítica llamá de inmediato al 100 (Bomberos) o 107 (SAME). Indicanos la dirección de tu edificio ya mismo para derivar la asistencia técnica del consorcio."*
+
+### F. Datos de Expensas y Cobranzas (`EXPENSAS_DATOS_PAGO`)
+*Se activa cuando el consorcio está verificado y se solicitan datos bancarios.*
+- **Variante 1:**
+  > *"Hola{nombre_saludo}, te compartimos los datos oficiales de la cuenta bancaria del consorcio {consorcio}:*
+  > *• CBU: {cbu}*
+  > *• Alias: {alias}*
+  > *• CUIT: {cuit}*
+  > *Una vez realizada la transferencia, recordá remitir el comprobante a {email_cobranzas} indicando tu unidad funcional."*
+- **Variante 2:**
+  > *"Buenas tardes{nombre_saludo}. Los datos bancarios del consorcio {consorcio} son los siguientes:*
+  > *• Cuenta CBU: {cbu}*
+  > *• Alias: {alias}*
+  > *• CUIT: {cuit}*
+  > *Por favor enviá el comprobante de pago por correo electrónico a {email_cobranzas} para su imputación contable."*
+- **Variante 3:**
+  > *"Hola{nombre_saludo}, los datos para el pago de expensas de {consorcio} son:*
+  > *• CBU oficial: {cbu}*
+  > *• Alias: {alias}*
+  > *• CUIT: {cuit}*
+  > *Es indispensable enviar el comprobante de transferencia a {email_cobranzas} detallando piso y departamento."*
+
+### G. Aviso de Pago Realizado (`AVISO_PAGO_CONFIRMACION`)
+- **Variante 1:** *"Gracias por avisarnos{nombre_saludo}. Te recordamos que es necesario enviar el comprobante de transferencia por correo electrónico a {email_cobranzas} para que el sector contable lo impute en tu cuenta."*
+- **Variante 2:** *"Tomamos conocimiento de tu aviso de pago{nombre_saludo}. Por favor remití el comprobante a {email_cobranzas} indicando tu unidad para registrar la acreditación correspondiente."*
+- **Variante 3:** *"Hola{nombre_saludo}, gracias por la información. Para imputar el pago en las expensas, recordá enviar el comprobante digital a {email_cobranzas} con los datos de tu departamento."*
+
+### H. Emergencia Activa con Guardias Técnicas (`EMERGENCIA_ACTIVA`)
+- **Variante 1:**
+  > *"ATENCIÓN: Si hay peligro inminente, comunicate de inmediato con Bomberos (100), SAME (107) o Policía (911).*
+  > *Contactos de urgencia para el consorcio {consorcio}:*
+  > *{telefonos_guardia}*
+  > *Dejamos asentada tu notificación con prioridad urgente para la administración."*
+- **Variante 2:**
+  > *"EMERGENCIA: Para situaciones críticas con riesgo de vida comunicate ya al 100 (Bomberos) o 107 (SAME).*
+  > *Guardias técnicas habilitadas para {consorcio}:*
+  > *{telefonos_guardia}*
+  > *El caso queda registrado con alerta prioritaria para intervención inmediata."*
+- **Variante 3:**
+  > *"Aviso de urgencia para {consorcio}. Ante peligro grave llamá inmediatamente al 100 (Bomberos), 107 (SAME) o 911.*
+  > *Líneas de asistencia técnica de guardia:*
+  > *{telefonos_guardia}*
+  > *Tomamos conocimiento de la situación con máxima prioridad."*
+
+### I. Acuse de Recibo de Reclamos (`RECLAMO_ACUSE_RECIBO`)
+- **Variante 1:** *"Hola{nombre_saludo}, registramos tu mensaje sobre el inconveniente reportado en {consorcio}{unidad}. El equipo de administración lo evaluará a partir de las 10:00 hs para coordinar la intervención técnica correspondiente."*
+- **Variante 2:** *"Buenas tardes{nombre_saludo}. Tomamos conocimiento del reclamo correspondiente a {consorcio}{unidad}. El tema será revisado por la administración a partir de las 10:00 hs en horario habitual de atención."*
+- **Variante 3:** *"Hola{nombre_saludo}, quedó asentado tu reporte para {consorcio}{unidad}. A partir de las 10:00 hs el equipo técnico evaluará la prioridad y las acciones a seguir."*
+
+### J. Intención Ambigua / Menú Cordial (`INTENCION_AMBIGUA`)
+- **Variante 1:** *"Hola{nombre_saludo}, ¿cómo estás? Para poder asistirte mejor, por favor indicanos el motivo de tu consulta (pago de expensas, reporte de avería, mudanza o urgencia) junto con tu edificio y departamento."*
+- **Variante 2:** *"Buenas tardes{nombre_saludo}. Para derivar tu mensaje correctamente, por favor escribinos detallando tu consulta y mencionando a qué consorcio y unidad pertenecés."*
+- **Variante 3:** *"Hola{nombre_saludo}, recibimos tu mensaje. Para orientarte adecuadamente, por favor decinos en qué podemos ayudarte e indicá tu dirección y departamento."*
 
 ---
 
-## 4. Expensas y Cobranzas
+## 3. Validación Preventiva en el Arranque
 
-### Plantilla: `EXPENSAS_DATOS_PAGO_CORRIENTES_LAVALLE`
-> *"📋 **Datos de Pago — Consorcio Corrientes y Lavalle** (Torre Corrientes, Torre Lavalle, Cochera y Galería):*
-> 
-> *• **Banco / Cuenta:** [NOMBRE_BANCO]*
-> *• **CBU:** [CBU_CORRIENTES_LAVALLE]*
-> *• **Alias:** [ALIAS_CORRIENTES_LAVALLE]*
-> *• **Titular:** Consorcio Propietarios Corrientes y Lavalle*
-> *• **CUIT:** [CUIT_CORRIENTES_LAVALLE]*
-> *• **Email de cobranzas:** [EMAIL_COBRANZAS]*
-> 
-> *Recordá remitir el comprobante de transferencia indicando claramente tu Torre, Piso y Departamento."*
-
-### Plantilla: `EXPENSAS_DATOS_PAGO_CALLAO_2334`
-> *"📋 **Datos de Pago — Consorcio Callao 2334**:*
-> 
-> *• **Banco / Cuenta:** [NOMBRE_BANCO]*
-> *• **CBU:** [CBU_CALLAO_2334]*
-> *• **Alias:** [ALIAS_CALLAO_2334]*
-> *• **Titular:** Consorcio Propietarios Callao 2334*
-> *• **CUIT:** [CUIT_CALLAO_2334]*
-> *• **Email de cobranzas:** [EMAIL_COBRANZAS]*
-> 
-> *Recordá remitir el comprobante de transferencia indicando tu Piso y Departamento."*
-
-### Plantilla: `CONFIRMACION_COMPROBANTE_PAGO`
-> *"✅ Muchas gracias. Hemos recibido tu comprobante de transferencia.*
-> *El archivo fue derivado al área de cobranzas para su correspondiente imputación en la liquidación de expensas."*
-
----
-
-## 5. Reclamos y Averías Técnicas
-
-### Plantilla: `SOLICITAR_DETALLE_RECLAMO`
-> *"Tomamos nota de tu reporte edilicio.*
-> *Para que el equipo de mantenimiento pueda evaluar el caso con precisión:*
-> 1. *Por favor describinos brevemente la falla.*
-> 2. *Si es posible, envianos una foto o video corto de la situación.*
-> 3. *Indicá si la avería afecta solo a tu unidad o a espacios comunes / otros pisos."*
-
-### Plantilla: `CONFIRMACION_TICKET_RECLAMO`
-> *"🛠️ Tu reclamo ha sido registrado con el Ticket Nº **#{TICKET_ID}**.*
-> *El área técnica de administración evaluará la prioridad y coordinará la visita del proveedor habilitado en el horario habitual de servicio.*
-> *¡Muchas gracias por colaborar con el mantenimiento del edificio!"*
-
----
-
-## 6. Teléfonos de Portería e Información Edilicia
-
-### Plantilla: `CONTACTO_PORTERIA`
-> *"🏢 **Datos de Portería y Encargado — {NOMBRE_CONSORCIO}**:*
-> 
-> *• **Encargado:** [NOMBRE_ENCARGADO]*
-> *• **Teléfono de portería:** {TELEFONO_PORTERIA}*
-> *• **Horario habitual de portería:** [HORARIO_PORTERIA]*
-> *• **Retiro de residuos:** Lunes a Domingos de 19:00 a 20:00 hs (en bolsas cerradas).*
-> 
-> *Cualquier duda administrativa adicional podés gestionarla por este mismo canal con la Dra. Ivana Seliz."*
+Al iniciar el servidor FastAPI, se invoca automáticamente:
+```python
+validate_templates_on_startup()
+```
+Esta función valida que:
+1. Las 20 plantillas contengan exactamente 3 variantes cada una.
+2. Ningún placeholder contenga errores tipográficos.
+3. Se rechace cualquier plantilla que contenga caracteres emoji o lunfardo no institucional.
