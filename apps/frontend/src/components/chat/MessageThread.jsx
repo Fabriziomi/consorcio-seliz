@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import {
   SendHorizontal,
   Paperclip,
@@ -234,9 +234,10 @@ const MessageList = React.memo(function MessageList({
   onPreviewMedia,
   onMediaError,
   messagesEndRef,
+  scrollContainerRef,
 }) {
   return (
-    <div className="absolute inset-0 overflow-y-auto p-3 sm:p-4 space-y-2">
+    <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto p-3 sm:p-4 space-y-2">
       <div className="max-w-4xl mx-auto w-full space-y-2">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-xs text-text-muted relative z-10">
@@ -291,6 +292,10 @@ export const MessageThread = React.memo(function MessageThread({
   const [brokenMediaIds, setBrokenMediaIds] = useState({});
 
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const initialScrollDoneRef = useRef(null);
+  const prevConversationIdRef = useRef(conversationId);
+  const prevMessagesCountRef = useRef(messages.length);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const statusDropdownRef = useRef(null);
@@ -303,10 +308,49 @@ export const MessageThread = React.memo(function MessageThread({
     setPreviewModalMedia(media);
   }, []);
 
-  // Auto-scroll al final con cada mensaje nuevo o archivo seleccionado
+  // Posicionamiento instantáneo al fondo sin animación al abrir o alternar conversación
+  useLayoutEffect(() => {
+    if (prevConversationIdRef.current !== conversationId) {
+      prevConversationIdRef.current = conversationId;
+      initialScrollDoneRef.current = null;
+    }
+
+    if (initialScrollDoneRef.current !== conversationId && messages.length > 0) {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      initialScrollDoneRef.current = conversationId;
+      prevMessagesCountRef.current = messages.length;
+
+      // Asegurar posición final en el siguiente cuadro para dispositivos lentos
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [conversationId, messages.length]);
+
+  // Manejo de scroll para nuevos mensajes en conversación activa
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length, selectedFile]);
+    // Si todavía no se realizó el scroll inicial (ej. mensajes cargaron asincrónicamente)
+    if (initialScrollDoneRef.current !== conversationId && messages.length > 0) {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      initialScrollDoneRef.current = conversationId;
+      prevMessagesCountRef.current = messages.length;
+      return;
+    }
+
+    // Scroll suave exclusivamente cuando llega un mensaje nuevo o archivo adjunto en una conversación ya abierta
+    if (messages.length > prevMessagesCountRef.current || selectedFile) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessagesCountRef.current = messages.length;
+  }, [conversationId, messages.length, selectedFile]);
 
   // Cerrar modal de vista previa de imagen al presionar Escape
   useEffect(() => {
@@ -603,6 +647,7 @@ export const MessageThread = React.memo(function MessageThread({
           onPreviewMedia={handlePreviewMedia}
           onMediaError={handleMediaError}
           messagesEndRef={messagesEndRef}
+          scrollContainerRef={scrollContainerRef}
         />
       </div>
 
