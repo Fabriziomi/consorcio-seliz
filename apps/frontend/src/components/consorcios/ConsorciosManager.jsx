@@ -275,7 +275,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
             </div>
           </CardHeader>
 
-          <CardContent className="p-0 overflow-y-auto divide-y divide-border max-h-[calc(100dvh-12rem)]">
+          <CardContent className="p-0 overflow-y-auto max-h-[calc(100dvh-12rem)]">
             {consorcios.map((c) => {
               const isSelected = Boolean(selectedId != null && (c.id === selectedId || String(c.id) === String(selectedId)));
               return (
@@ -295,23 +295,25 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                       setMobileView('detail');
                     }
                   }}
-                  className={`p-3.5 cursor-pointer group transition-all duration-500 ease-out flex items-center justify-between gap-2 border-l-4 hover:translate-x-1 active:scale-[0.99] outline-none ${
+                  className={`group relative p-3.5 cursor-pointer transition-colors duration-200 flex items-center justify-between gap-2 border-b border-border/60 outline-none select-none ${
                     isSelected
-                      ? 'bg-zinc-200/90 hover:bg-zinc-300/80 border-brand-ink shadow-sm'
-                      : 'bg-white hover:bg-zinc-100/90 border-transparent hover:border-zinc-300 focus-visible:bg-zinc-100/90'
+                      ? 'bg-zinc-100/90 hover:bg-zinc-200/70 shadow-2xs'
+                      : 'bg-white hover:bg-zinc-100/80 focus-visible:bg-zinc-100/80'
                   }`}
                 >
+                  {/* Indicador lateral izquierdo activo / hover (inmune a superposición CSS) */}
+                  <span
+                    className={`absolute left-0 top-0 bottom-0 w-1 transition-all duration-200 pointer-events-none ${
+                      isSelected
+                        ? 'bg-brand-ink opacity-100'
+                        : 'bg-brand-ink opacity-0 group-hover:opacity-40'
+                    }`}
+                    aria-hidden="true"
+                  />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className={`text-xs sm:text-sm truncate ${isSelected ? 'font-bold text-brand-ink' : 'font-semibold text-brand-ink'}`}>
-                        {c.nombre}
-                      </p>
-                      {isSelected && (
-                        <span className="text-[9px] font-bold tracking-wider uppercase bg-brand-ink text-white px-1.5 py-0.5 rounded shadow-2xs shrink-0 transition-all duration-500">
-                          Activo
-                        </span>
-                      )}
-                    </div>
+                    <p className={`text-xs sm:text-sm truncate transition-colors duration-300 ${isSelected ? 'font-bold text-brand-ink' : 'font-semibold text-brand-ink'}`}>
+                      {c.nombre}
+                    </p>
                     <p className="text-[11px] text-text-muted truncate mt-0.5">
                       {c.direccion}
                     </p>
@@ -321,7 +323,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                       </span>
                     )}
                   </div>
-                  <ChevronRight size={14} strokeWidth={2} className={`transition-all duration-500 ease-out group-hover:translate-x-1.5 group-hover:scale-125 ${isSelected ? 'text-brand-ink' : 'text-text-muted'}`} />
+                  <ChevronRight size={14} strokeWidth={2} className={`transition-all duration-300 ease-out group-hover:translate-x-1 ${isSelected ? 'text-brand-ink' : 'text-text-muted'}`} />
                 </div>
               );
             })}

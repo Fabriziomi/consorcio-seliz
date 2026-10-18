@@ -119,7 +119,7 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
       </div>
 
       {/* Lista de Conversaciones con Avatar Original */}
-      <div className="flex-1 overflow-y-auto divide-y divide-border/60">
+      <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-xs text-text-muted">
             No hay conversaciones para mostrar.
@@ -152,16 +152,26 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
                     onSelect(c.id);
                   }
                 }}
-                className={`group relative p-3 sm:px-3.5 sm:py-3 cursor-pointer transition-all duration-500 ease-out flex items-start gap-3 touch-manipulation border-l-4 active:scale-[0.99] outline-none ${
+                className={`group relative p-3 sm:px-3.5 sm:py-3 cursor-pointer transition-colors duration-200 flex items-start gap-3 border-b border-border/60 outline-none select-none ${
                   isSelected
-                    ? 'bg-zinc-200/90 hover:bg-zinc-300/80 border-brand-ink shadow-sm hover:translate-x-1'
-                    : 'bg-white hover:bg-zinc-100/90 border-transparent hover:border-zinc-300 hover:translate-x-1 focus-visible:bg-zinc-100/90'
+                    ? 'bg-zinc-100/90 hover:bg-zinc-200/70 shadow-2xs'
+                    : 'bg-white hover:bg-zinc-100/80 focus-visible:bg-zinc-100/80'
                 }`}
               >
-                {/* Avatar con prioridad a imagen original y zoom en hover con animacion de 500ms */}
+                {/* Indicador lateral izquierdo activo / hover (inmune a superposición CSS) */}
+                <span
+                  className={`absolute left-0 top-0 bottom-0 w-1 transition-all duration-200 pointer-events-none ${
+                    isSelected
+                      ? 'bg-brand-ink opacity-100'
+                      : 'bg-brand-ink opacity-0 group-hover:opacity-40'
+                  }`}
+                  aria-hidden="true"
+                />
+
+                {/* Avatar con prioridad a imagen original y zoom suave en hover */}
                 <div
-                  className={`size-10 sm:size-11 rounded-full shrink-0 overflow-hidden bg-brand-ink text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-2xs relative border transition-all duration-500 ease-out group-hover:scale-110 ${
-                    isSelected ? 'border-brand-ink ring-2 ring-brand-ink/30 scale-105' : 'border-border/60'
+                  className={`size-10 sm:size-11 rounded-full shrink-0 overflow-hidden bg-brand-ink text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-2xs relative border transition-all duration-300 ease-out group-hover:scale-105 ${
+                    isSelected ? 'border-brand-ink ring-2 ring-brand-ink/20' : 'border-border/60'
                   }`}
                 >
                   {avatar && !hasBrokenImg ? (
@@ -169,39 +179,32 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
                       src={avatar}
                       alt={name}
                       onError={() => handleImageError(c.id)}
-                      className="size-full object-cover rounded-full transition-transform duration-500 ease-out group-hover:scale-115"
+                      className="size-full object-cover rounded-full transition-transform duration-300 ease-out group-hover:scale-110"
                       loading="lazy"
                     />
                   ) : name ? (
-                    <span className="transition-transform duration-500 ease-out group-hover:scale-115">{name.charAt(0).toUpperCase()}</span>
+                    <span className="transition-transform duration-300 ease-out group-hover:scale-110">{name.charAt(0).toUpperCase()}</span>
                   ) : (
-                    <User size={20} strokeWidth={1.8} className="transition-transform duration-500 ease-out group-hover:scale-115" />
+                    <User size={20} strokeWidth={1.8} className="transition-transform duration-300 ease-out group-hover:scale-110" />
                   )}
                 </div>
 
                 <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                  {/* Fila 1: Remitente, Badge de Estado Activo y Hora/Fecha */}
+                  {/* Fila 1: Remitente y Hora/Fecha */}
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span
-                        className={`text-xs sm:text-sm truncate transition-colors duration-500 ${
-                          isSelected
-                            ? 'font-bold text-brand-ink'
-                            : unread > 0
-                            ? 'font-bold text-brand-ink'
-                            : 'font-semibold text-brand-ink/90'
-                        }`}
-                      >
-                        {name}
-                      </span>
-                      {isSelected && (
-                        <span className="text-[9px] font-bold tracking-wider uppercase bg-brand-ink text-white px-1.5 py-0.5 rounded shadow-2xs shrink-0 transition-all duration-500">
-                          Activo
-                        </span>
-                      )}
-                    </div>
                     <span
-                      className={`text-[10px] sm:text-[11px] shrink-0 transition-colors duration-500 ${
+                      className={`text-xs sm:text-sm truncate transition-colors duration-300 ${
+                        isSelected
+                          ? 'font-bold text-brand-ink'
+                          : unread > 0
+                          ? 'font-bold text-brand-ink'
+                          : 'font-semibold text-brand-ink/90'
+                      }`}
+                    >
+                      {name}
+                    </span>
+                    <span
+                      className={`text-[10px] sm:text-[11px] shrink-0 transition-colors duration-300 ${
                         isSelected || unread > 0
                           ? 'text-brand-ink font-semibold'
                           : 'text-text-muted font-normal'
@@ -222,7 +225,7 @@ export function ChatInbox({ conversations = [], selectedId, onSelect }) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       {getStatusBadge(status)}
                       {unread > 0 && (
-                        <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-brand-ink text-white text-[10px] font-bold flex items-center justify-center shrink-0 shadow-2xs transition-transform duration-500 group-hover:scale-115">
+                        <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-brand-ink text-white text-[10px] font-bold flex items-center justify-center shrink-0 shadow-2xs transition-transform duration-300 group-hover:scale-110">
                           {unread}
                         </span>
                       )}
