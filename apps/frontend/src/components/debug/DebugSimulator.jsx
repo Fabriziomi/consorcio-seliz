@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import {
-  Send,
-  Terminal,
+  SendHorizontal,
+  FlaskConical,
   Clock,
   AlertCircle,
   Bot,
   User,
   CheckCircle2,
-  RotateCw,
-  Zap,
+  RefreshCw,
   Info,
 } from 'lucide-react';
 import { useToast } from '../ui/ToastNotification.jsx';
@@ -125,7 +124,7 @@ export function DebugSimulator() {
         <CardHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2.5">
-              <Terminal className="w-5 h-5 text-brand-ink" />
+              <FlaskConical className="w-5 h-5 text-brand-ink" />
               <div>
                 <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
                   Simulador de Atención y Respuestas
@@ -138,7 +137,7 @@ export function DebugSimulator() {
               size="sm"
               onClick={() => setHistory([])}
             >
-              <RotateCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5" />
               <span>Limpiar Historial</span>
             </Button>
           </div>
@@ -200,7 +199,7 @@ export function DebugSimulator() {
                   disabled={loading || !message.trim()}
                   className="w-full min-h-11 rounded-xl shadow-2xs"
                 >
-                  <Send className="w-4 h-4" />
+                  <SendHorizontal className="w-4 h-4" />
                   <span>{loading ? 'Procesando…' : 'Probar Respuesta'}</span>
                 </Button>
               </div>
@@ -255,7 +254,7 @@ export function DebugSimulator() {
       <div className="overflow-y-auto space-y-4 pr-1 max-h-[calc(100dvh-20rem)]">
         {history.length === 0 ? (
           <Card className="p-8 text-center text-text-muted">
-            <Terminal className="w-8 h-8 mx-auto mb-2 opacity-40 text-brand-ink" />
+            <FlaskConical className="w-8 h-8 mx-auto mb-2 opacity-40 text-brand-ink" />
             <p className="text-sm font-medium text-brand-ink">No hay mensajes en esta sesión de debug.</p>
             <p className="text-xs text-text-secondary mt-1">
               Ingresa un texto arriba o ejecuta el script CLI <code className="text-brand-ink">./scripts/chat_debug.sh "..."</code>

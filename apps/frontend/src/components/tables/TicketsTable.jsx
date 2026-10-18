@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RotateCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../ui/Card.jsx';
 import { Badge } from '../ui/Badge.jsx';
 import { Button } from '../ui/Button.jsx';
@@ -91,7 +91,7 @@ export function TicketsTable({
                 title="Actualizar tickets desde la base de datos"
                 aria-label="Actualizar tickets"
               >
-                <RotateCw size={18} strokeWidth={2} />
+                <RefreshCw size={18} strokeWidth={2} />
               </Button>
             )}
             <span className="text-xs text-text-muted font-medium bg-surface-muted px-2.5 py-1 rounded-full border border-border/60">

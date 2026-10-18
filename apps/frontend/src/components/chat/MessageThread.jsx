@@ -4,7 +4,7 @@ import {
   Paperclip,
   ChevronLeft,
   Lock,
-  Globe,
+  MessageCircle,
   Bot,
   UserCheck,
   CheckCircle2,
@@ -667,7 +667,7 @@ export const MessageThread = React.memo(function MessageThread({
                 : 'text-text-secondary hover:text-brand-ink'
             }`}
           >
-            <Globe size={15} />
+            <MessageCircle size={15} strokeWidth={!isPrivateNote ? 2 : 1.75} />
           </button>
 
           <button

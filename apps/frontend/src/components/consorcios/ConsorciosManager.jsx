@@ -3,9 +3,9 @@ import {
   Building2,
   Plus,
   Trash2,
-  Pencil,
+  PenLine,
   Save,
-  RotateCw,
+  RefreshCw,
   Check,
   X,
   Phone,
@@ -261,7 +261,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                 disabled={loading}
                 title="Recargar consorcios"
               >
-                <RotateCw size={18} strokeWidth={2} className={loading ? 'animate-spin' : ''} />
+                <RefreshCw size={18} strokeWidth={2} className={loading ? 'animate-spin' : ''} />
               </Button>
               <Button
                 variant="primary"
@@ -736,7 +736,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
                                           title="Editar atributo"
                                           className="size-8 sm:size-9 rounded-xl border border-border/80 bg-white text-text-secondary hover:text-brand-ink hover:bg-surface-muted flex items-center justify-center cursor-pointer shadow-2xs transition-all duration-500 ease-out hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115"
                                         >
-                                          <Pencil size={16} strokeWidth={1.8} />
+                                          <PenLine size={16} strokeWidth={1.8} />
                                         </button>
                                         <button
                                           type="button"

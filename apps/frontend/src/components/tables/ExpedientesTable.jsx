@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  RotateCw,
-  Send,
-  Users,
+  RefreshCw,
+  SendHorizontal,
+  Contact2,
   ChevronDown,
   ChevronUp,
   CheckCircle2,
@@ -134,7 +134,7 @@ export function ExpedientesTable({
                 title="Actualizar expedientes desde el servidor"
                 aria-label="Actualizar expedientes"
               >
-                <RotateCw size={18} strokeWidth={2} />
+                <RefreshCw size={18} strokeWidth={2} />
               </Button>
             )}
             <span className="text-xs text-text-muted font-medium bg-surface-muted px-2.5 py-1 rounded-full border border-border/60">
@@ -216,7 +216,7 @@ export function ExpedientesTable({
                     </td>
                     <td className="px-3.5 py-2.5 text-center">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-muted border border-border text-brand-ink">
-                        <Users size={14} strokeWidth={1.8} />
+                        <Contact2 size={14} strokeWidth={1.8} />
                         <span>{exp.ticketsCount} reportes</span>
                       </span>
                     </td>
@@ -252,7 +252,7 @@ export function ExpedientesTable({
                         className="whitespace-nowrap font-medium"
                         title="Enviar mensaje masivo por WhatsApp a todos los vecinos que reportaron"
                       >
-                        <Send size={16} strokeWidth={2} />
+                        <SendHorizontal size={16} strokeWidth={2} />
                         <span>Avisar Vecinos</span>
                       </Button>
                     </td>
@@ -275,7 +275,7 @@ export function ExpedientesTable({
             <div>
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-brand-ink flex items-center gap-2">
-                  <Send size={16} strokeWidth={2} className="text-brand-ink" />
+                  <SendHorizontal size={16} strokeWidth={2} className="text-brand-ink" />
                   <span>Notificar a Vecinos Involucrados</span>
                 </h3>
                 <span className="text-xs font-semibold bg-surface-muted px-2 py-0.5 rounded border border-border">
@@ -323,7 +323,7 @@ export function ExpedientesTable({
                 loading={sendingBroadcast}
                 className="bg-brand-ink text-white font-semibold"
               >
-                <Send size={16} strokeWidth={2} />
+                <SendHorizontal size={16} strokeWidth={2} />
                 <span>Despachar WhatsApp</span>
               </Button>
             </div>

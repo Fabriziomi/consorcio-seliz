@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  HelpCircle,
+  MessageCircleQuestion,
   Search,
   Plus,
   Trash2,
-  Pencil,
+  PenLine,
   CheckCircle2,
   XCircle,
-  RotateCw,
+  RefreshCw,
   Building2,
   Sparkles,
   Check,
@@ -214,7 +214,7 @@ export function FaqsManager({ consorcios = [] }) {
                 title="Actualizar FAQs desde el servidor"
                 aria-label="Actualizar FAQs"
               >
-                <RotateCw size={18} strokeWidth={2} />
+                <RefreshCw size={18} strokeWidth={2} />
               </Button>
 
               <Button
@@ -355,7 +355,7 @@ export function FaqsManager({ consorcios = [] }) {
                         aria-label="Editar FAQ"
                         className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 ease-out hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer shadow-2xs"
                       >
-                        <Pencil size={17} strokeWidth={1.8} />
+                        <PenLine size={17} strokeWidth={1.8} />
                       </button>
 
                       {deleteConfirmId === faq.id ? (
@@ -479,7 +479,7 @@ export function FaqsManager({ consorcios = [] }) {
                               aria-label="Editar FAQ"
                               className="size-9 rounded-xl border border-border/80 bg-white flex items-center justify-center text-text-secondary hover:text-brand-ink hover:bg-surface-muted transition-all duration-500 ease-out hover:scale-110 active:scale-90 [&>svg]:transition-transform [&>svg]:duration-500 hover:[&>svg]:scale-115 cursor-pointer shadow-2xs"
                             >
-                              <Pencil size={18} strokeWidth={1.8} />
+                              <PenLine size={18} strokeWidth={1.8} />
                             </button>
 
                             {deleteConfirmId === faq.id ? (
@@ -535,7 +535,7 @@ export function FaqsManager({ consorcios = [] }) {
         {/* Cabecera del Modal */}
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-surface-soft">
           <div className="flex items-center gap-2">
-            <HelpCircle size={18} strokeWidth={1.8} className="text-brand-ink" />
+            <MessageCircleQuestion size={18} strokeWidth={1.8} className="text-brand-ink" />
             <h3 className="text-sm font-bold text-brand-ink">
               {editingFaq ? 'Editar Pregunta Frecuente' : 'Nueva Pregunta Frecuente'}
             </h3>

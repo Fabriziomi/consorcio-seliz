@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   Search,
-  Tag,
+  Hash,
   User,
 } from 'lucide-react';
 import { Badge } from '../ui/Badge.jsx';
@@ -170,7 +170,7 @@ const ConversationCard = React.memo(function ConversationCard({
                 key={tag}
                 className="text-[9px] sm:text-[10px] font-medium tracking-wide px-2 py-0.5 rounded-full bg-surface-muted text-text-secondary border border-border/70 flex items-center gap-1 shadow-2xs"
               >
-                <Tag size={10} strokeWidth={1.8} className="text-text-muted shrink-0" />
+                <Hash size={11} strokeWidth={2} className="text-text-muted shrink-0" />
                 <span>{tag}</span>
               </span>
             ))}

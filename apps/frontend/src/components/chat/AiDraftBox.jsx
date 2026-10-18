@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit2, X, Send } from 'lucide-react';
+import { PenLine, Check, X, SendHorizontal } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 
 export function AiDraftBox({
@@ -47,7 +47,7 @@ export function AiDraftBox({
             onClick={() => setIsEditing(!isEditing)}
             className="h-8 sm:h-9 px-2.5 sm:px-3 text-xs"
           >
-            <Edit2 className="w-3.5 h-3.5" />
+            {isEditing ? <Check className="w-3.5 h-3.5" /> : <PenLine className="w-3.5 h-3.5" />}
             <span>{isEditing ? 'Listo' : 'Editar'}</span>
           </Button>
 
@@ -57,7 +57,7 @@ export function AiDraftBox({
             onClick={() => onApprove(draftText)}
             className="h-8 sm:h-9 px-3 sm:px-3.5 text-xs"
           >
-            <Send className="w-3.5 h-3.5" />
+            <SendHorizontal className="w-3.5 h-3.5" />
             <span>
               <span className="inline sm:hidden">Aprobar</span>
               <span className="hidden sm:inline">Aprobar y Enviar</span>

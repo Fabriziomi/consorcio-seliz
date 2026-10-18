@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Building2,
-  MessagesSquare,
-  Terminal,
+  MessageSquareText,
+  FlaskConical,
   ZoomOut,
   ZoomIn,
-  RotateCw,
   LogOut,
   Pin,
   ChevronDown,
   ChevronUp,
   Sparkles,
-  BookOpen,
-  Users,
+  BookOpenText,
+  Contact2,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { ToastProvider, useToast } from './components/ui/ToastNotification.jsx';
 import { LoginForm } from './components/auth/LoginForm.jsx';
@@ -620,11 +620,11 @@ export default function App() {
   }, [loadExpedientes, loadTickets, loadConsorcios, loadConversaciones]);
 
   const navigationItems = [
-    { id: 'inbox', label: 'Inbox', icon: MessagesSquare },
-    { id: 'faqs', label: 'Base de Conocimiento', icon: BookOpen },
+    { id: 'inbox', label: 'Inbox', icon: MessageSquareText },
+    { id: 'faqs', label: 'Base de Conocimiento', icon: BookOpenText },
     { id: 'consorcios', label: 'Consorcios & Atributos', icon: Building2 },
-    { id: 'contactos', label: 'Directorio de Contactos', icon: Users },
-    { id: 'debug', label: 'Simulador de Atención', icon: Terminal },
+    { id: 'contactos', label: 'Directorio de Contactos', icon: Contact2 },
+    { id: 'debug', label: 'Simulador de Atención', icon: FlaskConical },
   ];
 
   const currentConv = selectedConvId ? (conversations.find((c) => String(c.id) === String(selectedConvId)) || null) : null;
@@ -1112,7 +1112,7 @@ export default function App() {
                     <WhatsAppDoodleBackground />
                     <div className="relative z-10 max-w-sm flex flex-col items-center bg-white/95 p-6 sm:p-8 rounded-2xl border border-border/80 shadow-xs">
                       <div className="size-14 rounded-2xl bg-surface-muted border border-border flex items-center justify-center text-brand-ink mb-3 shadow-2xs">
-                        <MessagesSquare size={32} strokeWidth={1.5} className="text-zinc-400" />
+                        <MessageSquareText size={32} strokeWidth={1.5} className="text-zinc-400" />
                       </div>
                       <h3 className="text-lg sm:text-xl font-bold text-brand-ink mb-1.5">
                         Bandeja de Conversaciones
