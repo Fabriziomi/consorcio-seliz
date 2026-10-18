@@ -190,10 +190,10 @@ export function FaqsManager({ consorcios = [] }) {
   };
 
   return (
-    <div className="w-full space-y-3.5 sm:space-y-4">
-      <Card className="flex flex-col bg-white border border-border shadow-subtle overflow-hidden max-h-[calc(100dvh-6.5rem)]">
-        {/* Cabecera Principal */}
-        <CardHeader className="border-b border-border bg-white px-4 py-3 sm:px-6 sm:py-4 shrink-0">
+    <div className="w-full h-full flex flex-col min-h-0">
+      <Card className="h-full flex flex-col min-h-0 bg-white border border-border shadow-subtle overflow-hidden">
+        {/* Cabecera Principal - Fija en la parte superior */}
+        <CardHeader className="border-b border-border bg-white px-4 py-3 sm:px-6 sm:py-4 shrink-0 z-10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
@@ -283,17 +283,17 @@ export function FaqsManager({ consorcios = [] }) {
           </div>
         </CardHeader>
 
-        {/* Tabla de Contenido */}
-        <CardContent className="p-0 overflow-hidden relative">
+        {/* Tabla de Contenido - Área scrollable única */}
+        <CardContent className="p-0 flex-1 min-h-0 overflow-hidden relative flex flex-col">
           {errorMsg && (
-            <div className="p-3 bg-danger-soft text-danger text-xs flex items-center gap-2 border-b border-border">
+            <div className="p-3 bg-danger-soft text-danger text-xs flex items-center gap-2 border-b border-border shrink-0">
               <AlertCircle size={14} strokeWidth={2} />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {/* Vista Móvil / Tablet Estrecha: Tarjetas Compactas */}
-          <div className="md:hidden max-h-[calc(100dvh-15rem)] overflow-y-auto p-2.5 space-y-2.5">
+          <div className="md:hidden flex-1 min-h-0 overflow-y-auto p-2.5 space-y-2.5">
             {filteredFaqs.length === 0 ? (
               <div className="py-12 text-center text-text-muted text-xs">
                 {loading
@@ -398,10 +398,10 @@ export function FaqsManager({ consorcios = [] }) {
           </div>
 
           {/* Vista Escritorio / Tablet Apaisada: Tabla Completa */}
-          <div className="hidden md:block max-h-[calc(100dvh-15rem)] overflow-y-auto">
+          <div className="hidden md:flex flex-col flex-1 min-h-0 overflow-hidden">
             <ScrollableTableContainer>
               <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 z-10 bg-surface-soft border-b border-border text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                <thead className="sticky top-0 z-10 bg-surface-soft border-b border-border text-[11px] font-bold uppercase tracking-wider text-text-muted shadow-2xs">
                   <tr>
                     <th className="py-2.5 px-4 w-12 text-center">Estado</th>
                     <th className="py-2.5 px-4 min-w-[220px]">Pregunta Frecuente</th>

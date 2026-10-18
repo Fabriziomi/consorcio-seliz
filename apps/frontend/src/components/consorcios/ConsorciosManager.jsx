@@ -241,12 +241,12 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
   };
 
   return (
-    <div className="w-full space-y-3.5 sm:space-y-4">
+    <div className="w-full h-full flex flex-col min-h-0">
       {/* Contenedor Master/Detail */}
-      <div className="flex flex-col md:flex-row gap-3.5 md:items-start">
+      <div className="flex-1 flex flex-col md:flex-row gap-3.5 min-h-0 overflow-hidden">
         {/* Columna Izquierda: Lista de Consorcios */}
-        <Card className={`w-full md:w-72 lg:w-80 flex flex-col bg-white border border-border shadow-subtle shrink-0 overflow-hidden md:sticky md:top-0 max-h-[calc(100dvh-6.5rem)] ${mobileView === 'detail' ? 'hidden md:flex' : 'flex'}`}>
-          <CardHeader className="p-3.5 sm:p-4 border-b border-border bg-white flex items-center justify-between shrink-0">
+        <Card className={`w-full md:w-72 lg:w-80 h-full flex flex-col bg-white border border-border shadow-subtle shrink-0 overflow-hidden ${mobileView === 'detail' ? 'hidden md:flex' : 'flex'}`}>
+          <CardHeader className="p-3.5 sm:p-4 border-b border-border bg-white flex items-center justify-between shrink-0 z-10">
             <div>
               <h2 className="text-lg sm:text-xl font-bold tracking-tight text-brand-ink">
                 Consorcios
@@ -275,7 +275,7 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
             </div>
           </CardHeader>
 
-          <CardContent className="p-0 overflow-y-auto max-h-[calc(100dvh-12rem)]">
+          <CardContent className="p-0 flex-1 min-h-0 overflow-y-auto">
             {consorcios.map((c) => {
               const isSelected = Boolean(selectedId != null && (c.id === selectedId || String(c.id) === String(selectedId)));
               return (
@@ -331,11 +331,11 @@ export function ConsorciosManager({ consorcios: initialConsorcios = [], onRefres
         </Card>
 
         {/* Columna Derecha: Ficha de Edición y Atributos Dinámicos */}
-        <Card className={`flex-1 flex flex-col bg-white border border-border shadow-subtle overflow-hidden max-h-[calc(100dvh-6.5rem)] ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
+        <Card className={`flex-1 h-full flex flex-col min-h-0 bg-white border border-border shadow-subtle overflow-hidden ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
           {selectedConsorcio ? (
             <>
               {/* Header de la Ficha con Botón Volver en Móvil */}
-              <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-border bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-border bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-10">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <button
                     type="button"

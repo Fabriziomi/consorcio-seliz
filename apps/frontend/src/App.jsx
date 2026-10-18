@@ -1136,8 +1136,8 @@ export default function App() {
 
           {activeTab === 'faqs' && (
             <React.Suspense fallback={<TabSuspenseFallback />}>
-              <div className="h-full overflow-y-auto motion-fade-in">
-                <div className="max-w-7xl mx-auto w-full">
+              <div className="h-full flex flex-col min-h-0 overflow-hidden motion-fade-in">
+                <div className="max-w-7xl mx-auto w-full h-full flex flex-col min-h-0">
                   <FaqsManager consorcios={consorcios} />
                 </div>
               </div>
@@ -1146,8 +1146,8 @@ export default function App() {
 
           {activeTab === 'consorcios' && (
             <React.Suspense fallback={<TabSuspenseFallback />}>
-              <div className="h-full overflow-y-auto motion-fade-in">
-                <div className="max-w-7xl mx-auto w-full">
+              <div className="h-full flex flex-col min-h-0 overflow-hidden motion-fade-in">
+                <div className="max-w-7xl mx-auto w-full h-full flex flex-col min-h-0">
                   <ConsorciosManager
                     consorcios={consorcios}
                     onRefreshParent={loadConsorcios}
@@ -1159,8 +1159,8 @@ export default function App() {
 
           {activeTab === 'contactos' && (
             <React.Suspense fallback={<TabSuspenseFallback />}>
-              <div className="h-full overflow-y-auto motion-fade-in">
-                <div className="max-w-7xl mx-auto w-full">
+              <div className="h-full flex flex-col min-h-0 overflow-hidden motion-fade-in">
+                <div className="max-w-7xl mx-auto w-full h-full flex flex-col min-h-0">
                   <ContactosManager
                     consorcios={consorcios}
                     onOpenChat={handleOpenChatFromContacto}

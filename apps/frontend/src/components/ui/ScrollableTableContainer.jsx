@@ -12,6 +12,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 export function ScrollableTableContainer({
   children,
   className = '',
+  containerClassName = '',
   hasOverflowHint = true,
   ...props
 }) {
@@ -120,7 +121,7 @@ export function ScrollableTableContainer({
   };
 
   return (
-    <div className="relative group w-full max-w-full overflow-hidden">
+    <div className={`relative group w-full max-w-full h-full flex flex-col min-h-0 overflow-hidden ${containerClassName}`}>
       {/* Sombra indicadora izquierda: únicamente visible si la tabla está comprimida y se desplazó */}
       {hasOverflowHint && canScrollLeft ? (
         <div
@@ -145,7 +146,7 @@ export function ScrollableTableContainer({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
-        className={`overflow-x-auto select-none sm:select-auto w-full max-w-full relative z-10 ${
+        className={`overflow-auto flex-1 min-h-0 select-none sm:select-auto w-full max-w-full relative z-10 ${
           isGrabbing ? 'cursor-grabbing select-none' : isCompressed ? 'cursor-grab' : ''
         } ${className}`}
         style={{
