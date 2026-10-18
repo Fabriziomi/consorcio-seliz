@@ -11,29 +11,25 @@ function getStatusBadge(status) {
     case 'emergency':
       return (
         <Badge variant="danger" size="xs" className="font-semibold shadow-2xs">
-          <span className="size-1.5 rounded-full bg-rose-500 shrink-0 animate-pulse" />
-          <span>Emergencia</span>
+          Emergencia
         </Badge>
       );
     case 'pending':
       return (
         <Badge variant="warning" size="xs" className="font-medium shadow-2xs">
-          <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />
-          <span>Pendiente</span>
+          Pendiente
         </Badge>
       );
     case 'resolved':
       return (
         <Badge variant="success" size="xs" className="font-medium shadow-2xs">
-          <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
-          <span>Resuelto</span>
+          Resuelto
         </Badge>
       );
     default:
       return (
         <Badge variant="neutral" size="xs" className="font-medium shadow-2xs">
-          <span className="size-1.5 rounded-full bg-zinc-400 shrink-0" />
-          <span>Abierto</span>
+          Abierto
         </Badge>
       );
   }

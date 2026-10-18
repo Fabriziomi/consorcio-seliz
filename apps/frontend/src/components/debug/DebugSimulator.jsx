@@ -4,7 +4,7 @@ import {
   FlaskConical,
   Clock,
   AlertCircle,
-  Bot,
+  Sparkles,
   User,
   CheckCircle2,
   RefreshCw,
@@ -311,7 +311,7 @@ export function DebugSimulator() {
               {/* Respuesta del Bot o Motivo de Silencio */}
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-brand-ink text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm transition-transform duration-500 group-hover:scale-110">
-                  <Bot className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4" strokeWidth={1.8} />
                 </div>
                 <div
                   className={`flex-1 rounded-base p-4 text-sm leading-relaxed ${

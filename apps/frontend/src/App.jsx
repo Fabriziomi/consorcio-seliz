@@ -889,7 +889,7 @@ export default function App() {
       <aside
         onMouseEnter={() => !sidebarPinned && setSidebarHovered(true)}
         onMouseLeave={() => !sidebarPinned && setSidebarHovered(false)}
-        className={`fixed inset-y-0 left-0 hidden flex-col border-r border-zinc-800 bg-zinc-900 lg:flex transition-[width,box-shadow] duration-200 ease-in-out ${
+        className={`fixed inset-y-0 left-0 hidden flex-col border-r border-zinc-800 bg-zinc-900 lg:flex overflow-hidden transition-[width,box-shadow] duration-200 ease-in-out ${
           sidebarPinned
             ? 'w-64 xl:w-72 z-30 shadow-card'
             : isSidebarExpanded
@@ -918,10 +918,10 @@ export default function App() {
         </div>
 
         {/* Navegación Principal Monocromática con Iconos y Textos Claros */}
-        <nav className="min-h-0 flex-1 overflow-y-auto px-2.5 py-3" aria-label="Secciones del CRM">
+        <nav className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-3 [scrollbar-color:#3f3f46_transparent] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-700/60" aria-label="Secciones del CRM">
           {/* Espaciador de categoría con altura constante para evitar salto vertical de botones */}
           <div className="h-5 mb-2 px-3 flex items-center overflow-hidden">
-            <span className={`text-[11px] font-bold tracking-wider uppercase text-zinc-400 whitespace-nowrap transition-opacity duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0'}`}>
+            <span className={`text-[11px] font-bold tracking-wider uppercase text-zinc-400 whitespace-nowrap transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none w-0 overflow-hidden'}`}>
               Gestión
             </span>
           </div>
@@ -941,14 +941,14 @@ export default function App() {
                     if (id === 'inbox') setMobileChatOpen(false);
                   }}
                   title={!isSidebarExpanded ? label : undefined}
-                  className={`group flex min-h-12 w-full items-center rounded-xl text-xs sm:text-sm font-semibold cursor-pointer px-3 gap-3 transition-all duration-500 ease-out active:scale-[0.98] ${
+                  className={`group flex min-h-12 w-full min-w-0 overflow-hidden items-center rounded-xl text-xs sm:text-sm font-semibold cursor-pointer px-3 gap-3 transition-all duration-500 ease-out active:scale-[0.98] ${
                     isActive
                       ? 'bg-zinc-800 text-white font-bold shadow-sm border border-zinc-700/80'
                       : 'border border-transparent text-zinc-400 hover:bg-zinc-800/60 hover:text-white hover:border-zinc-700/40 hover:translate-x-0.5'
                   }`}
                 >
                   <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" className="shrink-0 text-current transition-transform duration-500 ease-out group-hover:scale-115 group-active:scale-95" />
-                  <span className={`truncate whitespace-nowrap transition-[opacity,transform] duration-500 ${isSidebarExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}>
+                  <span className={`truncate whitespace-nowrap min-w-0 transition-all duration-300 ${isSidebarExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none w-0 overflow-hidden'}`}>
                     {label}
                   </span>
                 </button>
