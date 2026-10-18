@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   SendHorizontal,
   Paperclip,
@@ -42,7 +42,227 @@ function getMessageAttachment(m) {
   return null;
 }
 
-export function MessageThread({
+const MessageBubble = React.memo(function MessageBubble({
+  message: m,
+  senderName,
+  isBrokenMedia,
+  onPreviewMedia,
+  onMediaError,
+}) {
+  const attachment = getMessageAttachment(m);
+
+  // 1. Nota interna (Privada para administración)
+  if (m.privado || m.isPrivateNote) {
+    return (
+      <div className="flex justify-center my-2 relative z-10">
+        <div className="w-fit max-w-[90%] sm:max-w-[560px] bg-amber-50/95 border border-amber-200/90 rounded-xl px-3.5 py-2.5 text-amber-950 shadow-xs">
+          <div className="flex items-center justify-between gap-3 text-[10px] sm:text-[11px] font-bold text-amber-900 mb-1">
+            <div className="flex items-center gap-1.5">
+              <Lock size={13} strokeWidth={2} className="shrink-0" />
+              <span>Nota Interna (Confidencial)</span>
+            </div>
+            <span className="text-amber-800/80 font-normal shrink-0">{m.timestamp || m.creado_el}</span>
+          </div>
+          {attachment && (
+            <div className="mb-2">
+              {attachment.isImage && attachment.previewUrl && !isBrokenMedia ? (
+                <div
+                  onClick={() => onPreviewMedia({ url: attachment.previewUrl, name: attachment.name || 'Adjunto' })}
+                  className="relative cursor-pointer group rounded-lg overflow-hidden border border-amber-300 inline-block max-w-full shadow-2xs"
+                  title="Click para ver en tamaño completo"
+                >
+                  <img
+                    src={attachment.previewUrl}
+                    alt={attachment.name || 'Adjunto'}
+                    onError={() => onMediaError(m.id)}
+                    className="max-w-full rounded-lg object-cover max-h-60 transition-transform duration-150 group-hover:scale-[1.02]"
+                  />
+                  <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                    <Eye size={20} strokeWidth={2} className="drop-shadow" />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-100/60 border border-amber-300/80 text-xs">
+                  <FileText size={18} strokeWidth={1.8} className="shrink-0 text-amber-900" />
+                  <span className="truncate font-semibold">{attachment.name}</span>
+                  {attachment.size && (
+                    <span className="text-[10px] text-amber-800/70 shrink-0">{attachment.size}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          <p className="text-xs sm:text-[13px] whitespace-pre-line leading-relaxed text-amber-950 font-medium break-words">
+            {m.text || m.contenido}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Mensaje de actividad / sistema
+  if (m.tipo === 'activity' || m.isStatusNote) {
+    return (
+      <div className="flex justify-center my-2 relative z-10">
+        <span className="bg-white/95 text-text-secondary text-[10px] sm:text-[11px] font-medium px-3 py-1 rounded-full border border-border/80 shadow-2xs">
+          {m.text || m.contenido}
+        </span>
+      </div>
+    );
+  }
+
+  // 3. Mensaje saliente (Administración / Seliz Bot)
+  const isOutgoing =
+    m.sender === 'ivana' ||
+    m.sender === 'bot' ||
+    m.sender === 'admin' ||
+    m.remitente === 'BOT' ||
+    m.remitente === 'HUMANO';
+
+  if (isOutgoing) {
+    return (
+      <div className="flex justify-end my-1 relative z-10">
+        <div className="w-fit max-w-[85%] sm:max-w-[520px] bg-brand-ink text-white rounded-2xl rounded-tr-xs px-3.5 py-2.5 shadow-xs border border-brand-ink break-words">
+          <div className="flex items-center justify-between gap-3 text-[10px] sm:text-[11px] font-medium text-zinc-300 mb-0.5">
+            <div className="flex items-center gap-1.5">
+              {m.sender === 'bot' || m.remitente === 'BOT' ? (
+                <>
+                  <Bot size={14} strokeWidth={2} className="shrink-0 text-zinc-300" />
+                  <span>Seliz Bot</span>
+                </>
+              ) : (
+                <span>Dra. Ivana Seliz</span>
+              )}
+            </div>
+            <span className="text-zinc-400 font-normal shrink-0">{m.timestamp || m.creado_el}</span>
+          </div>
+
+          {/* Renderizado de Archivo Adjunto */}
+          {attachment && (
+            <div className="mb-2 mt-1">
+              {attachment.isImage && attachment.previewUrl && !isBrokenMedia ? (
+                <div
+                  onClick={() => onPreviewMedia({ url: attachment.previewUrl, name: attachment.name || 'Adjunto' })}
+                  className="relative cursor-pointer group rounded-lg overflow-hidden border border-zinc-700 inline-block max-w-full shadow-2xs"
+                  title="Click para ver en tamaño completo"
+                >
+                  <img
+                    src={attachment.previewUrl}
+                    alt={attachment.name || 'Adjunto'}
+                    onError={() => onMediaError(m.id)}
+                    className="max-w-full rounded-lg object-cover max-h-60 transition-transform duration-150 group-hover:scale-[1.02]"
+                  />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                    <Eye size={20} strokeWidth={2} className="drop-shadow" />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700 text-xs">
+                  <FileText size={18} strokeWidth={1.8} className="shrink-0 text-zinc-200" />
+                  <span className="truncate font-medium">{attachment.name}</span>
+                  {attachment.size && (
+                    <span className="text-[10px] text-zinc-400 shrink-0">{attachment.size}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs sm:text-[13px] whitespace-pre-line leading-relaxed text-zinc-100 break-words font-normal">
+            {m.text || m.contenido}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. Mensaje entrante (Vecino / Propietario / Inquilino)
+  return (
+    <div className="flex items-start gap-2 my-1 relative z-10 w-fit max-w-[85%] sm:max-w-[520px]">
+      <div className="size-6 sm:size-7 rounded-full bg-brand-ink text-white font-bold flex items-center justify-center text-[10px] sm:text-xs shrink-0 mt-0.5 shadow-2xs">
+        {senderName ? senderName.charAt(0).toUpperCase() : 'V'}
+      </div>
+      <div className="bg-white border border-border/80 rounded-2xl rounded-tl-xs px-3.5 py-2.5 text-brand-ink shadow-xs break-words w-full">
+        <div className="flex items-center justify-between gap-3 text-[10px] sm:text-[11px] font-bold text-brand-ink mb-0.5">
+          <span className="truncate">{senderName || 'Vecino'}</span>
+          <span className="text-text-muted font-normal text-[10px] shrink-0">{m.timestamp || m.creado_el}</span>
+        </div>
+
+        {/* Renderizado de Archivo Adjunto */}
+        {attachment && (
+          <div className="mb-2 mt-1">
+            {attachment.isImage && attachment.previewUrl && !isBrokenMedia ? (
+              <div
+                onClick={() => onPreviewMedia({ url: attachment.previewUrl, name: attachment.name || 'Adjunto' })}
+                className="relative cursor-pointer group rounded-lg overflow-hidden border border-border inline-block max-w-full shadow-2xs"
+                title="Click para ver en tamaño completo"
+              >
+                <img
+                  src={attachment.previewUrl}
+                  alt={attachment.name || 'Adjunto'}
+                  onError={() => onMediaError(m.id)}
+                  className="max-w-full rounded-lg object-cover max-h-60 transition-transform duration-150 group-hover:scale-[1.02]"
+                />
+                <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  <Eye size={20} strokeWidth={2} className="drop-shadow" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-surface-soft border border-border/80 text-xs text-brand-ink">
+                <FileText size={18} strokeWidth={1.8} className="shrink-0 text-brand-ink" />
+                <span className="truncate font-semibold">{attachment.name}</span>
+                {attachment.size && (
+                  <span className="text-[10px] text-text-muted shrink-0">{attachment.size}</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <p className="text-xs sm:text-[13px] whitespace-pre-line leading-relaxed text-brand-ink break-words font-normal">
+          {m.text || m.contenido}
+        </p>
+      </div>
+    </div>
+  );
+});
+
+const MessageList = React.memo(function MessageList({
+  messages = [],
+  senderName,
+  brokenMediaIds,
+  onPreviewMedia,
+  onMediaError,
+  messagesEndRef,
+}) {
+  return (
+    <div className="absolute inset-0 overflow-y-auto p-3 sm:p-4 space-y-2">
+      <div className="max-w-4xl mx-auto w-full space-y-2">
+        {messages.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-xs text-text-muted relative z-10">
+            <p className="bg-white/95 px-3 py-1.5 rounded-full border border-border/80 shadow-2xs">
+              No hay mensajes registrados en este hilo de conversación.
+            </p>
+          </div>
+        ) : (
+          messages.map((m) => (
+            <MessageBubble
+              key={m.id}
+              message={m}
+              senderName={senderName}
+              isBrokenMedia={Boolean(brokenMediaIds[m.id])}
+              onPreviewMedia={onPreviewMedia}
+              onMediaError={onMediaError}
+            />
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+    </div>
+  );
+});
+
+export const MessageThread = React.memo(function MessageThread({
   conversationId,
   senderName,
   phone,
@@ -75,14 +295,18 @@ export function MessageThread({
   const fileInputRef = useRef(null);
   const statusDropdownRef = useRef(null);
 
-  const handleMediaError = (id) => {
+  const handleMediaError = useCallback((id) => {
     setBrokenMediaIds((prev) => ({ ...prev, [id]: true }));
-  };
+  }, []);
 
-  // Auto-scroll al final con cada mensaje nuevo
+  const handlePreviewMedia = useCallback((media) => {
+    setPreviewModalMedia(media);
+  }, []);
+
+  // Auto-scroll al final con cada mensaje nuevo o archivo seleccionado
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, selectedFile]);
+  }, [messages.length, selectedFile]);
 
   // Cerrar modal de vista previa de imagen al presionar Escape
   useEffect(() => {
@@ -372,197 +596,14 @@ export function MessageThread({
       <div className="flex-1 relative isolate overflow-hidden bg-[#efeae2] min-h-0 z-0">
         <WhatsAppDoodleBackground />
 
-        <div className="absolute inset-0 overflow-y-auto p-3 sm:p-4 space-y-2">
-          <div className="max-w-4xl mx-auto w-full space-y-2">
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-xs text-text-muted relative z-10">
-                <p className="bg-white/95 px-3 py-1.5 rounded-full border border-border/80 shadow-2xs">
-                  No hay mensajes registrados en este hilo de conversación.
-                </p>
-              </div>
-            ) : (
-            messages.map((m) => {
-              const attachment = getMessageAttachment(m);
-
-              // 1. Nota interna (Privada para administración)
-              if (m.privado || m.isPrivateNote) {
-                return (
-                  <div key={m.id} className="flex justify-center my-2 relative z-10">
-                    <div className="w-fit max-w-[90%] sm:max-w-[560px] bg-amber-50/95 border border-amber-200/90 rounded-xl px-3.5 py-2.5 text-amber-950 shadow-xs">
-                      <div className="flex items-center justify-between gap-3 text-[10px] sm:text-[11px] font-bold text-amber-900 mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <Lock size={13} strokeWidth={2} className="shrink-0" />
-                          <span>Nota Interna (Confidencial)</span>
-                        </div>
-                        <span className="text-amber-800/80 font-normal shrink-0">{m.timestamp || m.creado_el}</span>
-                      </div>
-                      {attachment && (
-                        <div className="mb-2">
-                          {attachment.isImage && attachment.previewUrl && !brokenMediaIds[m.id] ? (
-                            <div
-                              onClick={() => setPreviewModalMedia({ url: attachment.previewUrl, name: attachment.name || 'Adjunto' })}
-                              className="relative cursor-pointer group rounded-lg overflow-hidden border border-amber-300 inline-block max-w-full shadow-2xs"
-                              title="Click para ver en tamaño completo"
-                            >
-                              <img
-                                src={attachment.previewUrl}
-                                alt={attachment.name || 'Adjunto'}
-                                onError={() => handleMediaError(m.id)}
-                                className="max-w-full rounded-lg object-cover max-h-60 transition-transform duration-150 group-hover:scale-[1.02]"
-                              />
-                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                <Eye size={20} strokeWidth={2} className="drop-shadow" />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-100/60 border border-amber-300/80 text-xs">
-                              <FileText size={18} strokeWidth={1.8} className="shrink-0 text-amber-900" />
-                              <span className="truncate font-semibold">{attachment.name}</span>
-                              {attachment.size && (
-                                <span className="text-[10px] text-amber-800/70 shrink-0">{attachment.size}</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      <p className="text-xs sm:text-[13px] whitespace-pre-line leading-relaxed text-amber-950 font-medium break-words">
-                        {m.text || m.contenido}
-                      </p>
-                    </div>
-                  </div>
-                );
-              }
-
-              // 2. Mensaje de actividad / sistema
-              if (m.tipo === 'activity' || m.isStatusNote) {
-                return (
-                  <div key={m.id} className="flex justify-center my-2 relative z-10">
-                    <span className="bg-white/95 text-text-secondary text-[10px] sm:text-[11px] font-medium px-3 py-1 rounded-full border border-border/80 shadow-2xs">
-                      {m.text || m.contenido}
-                    </span>
-                  </div>
-                );
-              }
-
-              // 3. Mensaje saliente (Administración / Seliz Bot)
-              const isOutgoing =
-                m.sender === 'ivana' ||
-                m.sender === 'bot' ||
-                m.sender === 'admin' ||
-                m.remitente === 'BOT' ||
-                m.remitente === 'HUMANO';
-
-              if (isOutgoing) {
-                return (
-                  <div key={m.id} className="flex justify-end my-1 relative z-10">
-                    <div className="w-fit max-w-[85%] sm:max-w-[520px] bg-brand-ink text-white rounded-2xl rounded-tr-xs px-3.5 py-2.5 shadow-xs border border-brand-ink break-words">
-                      <div className="flex items-center justify-between gap-3 text-[10px] sm:text-[11px] font-medium text-zinc-300 mb-0.5">
-                        <div className="flex items-center gap-1.5">
-                          {m.sender === 'bot' || m.remitente === 'BOT' ? (
-                            <>
-                              <Bot size={14} strokeWidth={2} className="shrink-0 text-zinc-300" />
-                              <span>Seliz Bot</span>
-                            </>
-                          ) : (
-                            <span>Dra. Ivana Seliz</span>
-                          )}
-                        </div>
-                        <span className="text-zinc-400 font-normal shrink-0">{m.timestamp || m.creado_el}</span>
-                      </div>
-
-                      {/* Renderizado de Archivo Adjunto */}
-                      {attachment && (
-                        <div className="mb-2 mt-1">
-                          {attachment.isImage && attachment.previewUrl && !brokenMediaIds[m.id] ? (
-                            <div
-                              onClick={() => setPreviewModalMedia({ url: attachment.previewUrl, name: attachment.name || 'Adjunto' })}
-                              className="relative cursor-pointer group rounded-lg overflow-hidden border border-zinc-700 inline-block max-w-full shadow-2xs"
-                              title="Click para ver en tamaño completo"
-                            >
-                              <img
-                                src={attachment.previewUrl}
-                                alt={attachment.name || 'Adjunto'}
-                                onError={() => handleMediaError(m.id)}
-                                className="max-w-full rounded-lg object-cover max-h-60 transition-transform duration-150 group-hover:scale-[1.02]"
-                              />
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                <Eye size={20} strokeWidth={2} className="drop-shadow" />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700 text-xs">
-                              <FileText size={18} strokeWidth={1.8} className="shrink-0 text-zinc-200" />
-                              <span className="truncate font-medium">{attachment.name}</span>
-                              {attachment.size && (
-                                <span className="text-[10px] text-zinc-400 shrink-0">{attachment.size}</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <p className="text-xs sm:text-[13px] whitespace-pre-line leading-relaxed text-zinc-100 break-words font-normal">
-                        {m.text || m.contenido}
-                      </p>
-                    </div>
-                  </div>
-                );
-              }
-
-              // 4. Mensaje entrante (Vecino / Propietario / Inquilino)
-              return (
-                <div key={m.id} className="flex items-start gap-2 my-1 relative z-10 w-fit max-w-[85%] sm:max-w-[520px]">
-                  <div className="size-6 sm:size-7 rounded-full bg-brand-ink text-white font-bold flex items-center justify-center text-[10px] sm:text-xs shrink-0 mt-0.5 shadow-2xs">
-                    {senderName ? senderName.charAt(0).toUpperCase() : 'V'}
-                  </div>
-                  <div className="bg-white border border-border/80 rounded-2xl rounded-tl-xs px-3.5 py-2.5 text-brand-ink shadow-xs break-words w-full">
-                    <div className="flex items-center justify-between gap-3 text-[10px] sm:text-[11px] font-bold text-brand-ink mb-0.5">
-                      <span className="truncate">{senderName || 'Vecino'}</span>
-                      <span className="text-text-muted font-normal text-[10px] shrink-0">{m.timestamp || m.creado_el}</span>
-                    </div>
-
-                    {/* Renderizado de Archivo Adjunto */}
-                    {attachment && (
-                      <div className="mb-2 mt-1">
-                        {attachment.isImage && attachment.previewUrl && !brokenMediaIds[m.id] ? (
-                          <div
-                            onClick={() => setPreviewModalMedia({ url: attachment.previewUrl, name: attachment.name || 'Adjunto' })}
-                            className="relative cursor-pointer group rounded-lg overflow-hidden border border-border inline-block max-w-full shadow-2xs"
-                            title="Click para ver en tamaño completo"
-                          >
-                            <img
-                              src={attachment.previewUrl}
-                              alt={attachment.name || 'Adjunto'}
-                              onError={() => handleMediaError(m.id)}
-                              className="max-w-full rounded-lg object-cover max-h-60 transition-transform duration-150 group-hover:scale-[1.02]"
-                            />
-                            <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                              <Eye size={20} strokeWidth={2} className="drop-shadow" />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-surface-soft border border-border/80 text-xs text-brand-ink">
-                            <FileText size={18} strokeWidth={1.8} className="shrink-0 text-brand-ink" />
-                            <span className="truncate font-semibold">{attachment.name}</span>
-                            {attachment.size && (
-                              <span className="text-[10px] text-text-muted shrink-0">{attachment.size}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <p className="text-xs sm:text-[13px] whitespace-pre-line leading-relaxed text-brand-ink break-words font-normal">
-                      {m.text || m.contenido}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          )}
-          <div ref={messagesEndRef} />
-          </div>
-        </div>
+        <MessageList
+          messages={messages}
+          senderName={senderName}
+          brokenMediaIds={brokenMediaIds}
+          onPreviewMedia={handlePreviewMedia}
+          onMediaError={handleMediaError}
+          messagesEndRef={messagesEndRef}
+        />
       </div>
 
       {/* Barra de Entrada Monocromática e Íconos Sin Texto Innecesario */}
@@ -756,4 +797,4 @@ export function MessageThread({
       </Modal>
     </div>
   );
-}
+});

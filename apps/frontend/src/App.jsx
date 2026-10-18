@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Building2,
   MessagesSquare,
@@ -19,10 +19,22 @@ import { LoginForm } from './components/auth/LoginForm.jsx';
 import { ChatInbox } from './components/chat/ChatInbox.jsx';
 import { MessageThread } from './components/chat/MessageThread.jsx';
 import { WhatsAppDoodleBackground } from './components/chat/WhatsAppDoodleBackground.jsx';
-import { DebugSimulator } from './components/debug/DebugSimulator.jsx';
-import { FaqsManager } from './components/faqs/FaqsManager.jsx';
-import { ConsorciosManager } from './components/consorcios/ConsorciosManager.jsx';
-import { ContactosManager } from './components/contactos/ContactosManager.jsx';
+const DebugSimulator = React.lazy(() => import('./components/debug/DebugSimulator.jsx').then(m => ({ default: m.DebugSimulator })));
+const FaqsManager = React.lazy(() => import('./components/faqs/FaqsManager.jsx').then(m => ({ default: m.FaqsManager })));
+const ConsorciosManager = React.lazy(() => import('./components/consorcios/ConsorciosManager.jsx').then(m => ({ default: m.ConsorciosManager })));
+const ContactosManager = React.lazy(() => import('./components/contactos/ContactosManager.jsx').then(m => ({ default: m.ContactosManager })));
+
+function TabSuspenseFallback() {
+  return (
+    <div className="h-full flex items-center justify-center p-8">
+      <div className="flex items-center gap-2.5 text-xs text-text-muted bg-white/80 px-4 py-2 rounded-xl border border-border/60 shadow-2xs">
+        <span className="size-2 rounded-full bg-brand-ink animate-pulse" />
+        <span>Cargando vista...</span>
+      </div>
+    </div>
+  );
+}
+
 import { Card, CardHeader, CardContent } from './components/ui/Card.jsx';
 import { Badge } from './components/ui/Badge.jsx';
 import { Button } from './components/ui/Button.jsx';
@@ -205,6 +217,10 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('inbox');
   const [selectedConvId, setSelectedConvId] = useState('conv-1');
+  const selectedConvIdRef = useRef(selectedConvId);
+  useEffect(() => {
+    selectedConvIdRef.current = selectedConvId;
+  }, [selectedConvId]);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [apiConnected, setApiConnected] = useState(false);
 
@@ -361,7 +377,7 @@ export default function App() {
     }
   }, []);
 
-  // Carga de conversaciones desde la API
+  // Carga de conversaciones desde la API con bailout para evitar re-renderizados innecesarios
   const loadConversaciones = useCallback(async () => {
     try {
       const data = await ApiService.getConversaciones();
@@ -383,7 +399,33 @@ export default function App() {
           etiquetas: c.etiquetas || [],
           raw: c,
         }));
-        setConversations(formatted);
+
+        setConversations((prev) => {
+          if (prev && prev.length === formatted.length) {
+            let unchanged = true;
+            for (let i = 0; i < prev.length; i++) {
+              const p = prev[i];
+              const f = formatted[i];
+              if (
+                p.id !== f.id ||
+                p.lastMessage !== f.lastMessage ||
+                p.unreadCount !== f.unreadCount ||
+                p.status !== f.status ||
+                p.botActive !== f.botActive ||
+                p.timestamp !== f.timestamp ||
+                p.senderName !== f.senderName ||
+                p.unidad !== f.unidad ||
+                p.consorcio !== f.consorcio
+              ) {
+                unchanged = false;
+                break;
+              }
+            }
+            if (unchanged) return prev;
+          }
+          return formatted;
+        });
+
         setSelectedConvId((prev) => {
           if (!prev || !formatted.some((f) => String(f.id) === String(prev))) {
             return formatted[0].id;
@@ -396,7 +438,7 @@ export default function App() {
     }
   }, []);
 
-  // Carga de mensajes de la conversación seleccionada
+  // Carga de mensajes de la conversación seleccionada con bailout referencial
   const loadMessagesForConversation = useCallback(async (convId) => {
     if (!convId) return;
     try {
@@ -446,6 +488,26 @@ export default function App() {
             };
           });
 
+          if (currentList.length === formatted.length) {
+            let unchanged = true;
+            for (let i = 0; i < currentList.length; i++) {
+              const a = currentList[i];
+              const b = formatted[i];
+              if (
+                a.id !== b.id ||
+                a.text !== b.text ||
+                a.timestamp !== b.timestamp ||
+                a.sender !== b.sender ||
+                a.privado !== b.privado ||
+                (a.attachment?.previewUrl || '') !== (b.attachment?.previewUrl || '')
+              ) {
+                unchanged = false;
+                break;
+              }
+            }
+            if (unchanged) return prev;
+          }
+
           return {
             ...prev,
             [convId]: formatted,
@@ -463,7 +525,7 @@ export default function App() {
     }
   }, [selectedConvId, loadMessagesForConversation]);
 
-  // WebSocket y sincronización en tiempo real
+  // WebSocket y sincronización en tiempo real desacoplada del switch de conversaciones
   useEffect(() => {
     let ws = null;
     let reconnectTimeout = null;
@@ -487,8 +549,9 @@ export default function App() {
             const data = JSON.parse(event.data);
             if (data.type === 'new_message') {
               const { conversacion_id } = data.data || {};
-              if (conversacion_id && String(conversacion_id) === String(selectedConvId)) {
-                loadMessagesForConversation(selectedConvId);
+              const currentId = selectedConvIdRef.current;
+              if (conversacion_id && currentId && String(conversacion_id) === String(currentId)) {
+                loadMessagesForConversation(currentId);
               }
               loadConversaciones();
             } else if (data.type === 'status_changed' || data.type === 'labels_updated') {
@@ -513,8 +576,9 @@ export default function App() {
 
     const pollInterval = setInterval(() => {
       loadConversaciones();
-      if (selectedConvId) {
-        loadMessagesForConversation(selectedConvId);
+      const currentId = selectedConvIdRef.current;
+      if (currentId) {
+        loadMessagesForConversation(currentId);
       }
     }, 6000);
 
@@ -523,7 +587,7 @@ export default function App() {
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       clearInterval(pollInterval);
     };
-  }, [selectedConvId, loadConversaciones, loadMessagesForConversation]);
+  }, [loadConversaciones, loadMessagesForConversation]);
 
   // Actualización de estado de un ticket
   const handleUpdateTicketStatus = async (ticketId, newStatus) => {
@@ -567,6 +631,21 @@ export default function App() {
   const currentMessages = messagesByConv[selectedConvId] || [];
   const currentDraft = aiDrafts[selectedConvId];
   const activeLabel = navigationItems.find((item) => item.id === activeTab)?.label || 'Inbox';
+
+  const handleSelectConversation = useCallback((id) => {
+    setSelectedConvId(id);
+    setMobileChatOpen(true);
+  }, []);
+
+  const handleToggleInboxList = useCallback(() => {
+    setInboxListCollapsed((prev) => !prev);
+  }, []);
+
+  const handleCloseConversation = useCallback(() => {
+    setSelectedConvId(null);
+    setMobileChatOpen(false);
+    setInboxListCollapsed(false);
+  }, []);
 
   // 1. Envío de mensaje (WhatsApp oficial o Nota Interna, con soporte de adjuntos)
   const handleSendMessage = async (text, isPrivate = false, attachedFile = null) => {
@@ -996,10 +1075,7 @@ export default function App() {
                 <ChatInbox
                   conversations={conversations}
                   selectedId={selectedConvId}
-                  onSelect={(id) => {
-                    setSelectedConvId(id);
-                    setMobileChatOpen(true);
-                  }}
+                  onSelect={handleSelectConversation}
                 />
               </div>
 
@@ -1026,17 +1102,9 @@ export default function App() {
                       onGenerateAiDraft={handleGenerateAiDraft}
                       generatingDraft={generatingDraft}
                       inboxListCollapsed={inboxListCollapsed}
-                      onToggleInboxList={() => setInboxListCollapsed((prev) => !prev)}
-                      onBack={() => {
-                        setSelectedConvId(null);
-                        setMobileChatOpen(false);
-                        setInboxListCollapsed(false);
-                      }}
-                      onClose={() => {
-                        setSelectedConvId(null);
-                        setMobileChatOpen(false);
-                        setInboxListCollapsed(false);
-                      }}
+                      onToggleInboxList={handleToggleInboxList}
+                      onBack={handleCloseConversation}
+                      onClose={handleCloseConversation}
                     />
                   </div>
                 ) : (
@@ -1067,41 +1135,49 @@ export default function App() {
           )}
 
           {activeTab === 'faqs' && (
-            <div className="h-full overflow-y-auto motion-fade-in">
-              <div className="max-w-7xl mx-auto w-full">
-                <FaqsManager consorcios={consorcios} />
+            <React.Suspense fallback={<TabSuspenseFallback />}>
+              <div className="h-full overflow-y-auto motion-fade-in">
+                <div className="max-w-7xl mx-auto w-full">
+                  <FaqsManager consorcios={consorcios} />
+                </div>
               </div>
-            </div>
+            </React.Suspense>
           )}
 
           {activeTab === 'consorcios' && (
-            <div className="h-full overflow-y-auto motion-fade-in">
-              <div className="max-w-7xl mx-auto w-full">
-                <ConsorciosManager
-                  consorcios={consorcios}
-                  onRefreshParent={loadConsorcios}
-                />
+            <React.Suspense fallback={<TabSuspenseFallback />}>
+              <div className="h-full overflow-y-auto motion-fade-in">
+                <div className="max-w-7xl mx-auto w-full">
+                  <ConsorciosManager
+                    consorcios={consorcios}
+                    onRefreshParent={loadConsorcios}
+                  />
+                </div>
               </div>
-            </div>
+            </React.Suspense>
           )}
 
           {activeTab === 'contactos' && (
-            <div className="h-full overflow-y-auto motion-fade-in">
-              <div className="max-w-7xl mx-auto w-full">
-                <ContactosManager
-                  consorcios={consorcios}
-                  onOpenChat={handleOpenChatFromContacto}
-                />
+            <React.Suspense fallback={<TabSuspenseFallback />}>
+              <div className="h-full overflow-y-auto motion-fade-in">
+                <div className="max-w-7xl mx-auto w-full">
+                  <ContactosManager
+                    consorcios={consorcios}
+                    onOpenChat={handleOpenChatFromContacto}
+                  />
+                </div>
               </div>
-            </div>
+            </React.Suspense>
           )}
 
           {activeTab === 'debug' && (
-            <div className="h-full overflow-y-auto motion-fade-in">
-              <div className="max-w-7xl mx-auto w-full">
-                <DebugSimulator />
+            <React.Suspense fallback={<TabSuspenseFallback />}>
+              <div className="h-full overflow-y-auto motion-fade-in">
+                <div className="max-w-7xl mx-auto w-full">
+                  <DebugSimulator />
+                </div>
               </div>
-            </div>
+            </React.Suspense>
           )}
         </main>
       </div>

@@ -198,3 +198,14 @@ a:active .hover-zoom,
   transform: translateY(-1.5px);
   box-shadow: 0 10px 24px -10px rgba(24, 24, 27, 0.12);
 }
+
+/* Modo de rendimiento y accesibilidad: anula animaciones pesadas en dispositivos que priorizan rendimiento o reducción de movimiento */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
