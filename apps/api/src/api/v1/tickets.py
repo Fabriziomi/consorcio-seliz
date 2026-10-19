@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from infrastructure.database import get_db
-from infrastructure.models import TicketConsultaModel
+from infrastructure.models import TicketConsultaModel, UsuarioModel
 from domain.schemas import TicketCreate, TicketUpdate, TicketResponse, EstadoTicket
+from api.deps import get_current_user
 
 router = APIRouter()
 
@@ -14,7 +15,8 @@ router = APIRouter()
 async def list_tickets(
     estado: Optional[EstadoTicket] = None,
     consorcio_id: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
 ):
     """Lista todos los tickets con filtros opcionales por estado o consorcio."""
     query = (
@@ -33,8 +35,12 @@ async def list_tickets(
     return result.scalars().all()
 
 
-@router.post("/", response_model=TicketResponse, status_code=201)
-async def create_ticket(data: TicketCreate, db: AsyncSession = Depends(get_db)):
+@router.post("/", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
+async def create_ticket(
+    data: TicketCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
+):
     """Registra una nueva consulta o reclamo de vecino."""
     ticket = TicketConsultaModel(**data.model_dump())
     db.add(ticket)
@@ -44,7 +50,11 @@ async def create_ticket(data: TicketCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
-async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
+async def get_ticket(
+    ticket_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
+):
     """Obtiene el detalle de un ticket específico."""
     query = (
         select(TicketConsultaModel)
@@ -65,7 +75,8 @@ async def get_ticket(ticket_id: str, db: AsyncSession = Depends(get_db)):
 async def update_ticket(
     ticket_id: str,
     data: TicketUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
 ):
     """Actualiza el estado, prioridad o descripción de un ticket."""
     query = (

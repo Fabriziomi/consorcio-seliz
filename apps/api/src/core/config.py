@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     EVOLUTION_API_URL: str = "http://localhost:8080"
     EVOLUTION_API_KEY: str = "consorcio_api_token_secret"
     EVOLUTION_INSTANCE_NAME: str = "ivana_seliz_whatsapp"
+    WEBHOOK_SECRET_TOKEN: str = "consorcio_seliz_webhook_secret_2026"
+    ENABLE_WEBHOOK_AUTH: bool = True
 
     OFFICE_HOURS_MF_START: str = "10:00"
     OFFICE_HOURS_MF_END: str = "18:00"

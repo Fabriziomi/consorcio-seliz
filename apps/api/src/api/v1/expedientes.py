@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from core.logging import logger
 from infrastructure.database import get_db
-from infrastructure.models import ExpedienteIncidenciaModel, TicketConsultaModel, ContactoModel
+from infrastructure.models import ExpedienteIncidenciaModel, TicketConsultaModel, ContactoModel, UsuarioModel
 from domain.schemas import (
     ExpedienteCreate,
     ExpedienteUpdate,
@@ -17,9 +17,11 @@ from domain.schemas import (
     TicketResponse,
     EstadoExpediente,
     CategoriaIncidencia,
+    RolUsuario,
 )
 from infrastructure.evolution_client import evolution_client
 from services.ticket_service import generate_expediente_code
+from api.deps import get_current_user, require_roles
 
 router = APIRouter()
 
@@ -38,6 +40,7 @@ async def list_expedientes(
     categoria: Optional[CategoriaIncidencia] = None,
     consorcio_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
 ):
     """Lista los expedientes e incidencias edilicias con filtros opcionales."""
     query = (
@@ -62,6 +65,7 @@ async def list_expedientes(
 async def create_expediente(
     data: ExpedienteCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
 ):
     """Crea manualmente un nuevo expediente edilicio."""
     codigo = await generate_expediente_code(db)
@@ -89,6 +93,7 @@ async def create_expediente(
 async def get_expediente(
     expediente_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
 ):
     """Obtiene el detalle completo de un expediente con todos los reclamos asociados de vecinos."""
     query = (
@@ -112,6 +117,7 @@ async def update_expediente(
     expediente_id: str,
     data: ExpedienteUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
 ):
     """Actualiza el estado, proveedor asignado o notas consolidadas de un expediente."""
     query = (
@@ -145,6 +151,7 @@ async def notificar_vecinos(
     expediente_id: str,
     req: NotificarVecinosRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(require_roles(RolUsuario.SUPER_ADMIN, RolUsuario.ADMINISTRADOR)),
 ):
     """
     Envía una notificación oficial por WhatsApp a todos los vecinos que reportaron sobre esta incidencia.

@@ -2,7 +2,7 @@ import uuid
 import asyncio
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
-from fastapi import APIRouter, Request, BackgroundTasks, HTTPException, Depends
+from fastapi import APIRouter, Request, BackgroundTasks, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -533,7 +533,37 @@ async def process_incoming_message(payload: dict):
         )
 
 
-@router.post("/webhook/evolution")
+def verify_webhook_token(request: Request) -> bool:
+    """Valida la autenticidad del webhook entrante contra los tokens autorizados del sistema."""
+    if not settings.ENABLE_WEBHOOK_AUTH:
+        return True
+
+    token = (
+        request.headers.get("apikey")
+        or request.headers.get("x-api-key")
+        or request.headers.get("X-Webhook-Token")
+        or request.query_params.get("token")
+        or request.query_params.get("apikey")
+    )
+    if not token and "Authorization" in request.headers:
+        auth_header = request.headers["Authorization"]
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split("Bearer ", 1)[1].strip()
+
+    valid_tokens = {settings.WEBHOOK_SECRET_TOKEN, settings.EVOLUTION_API_KEY}
+    valid_tokens.discard(None)
+
+    client_ip = request.client.host if request.client else "desconocida"
+    if not token or token not in valid_tokens:
+        logger.warning(f"[SECURITY_ALERT] Webhook no autorizado rechazado desde IP {client_ip}.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de autenticación de webhook ausente o inválido.",
+        )
+    return True
+
+
+@router.post("/webhook/evolution", dependencies=[Depends(verify_webhook_token)])
 async def evolution_webhook(request: Request, background_tasks: BackgroundTasks):
     """Receptor oficial de webhooks de Evolution API v2."""
     try:
@@ -545,7 +575,7 @@ async def evolution_webhook(request: Request, background_tasks: BackgroundTasks)
         return {"status": "error", "message": str(e)}
 
 
-@router.post("/webhook/chatwoot")
+@router.post("/webhook/chatwoot", dependencies=[Depends(verify_webhook_token)])
 async def chatwoot_webhook(request: Request, background_tasks: BackgroundTasks):
     """Receptor de webhooks para Chatwoot con activación de takeover."""
     try:

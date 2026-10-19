@@ -263,6 +263,7 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     password: str
+    pin: Optional[str] = Field(None, min_length=4, max_length=6, description="PIN numérico de seguridad de 4 a 6 dígitos")
 
 
 class UsuarioUpdate(BaseModel):
@@ -270,6 +271,7 @@ class UsuarioUpdate(BaseModel):
     rol: Optional[RolUsuario] = None
     activo: Optional[bool] = None
     password: Optional[str] = None
+    pin: Optional[str] = Field(None, min_length=4, max_length=6, description="PIN numérico de seguridad de 4 a 6 dígitos")
 
 
 class UsuarioResponse(UsuarioBase):
@@ -278,11 +280,25 @@ class UsuarioResponse(UsuarioBase):
     id: str
     creado_el: datetime
     ultimo_login: Optional[datetime] = None
+    tiene_pin_configurado: bool = False
 
 
 class LoginRequest(BaseModel):
     email: str
     password: str
+    pin: Optional[str] = None
+
+
+class VerifyPinRequest(BaseModel):
+    temp_token: str
+    pin: str = Field(..., min_length=4, max_length=6, description="PIN numérico de seguridad")
+
+
+class LoginChallengeResponse(BaseModel):
+    requires_pin: bool = True
+    temp_token: str
+    user_email: str
+    user_nombre: str
 
 
 class TokenResponse(BaseModel):

@@ -259,8 +259,30 @@ export const ApiService = {
   /**
    * Métodos de Autenticación y Control de Sesión
    */
-  async login(email, password) {
-    const res = await apiClient.post('/api/v1/auth/login', { email, password });
+  async login(email, password, pin = null) {
+    const payload = { email, password };
+    if (pin) payload.pin = pin;
+    const res = await apiClient.post('/api/v1/auth/login', payload);
+
+    if (res.data?.requires_pin) {
+      return {
+        requires_pin: true,
+        temp_token: res.data.temp_token,
+        user_email: res.data.user_email,
+        user_nombre: res.data.user_nombre,
+      };
+    }
+
+    const { access_token, user } = res.data;
+    try {
+      localStorage.setItem('seliz_auth_token', access_token);
+      localStorage.setItem('seliz_user', JSON.stringify(user));
+    } catch {}
+    return { token: access_token, user };
+  },
+
+  async verifyPin(temp_token, pin) {
+    const res = await apiClient.post('/api/v1/auth/verify-pin', { temp_token, pin });
     const { access_token, user } = res.data;
     try {
       localStorage.setItem('seliz_auth_token', access_token);

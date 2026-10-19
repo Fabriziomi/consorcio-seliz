@@ -4,8 +4,22 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from main import app
 from infrastructure.database import Base, get_db
-from infrastructure.models import ConsorcioModel, ContactoModel, TicketConsultaModel, ExpedienteIncidenciaModel
-from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket, EstadoExpediente, CategoriaIncidencia
+from infrastructure.models import ConsorcioModel, ContactoModel, TicketConsultaModel, ExpedienteIncidenciaModel, UsuarioModel
+from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket, EstadoExpediente, CategoriaIncidencia, RolUsuario
+from api.deps import get_current_user
+
+mock_admin = UsuarioModel(
+    id="user-mock-admin-exp",
+    email="admin.exp@seliz.com",
+    nombre_completo="Admin Expedientes",
+    rol=RolUsuario.SUPER_ADMIN,
+    activo=True,
+)
+
+
+async def override_get_current_user():
+    return mock_admin
+
 
 TEST_DB_URL = "sqlite+aiosqlite:///./test_expedientes.db"
 test_engine = create_async_engine(TEST_DB_URL, echo=False)
@@ -26,6 +40,7 @@ async def setup_test_db(monkeypatch):
     monkeypatch.setattr(webhook_mod, "AsyncSessionLocal", TestSessionLocal)
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

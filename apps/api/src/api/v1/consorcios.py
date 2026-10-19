@@ -21,7 +21,10 @@ router = APIRouter()
 
 @router.get("", response_model=List[ConsorcioResponse])
 @router.get("/", response_model=List[ConsorcioResponse], include_in_schema=False)
-async def list_consorcios(db: AsyncSession = Depends(get_db)):
+async def list_consorcios(
+    db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
+):
     """Lista todos los consorcios administrados por la Dra. Ivana Seliz."""
     result = await db.execute(select(ConsorcioModel).where(ConsorcioModel.activo == True).order_by(ConsorcioModel.nombre))
     return result.scalars().all()
@@ -44,7 +47,11 @@ async def create_consorcio(
 
 
 @router.get("/{consorcio_id}", response_model=ConsorcioResponse)
-async def get_consorcio(consorcio_id: str, db: AsyncSession = Depends(get_db)):
+async def get_consorcio(
+    consorcio_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
+):
     """Obtiene el detalle y datos operativos de un consorcio específico."""
     result = await db.execute(select(ConsorcioModel).where(ConsorcioModel.id == consorcio_id))
     consorcio = result.scalar_one_or_none()

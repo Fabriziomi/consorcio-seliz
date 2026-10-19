@@ -79,7 +79,10 @@ def _to_mensaje_response(m: MensajeModel) -> MensajeResponse:
 
 
 @router.get("/labels/all", response_model=List[EtiquetaResponse])
-async def list_labels(db: AsyncSession = Depends(get_db)):
+async def list_labels(
+    db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
+):
     """Obtiene el catálogo de todas las etiquetas disponibles."""
     res = await db.execute(select(EtiquetaModel).order_by(EtiquetaModel.titulo))
     return res.scalars().all()

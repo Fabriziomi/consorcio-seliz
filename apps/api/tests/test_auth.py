@@ -144,3 +144,95 @@ async def test_auth_create_operator_user():
         )
         assert op_login.status_code == 200
         assert op_login.json()["user"]["rol"] == "OPERADOR"
+
+
+@pytest.mark.asyncio
+async def test_auth_pin_two_factor_flow():
+    """Verifica el flujo completo de autenticación de dos factores con PIN de 6 dígitos."""
+    # 1. Configurar un usuario con contraseña y PIN
+    async with TestSession() as session:
+        user_with_pin = UsuarioModel(
+            id="user-pin-test",
+            email="pin.test@selizadministraciones.com.ar",
+            password_hash=hash_password("PinPass2026!"),
+            pin_hash=hash_password("654321"),
+            nombre_completo="Usuario con PIN",
+            rol=RolUsuario.ADMINISTRADOR,
+            activo=True,
+        )
+        session.add(user_with_pin)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # 2. Paso 1: Ingreso sin PIN -> Debe responder desafío con requires_pin=True y temp_token
+        res_step1 = await ac.post(
+            "/api/v1/auth/login",
+            json={"email": "pin.test@selizadministraciones.com.ar", "password": "PinPass2026!"},
+        )
+        assert res_step1.status_code == 200
+        data1 = res_step1.json()
+        assert data1["requires_pin"] is True
+        assert "temp_token" in data1
+        temp_token = data1["temp_token"]
+
+        # 3. Paso 2 con PIN erróneo -> 401
+        res_bad_pin = await ac.post(
+            "/api/v1/auth/verify-pin",
+            json={"temp_token": temp_token, "pin": "000000"},
+        )
+        assert res_bad_pin.status_code == 401
+        assert "incorrecto" in res_bad_pin.json()["detail"].lower()
+
+        # 4. Paso 2 con PIN correcto -> 200 y access_token emitido
+        res_good_pin = await ac.post(
+            "/api/v1/auth/verify-pin",
+            json={"temp_token": temp_token, "pin": "654321"},
+        )
+        assert res_good_pin.status_code == 200
+        data_final = res_good_pin.json()
+        assert "access_token" in data_final
+        assert data_final["token_type"] == "bearer"
+        assert data_final["user"]["email"] == "pin.test@selizadministraciones.com.ar"
+
+
+@pytest.mark.asyncio
+async def test_auth_login_with_direct_pin():
+    """Verifica que si el cliente envía directamente email, contraseña y PIN, la autenticación es inmediata."""
+    async with TestSession() as session:
+        user_direct = UsuarioModel(
+            id="user-direct-pin",
+            email="direct.pin@selizadministraciones.com.ar",
+            password_hash=hash_password("DirectPass2026!"),
+            pin_hash=hash_password("998877"),
+            nombre_completo="Usuario Directo",
+            rol=RolUsuario.ADMINISTRADOR,
+            activo=True,
+        )
+        session.add(user_direct)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # PIN incorrecto en request directo
+        bad_direct = await ac.post(
+            "/api/v1/auth/login",
+            json={
+                "email": "direct.pin@selizadministraciones.com.ar",
+                "password": "DirectPass2026!",
+                "pin": "111111",
+            },
+        )
+        assert bad_direct.status_code == 401
+
+        # PIN correcto en request directo
+        ok_direct = await ac.post(
+            "/api/v1/auth/login",
+            json={
+                "email": "direct.pin@selizadministraciones.com.ar",
+                "password": "DirectPass2026!",
+                "pin": "998877",
+            },
+        )
+        assert ok_direct.status_code == 200
+        assert "access_token" in ok_direct.json()

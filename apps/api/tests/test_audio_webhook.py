@@ -56,7 +56,11 @@ async def test_webhook_evolution_handles_audio_message():
             return_value="Hola soy del 3B de Callao, no me anda el ascensor",
         ) as mock_transcribe:
             with patch("infrastructure.evolution_client.evolution_client.send_text", new_callable=AsyncMock) as mock_send_wa:
-                res = await ac.post("/api/v1/webhook/evolution", json=payload)
+                res = await ac.post(
+                    "/api/v1/webhook/evolution",
+                    json=payload,
+                    headers={"apikey": "consorcio_api_token_secret"},
+                )
                 assert res.status_code == 200
                 assert res.json()["status"] == "received"
 
@@ -98,7 +102,11 @@ async def test_webhook_evolution_inaudible_audio_prompts_user():
         ):
             with patch("infrastructure.evolution_client.evolution_client.send_text", new_callable=AsyncMock) as mock_send_wa:
                 mock_send_wa.return_value = True
-                res = await ac.post("/api/v1/webhook/evolution", json=payload)
+                res = await ac.post(
+                    "/api/v1/webhook/evolution",
+                    json=payload,
+                    headers={"apikey": "consorcio_api_token_secret"},
+                )
                 assert res.status_code == 200
 
                 # Dar un instante para que el BackgroundTask se ejecute

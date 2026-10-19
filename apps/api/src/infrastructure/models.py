@@ -166,6 +166,7 @@ class UsuarioModel(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
+    pin_hash = Column(String(255), nullable=True)
     nombre_completo = Column(String(150), nullable=False)
     rol = Column(SQLEnum(RolUsuario), default=RolUsuario.ADMINISTRADOR, nullable=False)
     activo = Column(Boolean, default=True, nullable=False)
@@ -173,6 +174,10 @@ class UsuarioModel(Base):
     ultimo_login = Column(DateTime, nullable=True)
 
     conversaciones_asignadas = relationship("ConversacionModel", back_populates="agente")
+
+    @property
+    def tiene_pin_configurado(self) -> bool:
+        return bool(self.pin_hash)
 
 
 class ConversacionModel(Base):

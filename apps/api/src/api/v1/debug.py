@@ -16,7 +16,9 @@ from infrastructure.models import (
     FaqAprobadaModel,
     ConversacionModel,
     MensajeModel,
+    UsuarioModel,
 )
+from api.deps import get_current_user
 from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket, EnviadoPor
 from services.ticket_service import (
     process_and_consolidate_ticket,
@@ -70,7 +72,11 @@ class DebugChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=DebugChatResponse)
-async def debug_chat(req: DebugChatRequest, db: AsyncSession = Depends(get_db)):
+async def debug_chat(
+    req: DebugChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user),
+):
     """
     Endpoint de depuración y simulación de mensajes de WhatsApp.
     Permite probar conversaciones completas de forma local con guardrails, tono humano y anti-spam.

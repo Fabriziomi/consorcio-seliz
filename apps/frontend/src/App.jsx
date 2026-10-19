@@ -536,7 +536,8 @@ export default function App() {
         const host = import.meta.env.VITE_API_URL
           ? import.meta.env.VITE_API_URL.replace(/^http(s)?:\/\//, '')
           : window.location.host;
-        const wsUrl = `${protocol}//${host}/ws/conversaciones`;
+        const token = localStorage.getItem('seliz_auth_token');
+        const wsUrl = `${protocol}//${host}/ws/conversaciones${token ? `?token=${encodeURIComponent(token)}` : ''}`;
 
         ws = new WebSocket(wsUrl);
 

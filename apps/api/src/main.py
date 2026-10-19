@@ -27,6 +27,14 @@ async def lifespan(app: FastAPI):
         try:
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
+                # Migración preventiva: asegurar que la columna pin_hash exista en la tabla usuarios
+                try:
+                    from sqlalchemy import text
+                    await conn.execute(text("ALTER TABLE usuarios ADD COLUMN pin_hash VARCHAR(255)"))
+                    logger.info("[DB_MIGRATION] Columna pin_hash agregada a la tabla usuarios.")
+                except Exception:
+                    # La columna ya existe o la base no lo requiere
+                    pass
             connected = True
             logger.info("[API_STARTUP] Tablas sincronizadas correctamente.")
             break

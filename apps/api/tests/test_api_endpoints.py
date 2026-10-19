@@ -4,8 +4,22 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from main import app
 from infrastructure.database import Base, get_db
-from infrastructure.models import ConsorcioModel, ContactoModel, TicketConsultaModel
-from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket
+from infrastructure.models import ConsorcioModel, ContactoModel, TicketConsultaModel, UsuarioModel
+from domain.schemas import RolContacto, PrioridadTicket, EstadoTicket, RolUsuario
+from api.deps import get_current_user
+
+mock_admin = UsuarioModel(
+    id="user-mock-admin",
+    email="admin@seliz.com",
+    nombre_completo="Admin Test",
+    rol=RolUsuario.SUPER_ADMIN,
+    activo=True,
+)
+
+
+async def override_get_current_user():
+    return mock_admin
+
 
 TEST_DB_URL = "sqlite+aiosqlite:///./test_api.db"
 test_engine = create_async_engine(TEST_DB_URL, echo=False)
@@ -26,6 +40,7 @@ async def setup_test_db(monkeypatch):
     monkeypatch.setattr(webhook_mod, "AsyncSessionLocal", TestSessionLocal)
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -124,7 +139,11 @@ async def test_evolution_webhook_endpoint():
                 }
             }
         }
-        res = await client.post("/api/v1/webhook/evolution", json=payload)
+        res = await client.post(
+            "/api/v1/webhook/evolution",
+            json=payload,
+            headers={"apikey": "consorcio_api_token_secret"},
+        )
         assert res.status_code == 200
         assert res.json()["status"] == "received"
 
@@ -309,7 +328,11 @@ async def test_webhook_evolution_from_me_activates_takeover():
                 }
             }
         }
-        res = await client.post("/api/v1/webhook/evolution", json=payload)
+        res = await client.post(
+            "/api/v1/webhook/evolution",
+            json=payload,
+            headers={"apikey": "consorcio_api_token_secret"},
+        )
         assert res.status_code == 200
         assert res.json()["status"] == "received"
 
@@ -337,7 +360,11 @@ async def test_webhook_chatwoot_operator_message():
                 }
             }
         }
-        res = await client.post("/api/v1/webhook/chatwoot", json=payload)
+        res = await client.post(
+            "/api/v1/webhook/chatwoot",
+            json=payload,
+            headers={"apikey": "consorcio_api_token_secret"},
+        )
         assert res.status_code == 200
         assert res.json()["status"] == "received"
 
@@ -406,5 +433,64 @@ async def test_evolution_client_send_text_with_typing_flow():
         )
         assert sent is True
         mock_send.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_protected_endpoints_reject_anonymous_requests():
+    """Verifica que los endpoints protegidos rechacen peticiones no autenticadas con HTTP 401."""
+    # Retirar temporalmente el mock de autenticación para simular usuario anónimo
+    app.dependency_overrides.pop(get_current_user, None)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Consorcios
+        res_consorcios = await client.get("/api/v1/consorcios/")
+        assert res_consorcios.status_code == 401
+
+        # Tickets
+        res_tickets = await client.get("/api/v1/tickets/")
+        assert res_tickets.status_code == 401
+
+        # Contactos
+        res_contactos = await client.get("/api/v1/contactos/")
+        assert res_contactos.status_code == 401
+
+        # Expedientes
+        res_expedientes = await client.get("/api/v1/expedientes/")
+        assert res_expedientes.status_code == 401
+
+        # Debug Chat (Acceso al Chatbot)
+        res_debug = await client.post("/api/v1/debug/chat", json={"message": "Hola"})
+        assert res_debug.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_webhook_security_token_verification():
+    """Verifica que los webhooks de Evolution API exijan token secreto válido."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        payload = {"event": "messages.upsert", "data": {}}
+
+        # 1. Sin header de autenticación -> Rechazado 401
+        res_no_token = await client.post("/api/v1/webhook/evolution", json=payload)
+        assert res_no_token.status_code == 401
+        assert "token" in res_no_token.json()["detail"].lower()
+
+        # 2. Con token inválido -> Rechazado 401
+        res_bad_token = await client.post(
+            "/api/v1/webhook/evolution",
+            json=payload,
+            headers={"apikey": "token_invalido_hacker"},
+        )
+        assert res_bad_token.status_code == 401
+
+        # 3. Con token oficial válido -> Aceptado 200
+        res_valid_token = await client.post(
+            "/api/v1/webhook/evolution",
+            json=payload,
+            headers={"apikey": "consorcio_api_token_secret"},
+        )
+        assert res_valid_token.status_code == 200
+        assert res_valid_token.json()["status"] == "received"
 
 

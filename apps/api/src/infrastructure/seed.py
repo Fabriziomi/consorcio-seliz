@@ -37,6 +37,7 @@ async def seed_initial_data(db: AsyncSession):
             id="user-admin-seliz",
             email="admin@selizadministraciones.com.ar",
             password_hash=hash_password("AdminSeliz2026!"),
+            pin_hash=hash_password("123456"),
             nombre_completo="Dra. Ivana Seliz",
             rol=RolUsuario.SUPER_ADMIN,
             activo=True,
@@ -45,12 +46,29 @@ async def seed_initial_data(db: AsyncSession):
             id="user-operador-1",
             email="operador@selizadministraciones.com.ar",
             password_hash=hash_password("Operador2026!"),
+            pin_hash=hash_password("123456"),
             nombre_completo="Mesa de Entrada y Guardia",
             rol=RolUsuario.OPERADOR,
             activo=True,
         )
         db.add_all([admin_user, operador_user])
         await db.commit()
+    else:
+        # Asegurar que usuarios existentes tengan PIN inicial si no lo tenían
+        updated = False
+        if not admin_user.pin_hash:
+            admin_user.pin_hash = hash_password("123456")
+            updated = True
+
+        op_res = await db.execute(select(UsuarioModel).where(UsuarioModel.email == "operador@selizadministraciones.com.ar"))
+        operador_user = op_res.scalar_one_or_none()
+        if operador_user and not operador_user.pin_hash:
+            operador_user.pin_hash = hash_password("123456")
+            updated = True
+
+        if updated:
+            await db.commit()
+            logger.info("[DB_SEED] PIN de seguridad 2FA inicializado para cuentas administrativas existentes.")
 
     res = await db.execute(select(ConsorcioModel))
     existing = res.scalars().first()
